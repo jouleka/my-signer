@@ -52,8 +52,10 @@ module Billing
 
         return billing_subscription if stale_event?(billing_subscription, occurred_at)
 
-        payload_for_storage = subscription_payload.deep_dup
-        payload_for_storage["last_event_occurred_at"] = occurred_at.to_s if occurred_at.present?
+        payload_for_storage = StoredSubscriptionPayload.build(
+          subscription_payload,
+          event_occurred_at: occurred_at
+        )
 
         billing_subscription.user = user
         billing_subscription.provider_plan_id = price_id
