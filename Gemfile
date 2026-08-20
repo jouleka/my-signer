@@ -92,7 +92,7 @@ gem "devise"
 
 # Background jobs (development uses Sidekiq; production currently uses Solid Queue)
 gem "sidekiq"
-gem "connection_pool", "< 3" # pin until sidekiq/rails fully support 3.x
+gem "connection_pool", "< 4" # pin until sidekiq/rails fully support 3.x
 
 # Rate limiting
 gem "rack-attack"
