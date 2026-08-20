@@ -129,7 +129,7 @@ gem "google-apis-androidpublisher_v3", ">= 0.54.0"
 gem "google-apis-playdeveloperreporting_v1beta1"
 
 # OpenAI API for AI-powered store listing translations
-gem "ruby-openai", "~> 7.0"
+gem "ruby-openai", "~> 8.3"
 
 gem "kaminari", "~> 1.2"
 
