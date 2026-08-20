@@ -1,0 +1,20 @@
+<%= @resource_type %> Has Expired
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+Your <%= @resource_type %> "<%= @resource_name %>" has EXPIRED as of <%= @resource.expires_at.strftime("%B %d, %Y") %>.
+
+This resource is no longer valid and may cause build failures or service interruptions. Please renew or replace it as soon as possible.
+
+Review Now: <%= case @resource
+                when AppleCertificate
+                  organization_apple_certificates_url(@resource.organization)
+                when AppleProvisioningProfile
+                  organization_apple_provisioning_profiles_url(@resource.organization)
+                else
+                  polymorphic_url([@resource.organization, @resource])
+                end %>
+
+Thanks,
+My Signer Team

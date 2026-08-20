@@ -1,0 +1,38 @@
+<%# app/views/pricing/_faq.html.erb
+    No locals. Uses DaisyUI .collapse-plus.
+%>
+
+<section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16 border-t border-base-content/[0.06]">
+  <header class="mb-8 sm:mb-10 text-center">
+    <h2 class="text-xl sm:text-2xl font-bold text-base-content/90 mb-2">Frequently asked questions</h2>
+    <p class="text-sm text-base-content/55">Common questions before you commit.</p>
+  </header>
+
+  <% faqs = [
+    { q: "What happens when my trial ends?",
+      a: "Your account automatically downgrades to Free. We never charge you without explicit opt-in." },
+    { q: "Can I switch plans mid-month?",
+      a: "Yes — upgrades apply immediately with prorated charges. Downgrades take effect at your next renewal so you keep access to what you've already paid for." },
+    { q: "Is there a discount for non-profits or students?",
+      a: "Reach out to support@mysigner.dev — we offer discounts case-by-case." },
+    { q: "How does seat billing work on Team?",
+      a: "Team includes up to 10 seats per organization at the base price. We'll reach out directly if you need more." },
+    { q: "Which payment methods do you accept?",
+      a: "All major credit/debit cards, Apple Pay, Google Pay, and region-specific methods via Paddle. Wire transfer available on annual Team plans." },
+    { q: "Can I self-host or use on-prem?",
+      a: "Not today. MySigner is a hosted SaaS. Reach out if on-prem is a hard requirement and we'll share roadmap details." }
+  ] %>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <% faqs.each do |item| %>
+      <details class="collapse collapse-plus rounded-[0.875rem] border border-base-content/[0.06] bg-base-content/[0.02]">
+        <summary class="collapse-title text-sm font-semibold text-base-content/85 py-4 px-5 cursor-pointer">
+          <%= item[:q] %>
+        </summary>
+        <div class="collapse-content text-sm text-base-content/70 px-5 pb-4 leading-relaxed">
+          <%= item[:a] %>
+        </div>
+      </details>
+    <% end %>
+  </div>
+</section>

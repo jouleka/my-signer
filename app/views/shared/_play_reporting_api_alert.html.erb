@@ -1,0 +1,45 @@
+<%#
+  Banner shown when the Google Play Developer Reporting API is disabled
+  in the service account's project. Stamped on the credential by
+  AnalyticsSyncJob when a 403 SERVICE_DISABLED comes back from
+  playdeveloperreporting.googleapis.com, cleared on the next success.
+
+  Expects:
+    local `credential` — a GooglePlayCredential with
+      play_reporting_api_disabled? == true and a resolvable project_id
+%>
+<% if credential.play_reporting_api_disabled? && credential.play_reporting_api_enable_url.present? %>
+  <div class="card bg-base-200/50 border border-warning/30 mb-4 overflow-hidden" role="alert">
+    <div class="card-body p-3 sm:p-4">
+      <div class="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+        <div class="flex items-start gap-3 flex-1 min-w-0">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1 flex-wrap">
+              <h3 class="font-semibold text-sm">Google Play Vitals unavailable</h3>
+              <span class="badge badge-warning badge-xs">API not enabled</span>
+              <span class="text-xs text-base-content/60">
+                detected <%= time_ago_in_words(credential.play_reporting_api_disabled_at) %> ago
+              </span>
+            </div>
+            <p class="text-xs text-base-content/70 leading-relaxed">
+              We couldn't fetch crash rate, ANR rate or anomaly data for your Android apps
+              because the <strong>Play Developer Reporting API</strong> isn't enabled in your
+              Google Cloud project <code class="bg-base-300/50 px-1.5 py-0.5 rounded text-[11px]"><%= credential.project_id %></code>.
+              Enable it once and vitals will start flowing on the next sync.
+            </p>
+          </div>
+        </div>
+        <a href="<%= credential.play_reporting_api_enable_url %>"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="btn btn-sm btn-warning gap-2 shrink-0 w-full sm:w-auto">
+          <i class="fa-solid fa-up-right-from-square text-xs"></i>
+          Enable API
+        </a>
+      </div>
+    </div>
+  </div>
+<% end %>

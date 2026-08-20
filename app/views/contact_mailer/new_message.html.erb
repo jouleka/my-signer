@@ -1,0 +1,44 @@
+<% @preheader = "New #{@category.to_s.titleize} message from #{@name} via the contact form." %>
+
+<%# Internal-only — operator-facing. Tightened metadata layout, mono category badge, message in a token block. %>
+
+<%= ms_eyebrow(70, "Inbound · Contact form") %>
+<%= ms_headline("New <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">message.</em>", size: 42) %>
+
+<% category_styles = {
+     "bug"      => { label: "Bug Report",      bg: "#1f1314", border: "#3d2126", text: "#f57c97" },
+     "feature"  => { label: "Feature Request", bg: "#13161f", border: "#2a3450", text: "#a8c0f5" },
+     "question" => { label: "Question",        bg: "#1f1810", border: "#3d2f17", text: "#f0c073" },
+     "feedback" => { label: "Feedback",        bg: "#102018", border: "#1e3a2c", text: "#5dc299" },
+     "other"    => { label: "Other",           bg: "#1a1612", border: "#2c2820", text: "#cdc4b6" }
+   } %>
+<% category_style = category_styles[@category] || category_styles["other"] %>
+
+<%# Category badge %>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="left" style="margin:0 0 24px 0;">
+  <tr>
+    <td style="padding:5px 12px; background-color:<%= category_style[:bg] %>; border:1px solid <%= category_style[:border] %>; border-radius:3px; font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:<%= category_style[:text] %>; font-weight:500;">
+      <%= category_style[:label] %>
+    </td>
+  </tr>
+</table>
+
+<%= ms_meta_row("From", "<span class=\"ms-ink\" style=\"color:#f4ede0;\">#{ERB::Util.h(@name)}</span>".html_safe) %>
+<%= ms_meta_row("Email", ms_link(@email, "mailto:#{@email}")) %>
+<%= ms_meta_row("Received", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{Time.current.strftime('%B %-d, %Y · %H:%M %Z')}</span>".html_safe) %>
+
+<%# Message body %>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 18px 0 28px 0;">
+  <tr>
+    <td style="padding-bottom:8px;">
+      <span class="ms-faint" style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:#8a8378;">
+        Message
+      </span>
+    </td>
+  </tr>
+  <tr>
+    <td class="ms-token-block" style="padding:20px 24px; background-color:#14110d; border:1px solid #2c2820; border-radius:4px; font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:16.5px; line-height:1.6; color:#f4ede0; white-space:pre-wrap;"><%= @message %></td>
+  </tr>
+</table>
+
+<%= ms_fine_print("Reply directly to this email to respond to #{ERB::Util.h(@name)} &mdash; the inbox is wired so the From header is set to the visitor's address.") %>

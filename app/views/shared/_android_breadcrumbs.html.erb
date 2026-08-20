@@ -1,0 +1,24 @@
+<%# expected locals: organization:, active_tab: one of :credentials, :apps, :tracks, :keystores %>
+<% current_label = case active_tab
+when :apps then "Android Apps"
+when :tracks then "Tracks"
+when :keystores then "Keystores"
+else "Google Play"
+end %>
+
+<% items = [
+  { label: "Organizations", path: organizations_path },
+  { label: organization.name, path: organization_path(organization) },
+  { label: "Android" },
+  { label: current_label }
+] %>
+
+<% tabs = [
+  { label: "Apps", path: organization_android_apps_path(organization), active: active_tab == :apps },
+  { label: "Tracks", path: organization_android_tracks_path(organization), active: active_tab == :tracks },
+  { label: "Keystores", path: organization_android_keystores_path(organization), active: active_tab == :keystores }
+] %>
+
+<%= breadcrumbs(items, tabs: tabs) %>
+
+

@@ -1,0 +1,58 @@
+<% @preheader = @movements.empty? ? "No significant rank changes this week — all tracked keywords held steady." : "#{@movements.size} significant rank movements this week for #{@organization.name}." %>
+
+<%= ms_eyebrow(50, "ASO · Weekly digest") %>
+<%= ms_headline("Keyword rank <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">movements.</em>", size: 40) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_body("The weekly rundown for <strong style=\"color:#f4ede0;\">#{ERB::Util.h(@organization.name)}</strong>. We only surface significant moves &mdash; keywords crossing the top-10 or top-50 thresholds, or shifting more than five positions inside the top hundred.") %>
+
+<% if @movements.empty? %>
+  <%= ms_callout(
+    "No significant rank changes this week. All tracked keywords held steady &mdash; sometimes the most useful signal is a flat one.",
+    variant: :neutral,
+    accent_label: "Quiet week"
+  ) %>
+<% else %>
+  <%# Editorial data table %>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 28px 0; border-collapse:collapse;">
+    <thead>
+      <tr class="ms-table-head">
+        <td class="ms-table-cell" style="padding:11px 14px; font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#a8a094; border-bottom:1px solid #2c2820; background-color:#1a1612;">Keyword</td>
+        <td class="ms-table-cell" style="padding:11px 14px; font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#a8a094; border-bottom:1px solid #2c2820; background-color:#1a1612;">Country</td>
+        <td class="ms-table-cell" align="right" style="padding:11px 14px; font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#a8a094; border-bottom:1px solid #2c2820; background-color:#1a1612; text-align:right;">Last week</td>
+        <td class="ms-table-cell" align="right" style="padding:11px 14px; font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#a8a094; border-bottom:1px solid #2c2820; background-color:#1a1612; text-align:right;">Now</td>
+        <td class="ms-table-cell" align="right" style="padding:11px 14px; font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:#a8a094; border-bottom:1px solid #2c2820; background-color:#1a1612; text-align:right;">&Delta;</td>
+      </tr>
+    </thead>
+    <tbody>
+      <% @movements.each do |m| %>
+        <tr class="ms-table-row">
+          <td class="ms-table-cell ms-ink" style="padding:13px 14px; font-family:'Instrument Serif', Georgia, serif; font-size:16px; line-height:1.4; color:#f4ede0; border-bottom:1px solid #25201a; vertical-align:middle;">
+            <%= m.tkc.tracked_keyword.keyword %>
+          </td>
+          <td class="ms-table-cell ms-table-mute" style="padding:13px 14px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11.5px; letter-spacing:0.05em; text-transform:uppercase; color:#a8a094; border-bottom:1px solid #25201a; vertical-align:middle;">
+            <%= m.tkc.country.upcase %>
+          </td>
+          <td class="ms-table-cell ms-table-mute" align="right" style="padding:13px 14px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:14px; color:#a8a094; text-align:right; border-bottom:1px solid #25201a; vertical-align:middle;">
+            <%= m.week_ago ? "##{m.week_ago}" : "—" %>
+          </td>
+          <td class="ms-table-cell ms-ink" align="right" style="padding:13px 14px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:14px; color:#f4ede0; font-weight:500; text-align:right; border-bottom:1px solid #25201a; vertical-align:middle;">
+            <%= m.current ? "##{m.current}" : "—" %>
+          </td>
+          <td class="ms-table-cell" align="right" style="padding:13px 14px; font-family:'Instrument Serif', Georgia, serif; font-size:18px; font-style:italic; font-weight:400; color:<%= m.delta.to_i > 0 ? '#5dc299' : '#f57c97' %>; text-align:right; border-bottom:1px solid #25201a; vertical-align:middle;">
+            <% if m.delta %>
+              <%= m.delta > 0 ? "↑#{m.delta}" : "↓#{m.delta.abs}" %>
+            <% else %>
+              —
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
+
+<%= ms_cta("Open keyword tracker", organization_url(@organization), variant: :primary, margin_top: 8, margin_bottom: 24) %>
+
+<%= ms_fine_print("Weekly rank digests are a Team-tier feature. Adjust delivery cadence in your organization's settings.") %>

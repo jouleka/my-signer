@@ -1,0 +1,43 @@
+<dialog id="competitor-lookup-modal" class="modal modal-bottom sm:modal-middle"
+        data-controller="competitor-lookup"
+        data-competitor-lookup-url-value="<%= competitor_lookup_organization_keywords_path(@organization) %>"
+        data-competitor-lookup-country-value="<%= @current_locale.to_s.split('-').last.downcase.presence || "us" %>">
+  <div class="modal-box w-full max-w-lg">
+    <h3 class="<%= card_title_classes %> mb-3">
+      <i class="fa-solid fa-diamond mr-2 text-primary/70"></i>
+      Seed from competitor URL
+    </h3>
+    <p class="text-xs text-base-content/55 mb-3">
+      Paste an App Store URL. We'll extract the app name and suggest seed terms.
+    </p>
+
+    <input type="text"
+           class="<%= input_field_classes %> font-mono text-xs"
+           placeholder="https://apps.apple.com/us/app/..."
+           data-competitor-lookup-target="input"
+           data-action="input->competitor-lookup#debouncedFetch">
+
+    <div class="mt-4 hidden" data-competitor-lookup-target="resultZone">
+      <div class="rounded-xl border border-base-content/10 bg-base-100/50 p-3 mb-3">
+        <div class="text-sm font-semibold text-base-content/90" data-competitor-lookup-target="trackName">&mdash;</div>
+        <div class="text-xs text-base-content/55 mt-0.5" data-competitor-lookup-target="meta">&mdash;</div>
+      </div>
+      <div class="<%= label_uppercase_classes %> mb-1.5">Seed terms</div>
+      <div class="flex flex-wrap gap-1.5" data-competitor-lookup-target="seedList"></div>
+    </div>
+
+    <div class="mt-3 text-xs text-warning/80 hidden" data-competitor-lookup-target="error">&mdash;</div>
+
+    <div class="flex justify-end gap-2 mt-5">
+      <button type="button"
+              class="<%= btn_ghost_sm_classes %>"
+              data-controller="modal"
+              data-action="click->modal#close"
+              data-modal-target-value="competitor-lookup-modal">
+        Close
+      </button>
+    </div>
+
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </div>
+</dialog>

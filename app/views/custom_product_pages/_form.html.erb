@@ -1,0 +1,83 @@
+<%# Shared form partial for new/edit CPP %>
+<% action_url = new_record ?
+  organization_custom_product_pages_path(@organization) :
+  organization_custom_product_page_path(@organization, cpp) %>
+<% method = new_record ? :post : :patch %>
+
+<%= form_with url: action_url, method: method, local: true do |f| %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_body_classes %>">
+      <div class="space-y-5">
+        <%# App selector (only on new) %>
+        <% if new_record %>
+          <div>
+            <label class="<%= label_form_classes %> mb-1.5">Apple App</label>
+            <select name="apple_app_id" class="<%= input_field_classes %>" required>
+              <option value="">Select an app...</option>
+              <% @apple_apps.each do |app| %>
+                <option value="<%= app.id %>"><%= app.name.presence || app.bundle_id %></option>
+              <% end %>
+            </select>
+            <p class="<%= hint_text_classes %> mt-1">Choose the iOS app this Custom Product Page belongs to</p>
+          </div>
+        <% end %>
+
+        <%# Name input %>
+        <div>
+          <label class="<%= label_form_classes %> mb-1.5">Page Name</label>
+          <input type="text"
+                 name="name"
+                 value="<%= cpp.name %>"
+                 placeholder="e.g., Summer Campaign, Holiday Promo..."
+                 class="<%= input_field_classes %>"
+                 required />
+          <p class="<%= hint_text_classes %> mt-1">A descriptive name to identify this Custom Product Page</p>
+        </div>
+
+        <% if new_record %>
+          <%# Locale for initial version (new only) %>
+          <div>
+            <label class="<%= label_form_classes %> mb-1.5">Primary Locale</label>
+            <input type="text"
+                   name="locale"
+                   value="en-US"
+                   placeholder="e.g., en-US, de-DE, ja..."
+                   class="<%= input_field_classes %>"
+                   required />
+            <p class="<%= hint_text_classes %> mt-1">The locale for the first version of this CPP. Screenshots will be copied from your live app version if available.</p>
+          </div>
+        <% end %>
+
+        <% unless new_record %>
+          <%# Visible checkbox (only on edit — Apple doesn't accept visible on create) %>
+          <div class="flex items-center gap-3">
+            <input type="hidden" name="visible" value="0" />
+            <input type="checkbox"
+                   name="visible"
+                   value="1"
+                   class="checkbox checkbox-sm checkbox-primary"
+                   id="cpp_visible"
+                   <%= "checked" if cpp.visible? %> />
+            <label for="cpp_visible" class="<%= label_form_classes %> cursor-pointer">
+              Visible on App Store
+            </label>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3 mt-5">
+    <button type="submit" class="<%= btn_primary_classes %>">
+      <% if new_record %>
+        <i class="fa-solid fa-plus"></i> Create Custom Product Page
+      <% else %>
+        <i class="fa-solid fa-check"></i> Save Changes
+      <% end %>
+    </button>
+    <%= link_to organization_custom_product_pages_path(@organization),
+        class: btn_ghost_classes do %>
+      Cancel
+    <% end %>
+  </div>
+<% end %>

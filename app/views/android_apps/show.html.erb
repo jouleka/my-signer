@@ -1,0 +1,630 @@
+<% items = [
+  { label: "Organizations", path: organizations_path },
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "Android" },
+  { label: "Apps", path: organization_android_apps_path(@organization) },
+  { label: @app.name.presence || @app.package_name }
+] %>
+<%= breadcrumbs(items) %>
+
+<% gp_credential = @organization.google_play_credentials.active.first %>
+<% if gp_credential&.play_reporting_api_disabled? %>
+  <%= render "shared/play_reporting_api_alert", credential: gp_credential %>
+<% end %>
+<% app_not_synced = @app.raw_json.blank? || @app.raw_json == "{}" %>
+<% if app_not_synced && gp_credential %>
+  <% if %w[error partial].include?(gp_credential.last_sync_status) && gp_credential.last_sync_error.present? %>
+    <div class="card bg-base-200/50 border border-warning/30 mb-4 overflow-hidden">
+      <div class="card-body p-3 sm:p-4">
+        <div class="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+          <div class="flex items-start gap-3 flex-1 min-w-0">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-circle-exclamation text-warning"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-sm mb-1">This App Couldn't Sync</h3>
+              <div class="text-xs text-base-content/70 whitespace-pre-wrap font-mono bg-base-300/50 rounded-lg p-2 sm:p-3 mt-2 max-h-32 sm:max-h-40 overflow-y-auto break-words" style="overflow-wrap: anywhere;"><%= gp_credential.last_sync_error %></div>
+            </div>
+          </div>
+          <button type="button"
+                  data-controller="sync"
+                  data-sync-url-value="<%= sync_google_play_api_v1_organization_path(@organization) %>"
+                  data-sync-status-url-value="<%= sync_status_google_play_organization_path(@organization) %>"
+                  data-sync-badge-id-value="gplay-sync-badge"
+                  data-action="click->sync#start"
+                  data-sync-target="button"
+                  class="btn btn-sm btn-outline btn-warning gap-2 shrink-0 w-full sm:w-auto">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="card bg-base-200/50 border border-info/30 mb-4 overflow-hidden">
+      <div class="card-body p-3 sm:p-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-info/10 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-cloud-arrow-down text-info"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-sm">Not Synced Yet</h3>
+              <p class="text-xs text-base-content/60 mt-0.5">Added manually. Sync to fetch metadata from Google Play.</p>
+            </div>
+          </div>
+          <button type="button"
+                  data-controller="sync"
+                  data-sync-url-value="<%= sync_google_play_api_v1_organization_path(@organization) %>"
+                  data-sync-status-url-value="<%= sync_status_google_play_organization_path(@organization) %>"
+                  data-sync-badge-id-value="gplay-sync-badge"
+                  data-action="click->sync#start"
+                  data-sync-target="button"
+                  class="btn btn-sm btn-info gap-2 shrink-0 w-full sm:w-auto">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            Sync Now
+          </button>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%# App Header %>
+  <div class="rounded-2xl sm:rounded-3xl border border-base-200 bg-gradient-to-br from-emerald-500/15 via-base-100 to-lime-500/10 p-4 sm:p-6 md:p-8 shadow-xl overflow-hidden">
+    <div class="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <div class="space-y-2 sm:space-y-3 min-w-0">
+        <span class="badge badge-outline badge-sm sm:badge-lg gap-1.5 sm:gap-2">
+          <i class="fa-brands fa-android text-xs sm:text-sm"></i>
+          Android App
+        </span>
+        <h1 class="text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight break-words">
+          <%= @app.name.presence || "Unnamed App" %>
+        </h1>
+        <div class="flex items-center gap-2 flex-wrap min-w-0">
+          <code class="text-xs sm:text-sm bg-base-200 px-2 sm:px-3 py-1 rounded-lg truncate max-w-[calc(100vw-8rem)]"><%= @app.package_name %></code>
+          <button type="button" class="btn btn-ghost btn-xs shrink-0"
+                  data-controller="copy"
+                  data-action="click->copy#copy"
+                  data-copy-text-value="<%= @app.package_name %>">
+            <i class="fa-solid fa-copy"></i>
+            Copy
+          </button>
+        </div>
+        <% if @app.default_language.present? %>
+          <p class="text-xs sm:text-sm text-base-content/70">
+            Default language: <span class="font-medium"><%= @app.default_language %></span>
+          </p>
+        <% end %>
+      </div>
+      <div class="stats stats-horizontal bg-base-100 border border-base-200 shadow w-full sm:w-auto overflow-x-auto">
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Builds</div>
+          <div class="stat-value text-xl sm:text-2xl text-primary"><%= @builds.size %></div>
+          <div class="stat-desc">uploaded</div>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Tracks</div>
+          <div class="stat-value text-xl sm:text-2xl text-success"><%= @tracks.size %></div>
+          <div class="stat-desc">configured</div>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Keystores</div>
+          <div class="stat-value text-xl sm:text-2xl text-accent"><%= @keystores.size %></div>
+          <div class="stat-desc">available</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
+      <%= link_to organization_android_apps_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">All Apps</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+      <% developer_account_id = @organization.google_play_credentials.active.first&.developer_account_id %>
+      <% if developer_account_id.present? %>
+        <a href="https://play.google.com/console/developers/<%= developer_account_id %>/app-list"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="btn btn-ghost btn-sm sm:btn-md gap-2">
+          <i class="fa-solid fa-external-link"></i>
+          <span class="hidden sm:inline">Google Play Console</span>
+          <span class="sm:hidden">Console</span>
+        </a>
+      <% end %>
+      <button type="button" class="btn btn-ghost btn-sm sm:btn-md gap-2"
+              data-controller="raw-json"
+              data-action="click->raw-json#show"
+              data-raw-json-content-value="<%= @app.raw_json %>"
+              data-raw-json-title-value="App: <%= @app.name %>">
+        <i class="fa-solid fa-code"></i>
+        Raw JSON
+      </button>
+    </div>
+  </div>
+
+  <%# CLI Defaults Section — saved here, read by `mysigner ship android`.
+      Mirrors the iOS CLI Defaults placement (right after the app header).
+      Google Play has no equivalent of iOS's phased_release/release_type;
+      we expose track + status + userFraction (staged rollout) + release notes. %>
+  <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+    <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+      <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+        <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-terminal text-secondary"></i>
+          CLI Defaults
+          <span class="text-xs font-normal text-base-content/40 hidden sm:inline">for <code class="bg-base-200 px-1 rounded">mysigner ship android</code></span>
+        </h2>
+        <% if @app.cli_defaults_configured? %>
+          <span class="badge badge-success gap-1 badge-sm sm:badge-md">
+            <i class="fa-solid fa-check text-[10px]"></i>
+            Configured
+          </span>
+        <% else %>
+          <span class="badge badge-ghost gap-1 badge-sm sm:badge-md">
+            <i class="fa-solid fa-minus text-[10px]"></i>
+            Not set
+          </span>
+        <% end %>
+      </div>
+
+      <% if @app.cli_defaults_configured? %>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div>
+            <div class="text-xs text-base-content/60 uppercase font-semibold mb-1">Track</div>
+            <div class="text-sm"><%= @app.cli_default_track || "—" %></div>
+          </div>
+          <div>
+            <div class="text-xs text-base-content/60 uppercase font-semibold mb-1">Status</div>
+            <div class="text-sm"><%= @app.cli_default_status %></div>
+          </div>
+          <div>
+            <div class="text-xs text-base-content/60 uppercase font-semibold mb-1">Rollout</div>
+            <div class="text-sm">
+              <% if @app.cli_default_user_fraction %>
+                <%= "%.0f%%" % (@app.cli_default_user_fraction.to_f * 100) %>
+              <% else %>
+                —
+              <% end %>
+            </div>
+          </div>
+          <% if @app.cli_release_notes.any? %>
+            <div class="col-span-full">
+              <div class="text-xs text-base-content/60 uppercase font-semibold mb-1">Release Notes</div>
+              <div class="bg-base-200/50 rounded-lg p-2 sm:p-3 space-y-1.5">
+                <% @app.cli_release_notes.first(3).each do |locale, text| %>
+                  <div class="text-sm"><span class="text-base-content/60"><%= locale %>:</span> <span class="break-words"><%= truncate(text, length: 120) %></span></div>
+                <% end %>
+                <% if @app.cli_release_notes.size > 3 %>
+                  <div class="text-xs text-base-content/50">+ <%= @app.cli_release_notes.size - 3 %> more</div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+          <% if @app.cli_changes_not_sent_for_review? %>
+            <div class="col-span-full">
+              <span class="badge badge-warning gap-1.5 badge-sm">
+                <i class="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                Changes not sent for review
+              </span>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="flex justify-end pt-2">
+          <%= link_to edit_organization_android_release_path(@organization, @app), class: "btn btn-ghost btn-xs sm:btn-sm gap-2" do %>
+            <i class="fa-solid fa-pen"></i>
+            Edit CLI Defaults
+          <% end %>
+        </div>
+      <% else %>
+        <div class="flex flex-col items-center justify-center py-6 sm:py-8 text-center px-2">
+          <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center mb-4">
+            <i class="fa-solid fa-terminal text-xl sm:text-2xl text-secondary/50"></i>
+          </div>
+          <h3 class="text-base sm:text-lg font-bold">No CLI Defaults</h3>
+          <p class="text-base-content/60 max-w-md mt-1 mb-4 text-sm break-words">
+            Optional: set defaults for <code class="bg-base-200 px-1 rounded text-xs">mysigner ship android</code>. CLI flags always override what's saved here.
+          </p>
+          <%= link_to edit_organization_android_release_path(@organization, @app), class: "btn btn-primary btn-sm gap-2" do %>
+            <i class="fa-solid fa-plus"></i>
+            Set CLI Defaults
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Builds Section %>
+  <% latest_build = @builds.first %>
+  <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+    <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+      <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+        <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-cube text-primary"></i>
+          Builds
+        </h2>
+        <div class="flex items-center gap-2 flex-wrap">
+          <% if latest_build %>
+            <div class="badge badge-primary gap-1 badge-sm sm:badge-md">
+              <i class="fa-solid fa-arrow-up text-[10px]"></i>
+              Latest: <%= latest_build.display_version %>
+            </div>
+          <% end %>
+          <span class="badge badge-soft badge-sm sm:badge-md"><%= @builds.size %> total</span>
+        </div>
+      </div>
+
+      <% if @builds.any? %>
+        <div class="hidden md:block" data-controller="show-more" data-show-more-limit-value="10">
+          <div class="overflow-x-auto rounded-2xl border border-base-200">
+            <table class="table">
+              <thead>
+                <tr class="text-xs uppercase text-base-content/60">
+                  <th>Version</th>
+                  <th>Version Code</th>
+                  <th>Status</th>
+                  <th>SDK</th>
+                  <th>Size</th>
+                  <th>Uploaded</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @builds.each_with_index do |build, idx| %>
+                  <% status = build.status.to_s %>
+                  <%
+                    status_info = case status.downcase
+                      when "completed", "active" then { class: "badge-success", icon: "fa-check-circle", label: status.titleize }
+                      when "processing", "pending" then { class: "badge-warning", icon: "fa-spinner fa-spin", label: status.titleize }
+                      when "failed", "error" then { class: "badge-error", icon: "fa-times-circle", label: status.titleize }
+                      else { class: "badge-ghost", icon: "fa-circle-question", label: status.presence || "Unknown" }
+                    end
+                  %>
+                  <tr class="hover <%= 'bg-primary/5' if idx == 0 %>" data-show-more-target="item">
+                    <td class="font-medium">
+                      <div class="flex items-center gap-2">
+                        <%= build.version_name.presence || "&mdash;".html_safe %>
+                        <% if idx == 0 %>
+                          <span class="badge badge-primary badge-xs">Latest</span>
+                        <% end %>
+                      </div>
+                    </td>
+                    <td>
+                      <code class="text-xs bg-base-200 px-2 py-1 rounded"><%= build.version_code %></code>
+                    </td>
+                    <td>
+                      <span class="badge <%= status_info[:class] %> gap-1">
+                        <i class="fa-solid <%= status_info[:icon] %> text-[10px]"></i>
+                        <%= status_info[:label] %>
+                      </span>
+                    </td>
+                    <td>
+                      <% if build.minimum_sdk_version || build.target_sdk_version %>
+                        <span class="text-xs">
+                          min: <%= build.minimum_sdk_version || "&mdash;".html_safe %> / target: <%= build.target_sdk_version || "&mdash;".html_safe %>
+                        </span>
+                      <% else %>
+                        <span class="opacity-40">&mdash;</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if build.file_size_bytes %>
+                        <span class="text-xs"><%= number_to_human_size(build.file_size_bytes) %></span>
+                      <% else %>
+                        <span class="opacity-40">&mdash;</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if build.uploaded_at %>
+                        <span class="text-xs" title="<%= build.uploaded_at.to_fs(:long) %>">
+                          <%= time_ago_in_words(build.uploaded_at) %> ago
+                        </span>
+                      <% else %>
+                        <span class="opacity-40">&mdash;</span>
+                      <% end %>
+                    </td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-ghost btn-xs"
+                              data-controller="raw-json"
+                              data-action="click->raw-json#show"
+                              data-raw-json-content-value="<%= build.raw_json %>"
+                              data-raw-json-title-value="Build: <%= build.display_version %>">
+                        Raw JSON
+                      </button>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <% if @builds.size > 10 %>
+            <button type="button" class="btn btn-ghost btn-sm w-full mt-3" data-show-more-target="button" data-action="click->show-more#toggle">
+              <i class="fa-solid fa-chevron-down mr-1"></i> Show <%= @builds.size - 10 %> more
+            </button>
+          <% end %>
+        </div>
+
+        <div class="md:hidden space-y-3" data-controller="show-more" data-show-more-limit-value="5">
+          <% @builds.each_with_index do |build, idx| %>
+            <% status = build.status.to_s %>
+            <%
+              status_info = case status.downcase
+                when "completed", "active" then { class: "badge-success", icon: "fa-check-circle", label: status.titleize }
+                when "processing", "pending" then { class: "badge-warning", icon: "fa-spinner fa-spin", label: status.titleize }
+                when "failed", "error" then { class: "badge-error", icon: "fa-times-circle", label: status.titleize }
+                else { class: "badge-ghost", icon: "fa-circle-question", label: status.presence || "Unknown" }
+              end
+            %>
+            <div class="card border <%= idx == 0 ? 'border-primary bg-primary/5' : 'border-base-200' %> shadow-sm overflow-hidden" data-show-more-target="item">
+              <div class="card-body p-3 sm:p-4 space-y-2 sm:space-y-3 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-semibold text-sm sm:text-base truncate"><%= build.display_version %></h3>
+                      <% if idx == 0 %>
+                        <span class="badge badge-primary badge-xs shrink-0">Latest</span>
+                      <% end %>
+                    </div>
+                    <code class="text-xs text-base-content/60"><%= build.version_code %></code>
+                  </div>
+                  <span class="badge <%= status_info[:class] %> gap-1 badge-sm shrink-0">
+                    <i class="fa-solid <%= status_info[:icon] %> text-[10px]"></i>
+                    <%= status_info[:label] %>
+                  </span>
+                </div>
+                <div class="grid gap-1 text-xs">
+                  <% if build.file_size_bytes %>
+                    <div class="flex justify-between">
+                      <span class="opacity-70">Size</span>
+                      <span><%= number_to_human_size(build.file_size_bytes) %></span>
+                    </div>
+                  <% end %>
+                  <% if build.uploaded_at %>
+                    <div class="flex justify-between">
+                      <span class="opacity-70">Uploaded</span>
+                      <span><%= time_ago_in_words(build.uploaded_at) %> ago</span>
+                    </div>
+                  <% end %>
+                  <% if build.minimum_sdk_version || build.target_sdk_version %>
+                    <div class="flex justify-between">
+                      <span class="opacity-70">SDK</span>
+                      <span>min <%= build.minimum_sdk_version || "&mdash;".html_safe %> / target <%= build.target_sdk_version || "&mdash;".html_safe %></span>
+                    </div>
+                  <% end %>
+                </div>
+                <button type="button" class="btn btn-ghost btn-xs w-fit"
+                        data-controller="raw-json"
+                        data-action="click->raw-json#show"
+                        data-raw-json-content-value="<%= build.raw_json %>"
+                        data-raw-json-title-value="Build: <%= build.display_version %>">
+                  View raw JSON
+                </button>
+              </div>
+            </div>
+          <% end %>
+          <% if @builds.size > 5 %>
+            <button type="button" class="btn btn-ghost btn-sm w-full" data-show-more-target="button" data-action="click->show-more#toggle">
+              <i class="fa-solid fa-chevron-down mr-1"></i> Show <%= @builds.size - 5 %> more
+            </button>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="alert">
+          <i class="fa-solid fa-info-circle shrink-0"></i>
+          <span class="break-words">No builds have been uploaded yet. Sync your Google Play data to import builds.</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Tracks Section %>
+  <%
+    production_track = @tracks.find { |t| t.track_name == "production" }
+    production_releases = production_track&.releases.is_a?(Hash) ? production_track.releases["releases"] || [] : []
+    live_release = production_releases.find { |r| r["status"] == "completed" }
+  %>
+  <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+    <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+      <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+        <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-arrows-turn-to-dots text-secondary"></i>
+          Release Tracks
+        </h2>
+        <div class="flex items-center gap-2 flex-wrap">
+          <% if live_release %>
+            <div class="badge badge-success gap-1 badge-sm sm:badge-md">
+              <i class="fa-solid fa-circle text-[6px] animate-pulse"></i>
+              Live: v<%= live_release["versionCodes"]&.first || live_release["name"] %>
+            </div>
+          <% end %>
+          <span class="badge badge-soft badge-sm sm:badge-md"><%= @tracks.size %> tracks</span>
+        </div>
+      </div>
+
+      <% if @tracks.any? %>
+        <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <% @tracks.each do |track| %>
+            <%
+              track_info = case track.track_name
+                when "production" then { color: "border-success/50 bg-success/5", icon: "fa-rocket", badge: "badge-success" }
+                when "beta" then { color: "border-warning/50 bg-warning/5", icon: "fa-flask", badge: "badge-warning" }
+                when "alpha" then { color: "border-info/50 bg-info/5", icon: "fa-vial", badge: "badge-info" }
+                when "internal" then { color: "border-base-300 bg-base-200/50", icon: "fa-lock", badge: "badge-ghost" }
+                else { color: "border-base-300", icon: "fa-code-branch", badge: "badge-ghost" }
+              end
+              releases = track.releases.is_a?(Hash) ? track.releases["releases"] || [] : []
+              has_live = releases.any? { |r| r["status"] == "completed" }
+            %>
+            <div class="card border <%= track_info[:color] %> shadow-sm overflow-hidden">
+              <div class="card-body p-3 sm:p-4 space-y-2 min-w-0">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i class="fa-solid <%= track_info[:icon] %> text-base-content/50 shrink-0"></i>
+                    <h3 class="font-semibold capitalize truncate"><%= track.track_name %></h3>
+                  </div>
+                  <% if has_live && track.track_name == "production" %>
+                    <span class="badge badge-success badge-xs gap-1 shrink-0">
+                      <i class="fa-solid fa-circle text-[4px] animate-pulse"></i>
+                      Live
+                    </span>
+                  <% elsif track.status.present? %>
+                    <span class="badge badge-xs badge-outline shrink-0"><%= track.status %></span>
+                  <% end %>
+                </div>
+                <% if releases.any? %>
+                  <% latest = releases.first %>
+                  <%
+                    release_status = latest["status"]
+                    release_badge = case release_status
+                      when "completed" then "badge-success"
+                      when "inProgress" then "badge-warning"
+                      when "halted" then "badge-error"
+                      when "draft" then "badge-ghost"
+                      else "badge-ghost"
+                    end
+                  %>
+                  <div class="space-y-1">
+                    <% version_codes = latest["versionCodes"] || [] %>
+                    <% if version_codes.any? || latest["name"].present? %>
+                      <div class="flex items-center gap-2 text-sm min-w-0">
+                        <span class="font-mono font-medium truncate"><%= latest["name"].presence || "v#{version_codes.first}" %></span>
+                        <span class="badge <%= release_badge %> badge-xs shrink-0"><%= release_status&.titleize || "Unknown" %></span>
+                      </div>
+                    <% end %>
+                    <% if latest["userFraction"].present? && latest["userFraction"] < 1.0 %>
+                      <div class="flex items-center gap-2 text-xs text-base-content/60">
+                        <i class="fa-solid fa-chart-pie text-[10px]"></i>
+                        Staged: <%= (latest["userFraction"] * 100).round(1) %>%
+                      </div>
+                    <% end %>
+                    <% if releases.size > 1 %>
+                      <div class="text-xs text-base-content/50">
+                        +<%= releases.size - 1 %> previous release<%= releases.size > 2 ? "s" : "" %>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <p class="text-xs text-base-content/50 italic">No releases yet</p>
+                <% end %>
+                <button type="button" class="btn btn-ghost btn-xs w-fit mt-1"
+                        data-controller="raw-json"
+                        data-action="click->raw-json#show"
+                        data-raw-json-content-value="<%= track.raw_json %>"
+                        data-raw-json-title-value="Track: <%= track.track_name %>">
+                  View details
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="alert">
+          <i class="fa-solid fa-info-circle shrink-0"></i>
+          <span class="break-words">No release tracks configured. Set up tracks in Google Play Console.</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Keystores Section %>
+  <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+    <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-key text-accent"></i>
+          Keystores
+        </h2>
+        <%= link_to new_organization_android_keystore_path(@organization), class: "btn btn-primary btn-xs sm:btn-sm gap-2 shrink-0" do %>
+          <i class="fa-solid fa-plus"></i>
+          <span class="hidden sm:inline">Add Keystore</span>
+          <span class="sm:hidden">Add</span>
+        <% end %>
+      </div>
+
+      <% if @keystores.any? %>
+        <%# Desktop Table %>
+        <div class="hidden md:block">
+          <div class="overflow-x-auto rounded-2xl border border-base-200">
+            <table class="table">
+              <thead>
+                <tr class="text-xs uppercase text-base-content/60">
+                  <th>Name</th>
+                  <th>Scope</th>
+                  <th>Expiry</th>
+                  <th>Status</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @keystores.each do |ks| %>
+                  <tr class="hover">
+                    <td class="font-medium">
+                      <%= link_to ks.name, organization_android_keystore_path(@organization, ks), class: "hover:text-primary transition-colors" %>
+                    </td>
+                    <td>
+                      <% if ks.android_app_id == @app.id %>
+                        <span class="badge badge-primary badge-sm">App-specific</span>
+                      <% else %>
+                        <span class="badge badge-ghost badge-sm">Organization-wide</span>
+                      <% end %>
+                    </td>
+                    <td><%= render partial: "android_keystores/expiry_badge", locals: { keystore: ks } %></td>
+                    <td><%= render partial: "android_keystores/status_badge", locals: { keystore: ks } %></td>
+                    <td class="text-right">
+                      <%= link_to organization_android_keystore_path(@organization, ks), class: "btn btn-ghost btn-xs" do %>
+                        View
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <%# Mobile Cards %>
+        <div class="md:hidden space-y-3">
+          <% @keystores.each do |ks| %>
+            <div class="card border border-base-200 shadow-sm overflow-hidden">
+              <div class="card-body p-3 space-y-2 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <%= link_to ks.name, organization_android_keystore_path(@organization, ks), class: "font-semibold text-sm hover:text-primary transition-colors block truncate" %>
+                    <% if ks.android_app_id == @app.id %>
+                      <span class="badge badge-primary badge-xs mt-1">App-specific</span>
+                    <% else %>
+                      <span class="badge badge-ghost badge-xs mt-1">Organization-wide</span>
+                    <% end %>
+                  </div>
+                  <%= link_to organization_android_keystore_path(@organization, ks), class: "btn btn-ghost btn-xs shrink-0" do %>
+                    View
+                  <% end %>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <%= render partial: "android_keystores/expiry_badge", locals: { keystore: ks } %>
+                  <%= render partial: "android_keystores/status_badge", locals: { keystore: ks } %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="alert">
+          <i class="fa-solid fa-info-circle shrink-0"></i>
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
+            <span class="break-words">No keystores available for signing this app.</span>
+            <%= link_to new_organization_android_keystore_path(@organization), class: "btn btn-sm btn-primary shrink-0" do %>
+              Upload Keystore
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Release History Section %>
+  <%= render partial: "release_history", locals: { releases: @releases } %>
+</section>

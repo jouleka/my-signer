@@ -1,0 +1,17 @@
+<% if resource.errors.any? %>
+  <div id="error_explanation" class="mb-6" data-turbo-temporary>
+    <div role="alert" class="flex items-start gap-3 px-4 py-3 rounded-xl bg-base-200/50 border border-error/30">
+      <i class="fa-solid fa-circle-exclamation text-error flex-shrink-0 mt-0.5"></i>
+      <div class="flex-1">
+        <p class="font-medium text-sm text-base-content/80 mb-2">
+          <%= pluralize(resource.errors.count, "error") %> prohibited this <%= resource.class.model_name.human.downcase %> from being saved:
+        </p>
+        <ul class="text-xs text-base-content/60 space-y-1 list-disc list-inside">
+          <% resource.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+<% end %>

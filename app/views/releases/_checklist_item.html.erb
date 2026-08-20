@@ -1,0 +1,117 @@
+<%# Single checklist item %>
+<% item = local_assigns[:item] %>
+<% checklist = local_assigns[:checklist] %>
+<% app = local_assigns[:app] %>
+<% release_id = local_assigns[:release_id] || (app.is_a?(AppleApp) ? "apple_app_#{app.id}" : "android_app_#{app.id}") %>
+<% read_only = local_assigns.fetch(:read_only, false) %>
+
+<% if local_assigns[:auto_detected] %>
+  <% severity = item["severity"].presence || "info" %>
+  <% icon = { "error" => "fa-circle-exclamation", "warning" => "fa-triangle-exclamation", "info" => "fa-circle-info" }[severity] || "fa-circle-info" %>
+  <% severity_classes = case severity
+       when "error"   then "border-l-error/70 [&>.flex>i]:text-error/80"
+       when "warning" then "border-l-warning/70 [&>.flex>i]:text-warning/80"
+       else                 "border-l-info/70 [&>.flex>i]:text-info/80"
+     end %>
+  <% source_label = case item["source"]
+                    when "app_store_connect" then "Apple"
+                    when "google_play" then "Google Play"
+                    when "local_check" then "MySigner"
+                    else item["source"].to_s.titleize
+                    end %>
+  <div class="px-4 py-3 border-l-[3px] mb-2 rounded-r-lg bg-base-content/[0.03] hover:bg-base-content/[0.05] transition-colors <%= severity_classes %>"
+       data-auto-detected-key="<%= item["key"] %>">
+    <div class="flex items-start gap-3 w-full">
+      <i class="fa-solid <%= icon %> mt-1"></i>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-sm font-semibold text-base-content/85"><%= item["label"] %></span>
+          <% if item["required"] == true %>
+            <span class="text-[0.6rem] font-semibold uppercase tracking-[0.04em] px-[0.3rem] py-[0.1rem] rounded bg-error/[0.08] text-error/70">Required</span>
+          <% end %>
+          <% if source_label.present? %>
+            <span class="<%= muted_badge_classes %>">
+              Source: <%= source_label %>
+            </span>
+          <% end %>
+        </div>
+        <% if item["detail"].present? %>
+          <p class="text-xs text-base-content/60 mt-1"><%= item["detail"] %></p>
+        <% end %>
+        <% if item["action_url"].present? %>
+          <%= link_to item["action_url"], target: "_blank", rel: "noopener", class: "text-xs text-primary hover:underline mt-1 inline-block" do %>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[0.6rem]"></i>
+            <% case item["source"] %>
+            <% when "app_store_connect" %>
+              Open in App Store Connect
+            <% when "google_play" %>
+              Open in Play Console
+            <% else %>
+              Open link
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <% checked = item["checked"] == true %>
+  <% required = item["required"] == true %>
+  <% is_custom = item["category"] == "custom" %>
+
+  <% if checklist.persisted? %>
+    <% check_url = check_item_organization_release_release_checklist_path(
+         @organization, release_id, checklist) %>
+    <% uncheck_url = uncheck_item_organization_release_release_checklist_path(
+         @organization, release_id, checklist) %>
+  <% end %>
+
+  <% item_classes = [
+       "flex items-center gap-3 px-5 py-3 border-b border-base-content/[0.04] last:border-b-0 transition-colors hover:bg-base-content/[0.02]",
+       checked ? "opacity-60" : "",
+       is_custom ? "!bg-base-content/[0.04] hover:!bg-base-content/[0.06] rounded-lg !border-b-0 mb-1" : "",
+     ].join(" ") %>
+  <div class="<%= item_classes %>"
+       data-checklist-item
+       data-release-checklist-target="item">
+    <input type="checkbox"
+           class="checkbox checkbox-sm checkbox-primary"
+           <%= "checked" if checked %>
+           <% if checklist.persisted? && !read_only %>
+             data-action="change->release-checklist#toggle"
+             data-release-checklist-key-param="<%= item["key"] %>"
+             data-release-checklist-url-param="<%= checked ? uncheck_url : check_url %>"
+           <% else %>
+             disabled
+           <% end %>>
+
+    <span class="flex-1 text-sm text-base-content/85 <%= 'line-through' if checked %>"
+          data-checklist-label><%= item["label"] %></span>
+
+    <% if required %>
+      <span class="text-[0.6rem] font-semibold uppercase tracking-[0.04em] px-[0.3rem] py-[0.1rem] rounded bg-error/[0.08] text-error/70">Required</span>
+    <% end %>
+
+    <% if item["checked_at"].present? %>
+      <span class="text-[0.6875rem] text-base-content/30">
+        <%= Time.parse(item["checked_at"]).strftime("%b %d") rescue "" %>
+      </span>
+    <% end %>
+
+    <% if is_custom && checklist.persisted? && !read_only %>
+      <form action="<%= remove_custom_item_organization_release_release_checklist_path(@organization, release_id, checklist) %>"
+            method="post"
+            class="inline-flex">
+        <input type="hidden" name="_method" value="delete">
+        <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
+        <input type="hidden" name="key" value="<%= item["key"] %>">
+        <button type="submit"
+                class="flex items-center justify-center w-6 h-6 rounded text-base-content/30 hover:text-error/80 hover:bg-error/10 transition-all"
+                aria-label="Remove custom item"
+                title="Remove item">
+          <i class="fa-solid fa-xmark text-[0.625rem]"></i>
+        </button>
+      </form>
+    <% end %>
+  </div>
+<% end %>

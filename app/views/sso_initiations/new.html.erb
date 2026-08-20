@@ -1,0 +1,31 @@
+<%# Auto-submitting form that POSTs to the OmniAuth SAML endpoint. %>
+<div class="hero min-h-[40vh]">
+  <div class="hero-content text-center">
+    <div class="max-w-md">
+      <h1 class="text-2xl font-bold mb-4">Redirecting to your identity provider...</h1>
+      <p class="text-sm text-base-content/60 mb-4">
+        If you're not redirected automatically, click the button below.
+      </p>
+      <%= form_tag @saml_initiation_url, method: :post, data: { turbo: false }, id: "sso-auto-submit" do %>
+        <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+        <%# RelayState binds this specific in-flight SSO flow to its org slug,
+            so that concurrent tabs don't cross-contaminate. The IdP echoes
+            RelayState back on the callback. %>
+        <%= hidden_field_tag :RelayState, @relay_state_nonce %>
+        <button type="submit" class="btn btn-primary gap-2">
+          <i class="fa-solid fa-arrow-right"></i>
+          Continue to SSO
+        </button>
+      <% end %>
+    </div>
+  </div>
+</div>
+<%# CSP nonce so this inline script survives the production
+    `script-src :self 'strict-dynamic'` policy. Without it the page would
+    silently fail to auto-submit and force the user to click the button. %>
+<script nonce="<%= request.content_security_policy_nonce %>">
+  // Auto-submit so the user sees zero friction on redirect. The visible
+  // "Continue to SSO" submit button above is the no-JS / CSP-blocked
+  // fallback path -- the form posts the same way either way.
+  document.getElementById("sso-auto-submit").submit();
+</script>

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 414 736" fill="none">
+  <defs>
+    <linearGradient id="aluminumEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8A8A8E"/>
+      <stop offset="20%" stop-color="#7A7A7E"/>
+      <stop offset="50%" stop-color="#6A6A6E"/>
+      <stop offset="80%" stop-color="#7A7A7E"/>
+      <stop offset="100%" stop-color="#8A8A8E"/>
+    </linearGradient>
+    <linearGradient id="aluminumSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7A7A7E"/>
+      <stop offset="15%" stop-color="#666668"/>
+      <stop offset="50%" stop-color="#58585C"/>
+      <stop offset="85%" stop-color="#666668"/>
+      <stop offset="100%" stop-color="#7A7A7E"/>
+    </linearGradient>
+    <linearGradient id="homeBtnGrad" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#1E1E20"/>
+      <stop offset="50%" stop-color="#141416"/>
+      <stop offset="100%" stop-color="#1E1E20"/>
+    </linearGradient>
+    <linearGradient id="homeRing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8E8E93"/>
+      <stop offset="30%" stop-color="#636366"/>
+      <stop offset="70%" stop-color="#545458"/>
+      <stop offset="100%" stop-color="#8E8E93"/>
+    </linearGradient>
+    <linearGradient id="btnL" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%" stop-color="#7A7A7E"/>
+      <stop offset="40%" stop-color="#666668"/>
+      <stop offset="100%" stop-color="#58585C"/>
+    </linearGradient>
+    <linearGradient id="btnR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7A7A7E"/>
+      <stop offset="40%" stop-color="#666668"/>
+      <stop offset="100%" stop-color="#58585C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Aluminum frame -->
+  <rect x="0" y="0" width="414" height="736" rx="42" ry="42" fill="url(#aluminumSide)"/>
+  <rect x="0" y="0" width="414" height="736" rx="42" ry="42" fill="url(#aluminumEdge)" opacity="0.4"/>
+  <rect x="2" y="2" width="410" height="732" rx="40" ry="40" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+
+  <!-- Front glass -->
+  <rect x="5" y="5" width="404" height="726" rx="38" ry="38" fill="#0A0A0C"/>
+
+  <!-- Speaker grille -->
+  <rect x="180" y="36" width="54" height="5" rx="2.5" ry="2.5" fill="#1C1C1E"/>
+
+  <!-- Front camera -->
+  <circle cx="207" cy="58" r="6" fill="#1C1C1E"/>
+  <circle cx="207" cy="58" r="3.5" fill="#0C0C0E" stroke="#1C1C1E" stroke-width="0.5"/>
+
+  <!-- Screen -->
+  <rect x="18" y="90" width="378" height="556" rx="4" ry="4" fill="#000"/>
+
+  <!-- Home button -->
+  <circle cx="207" cy="688" r="28" fill="url(#homeRing)"/>
+  <circle cx="207" cy="688" r="25" fill="url(#homeBtnGrad)"/>
+  <rect x="197" y="678" width="20" height="20" rx="4.5" ry="4.5" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+
+  <!-- Left buttons: silent switch -->
+  <rect x="-1.5" y="128" width="5" height="16" rx="2" ry="2" fill="url(#btnL)"/>
+  <!-- Volume up -->
+  <rect x="-1.5" y="193" width="5" height="34" rx="2" ry="2" fill="url(#btnL)"/>
+  <!-- Volume down -->
+  <rect x="-1.5" y="238" width="5" height="34" rx="2" ry="2" fill="url(#btnL)"/>
+
+  <!-- Right button: power -->
+  <rect x="410.5" y="213" width="5" height="52" rx="2" ry="2" fill="url(#btnR)"/>
+</svg>

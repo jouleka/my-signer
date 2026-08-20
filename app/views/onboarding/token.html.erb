@@ -1,0 +1,87 @@
+<% content_for(:title, "Generate API Token") %>
+
+<%= render "onboarding/layout" do %>
+  <div class="step-body step-animate">
+    <div class="step-eyebrow">
+      <span class="secnum">III</span>
+      <span class="step-eyebrow-label">Authenticate the CLI</span>
+      <span class="step-eyebrow-rule"></span>
+    </div>
+
+    <h1 class="step-title">Generate an <em>API token</em>.</h1>
+    <p class="step-lead">
+      This token lets the CLI authenticate with your organization. You'll paste it into the terminal
+      when you run <span class="kbd-mono">mysigner login</span> &mdash; it's the bridge between your laptop and MySigner.
+    </p>
+
+    <%= form_with url: onboarding_create_token_path, scope: :api_token,
+          data: { turbo: false } do |f| %>
+
+      <%# Token name %>
+      <div class="field-wrap">
+        <div class="label-row">
+          <span class="lbl">Token name</span>
+          <span class="alt">A friendly name to identify it later</span>
+        </div>
+        <label class="field">
+          <span class="lead">#</span>
+          <%= f.text_field :name, value: "CLI Token", placeholder: "e.g. CLI Token" %>
+        </label>
+      </div>
+
+      <%# Permission level — radios styled as flat tiles. Defaults to
+          "admin" (recommended for the CLI). The controller maps each
+          level to the actual scope set: read → [read], write →
+          [read,write], admin → [read,write,admin]. %>
+      <div class="field-wrap" style="margin-top: 1.5rem;">
+        <div class="label-row">
+          <span class="lbl">Permission level</span>
+          <% if @can_create_admin_scope %>
+            <span class="alt">Admin recommended for the CLI</span>
+          <% else %>
+            <span class="alt">Admin requires owner role</span>
+          <% end %>
+        </div>
+        <%# CSP-safe perm-row selection. Same Stimulus controller as the
+            organization-step tile row; configured here to look at `.perm`
+            wrappers instead of `.tile`. %>
+        <div class="perm-row" data-controller="onboarding-tile-select"
+             data-onboarding-tile-select-wrapper-class-value="perm">
+          <% [
+            { id: "read",  name: "Read",  sub: "View only",   badge: "i",   admin_only: false },
+            { id: "write", name: "Write", sub: "Ship builds", badge: "ii",  admin_only: false },
+            { id: "admin", name: "Admin", sub: "Full access", badge: "iii", admin_only: true  }
+          ].each do |p| %>
+            <% disabled = p[:admin_only] && !@can_create_admin_scope %>
+            <% selected = (p[:id] == "admin" && @can_create_admin_scope) || (p[:id] == "write" && !@can_create_admin_scope) %>
+            <label class="perm <%= 'is-selected' if selected %>" <%= 'aria-disabled="true"' if disabled %>>
+              <input type="radio" name="api_token[scope_level]" value="<%= p[:id] %>"
+                     <%= 'checked' if selected %> <%= 'disabled' if disabled %>
+                     class="sr-only"
+                     data-action="change->onboarding-tile-select#refresh">
+              <span class="perm-badge"><%= p[:badge] %></span>
+              <span class="perm-name"><%= p[:name] %></span>
+              <span class="perm-sub"><%= p[:sub] %></span>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="aside" style="margin-top: 1.5rem;">
+        <span class="aside-mark">&sect;</span>
+        <span>
+          Tokens are shown once at creation, then SHA-256 hashed in our database.
+          You can revoke and recreate at any time from <span class="kbd-mono">Settings &rarr; API tokens</span>.
+        </span>
+      </div>
+
+      <div class="action-row">
+        <span class="filler"></span>
+        <button type="submit" class="btn-primary-ms">
+          Generate token
+          <span style="font-size: 16px; margin-left: 2px;">&rarr;</span>
+        </button>
+      </div>
+    <% end %>
+  </div>
+<% end %>

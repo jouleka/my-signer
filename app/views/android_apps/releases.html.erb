@@ -1,0 +1,132 @@
+<% items = [
+  { label: "Organizations", path: organizations_path },
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "Android" },
+  { label: "Apps", path: organization_android_apps_path(@organization) },
+  { label: @app.name.presence || @app.package_name, path: organization_android_app_path(@organization, @app) },
+  { label: "Release History" }
+] %>
+<%= breadcrumbs(items) %>
+
+<% live_count = @releases.count { |r| r.status == "live" } %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "Release History",
+             description: "Chronological view of all releases for this app across all tracks.",
+             gradient: "from-amber-500/10 via-base-100 to-orange-500/10",
+             badge_icon: "fa-brands fa-android",
+             badge_text: @app.name.presence || @app.package_name,
+             stats: (capture do %>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Total</div>
+          <div class="stat-value text-xl sm:text-2xl"><%= @releases.size %></div>
+          <div class="stat-desc">releases</div>
+        </div>
+        <% if live_count > 0 %>
+          <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+            <div class="stat-title text-xs">Live</div>
+            <div class="stat-value text-xl sm:text-2xl text-success"><%= live_count %></div>
+            <div class="stat-desc">active</div>
+          </div>
+        <% end %>
+             <% end),
+             actions: (capture do %>
+      <%= link_to organization_android_app_path(@organization, @app), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back to App</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+             <% end) %>
+
+  <%# Filters %>
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 p-3 sm:p-4 bg-base-100 border border-base-200 rounded-xl sm:rounded-2xl shadow overflow-hidden">
+    <span class="font-medium text-sm flex items-center gap-2 shrink-0">
+      <i class="fa-solid fa-filter text-base-content/50"></i>
+      Filter:
+    </span>
+
+    <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1 min-w-0">
+      <%# Track Filter %>
+      <div class="dropdown dropdown-hover">
+        <label tabindex="0" class="btn btn-sm btn-outline gap-2">
+          <i class="fa-solid fa-code-branch"></i>
+          <span class="truncate max-w-[7rem]"><%= @track_filter.present? ? @track_filter.capitalize : "All Tracks" %></span>
+          <i class="fa-solid fa-chevron-down text-xs"></i>
+        </label>
+        <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-xl z-[1] w-44 p-2 shadow-lg border border-base-200">
+          <li>
+            <%= link_to releases_organization_android_app_path(@organization, @app, status: @status_filter), class: "gap-2 #{'font-bold bg-primary/10' if @track_filter.blank?}" do %>
+              <i class="fa-solid fa-layer-group text-xs w-4"></i>
+              All Tracks
+            <% end %>
+          </li>
+          <% PlayStoreRelease::TRACKS.each do |track| %>
+            <%
+              track_icon = case track
+                when "production" then "fa-rocket"
+                when "beta" then "fa-flask"
+                when "alpha" then "fa-vial"
+                when "internal" then "fa-lock"
+                else "fa-code-branch"
+              end
+            %>
+            <li>
+              <%= link_to releases_organization_android_app_path(@organization, @app, track: track, status: @status_filter), class: "gap-2 #{'font-bold bg-primary/10' if @track_filter == track}" do %>
+                <i class="fa-solid <%= track_icon %> text-xs w-4"></i>
+                <%= track.capitalize %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+
+      <%# Status Filter %>
+      <div class="dropdown dropdown-hover">
+        <label tabindex="0" class="btn btn-sm btn-outline gap-2">
+          <i class="fa-solid fa-flag"></i>
+          <span class="truncate max-w-[7rem]"><%= @status_filter.present? ? @status_filter.capitalize : "All Statuses" %></span>
+          <i class="fa-solid fa-chevron-down text-xs"></i>
+        </label>
+        <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-xl z-[1] w-44 p-2 shadow-lg border border-base-200">
+          <li>
+            <%= link_to releases_organization_android_app_path(@organization, @app, track: @track_filter), class: "gap-2 #{'font-bold bg-primary/10' if @status_filter.blank?}" do %>
+              <i class="fa-solid fa-list text-xs w-4"></i>
+              All Statuses
+            <% end %>
+          </li>
+          <% PlayStoreRelease::STATUSES.each do |status| %>
+            <%
+              status_icon = case status
+                when "live" then "fa-circle-check"
+                when "submitted" then "fa-paper-plane"
+                when "draft" then "fa-file-pen"
+                when "rejected" then "fa-circle-xmark"
+                when "removed" then "fa-trash"
+                else "fa-circle-question"
+              end
+            %>
+            <li>
+              <%= link_to releases_organization_android_app_path(@organization, @app, track: @track_filter, status: status), class: "gap-2 #{'font-bold bg-primary/10' if @status_filter == status}" do %>
+                <i class="fa-solid <%= status_icon %> text-xs w-4"></i>
+                <%= status.capitalize %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+
+      <% if @track_filter.present? || @status_filter.present? %>
+        <%= link_to releases_organization_android_app_path(@organization, @app), class: "btn btn-sm btn-ghost gap-2" do %>
+          <i class="fa-solid fa-xmark"></i>
+          Clear
+        <% end %>
+      <% end %>
+    </div>
+
+    <span class="badge badge-ghost shrink-0"><%= @releases.size %> releases</span>
+  </div>
+
+  <%# Timeline %>
+  <%= render partial: "release_history", locals: { releases: @releases, show_view_all: false } %>
+</section>

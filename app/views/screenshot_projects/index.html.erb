@@ -1,0 +1,148 @@
+<section class="space-y-6">
+  <% scheduled_change_impact = scheduled_plan_change_impact(current_user&.current_billing_subscription, organization: @organization, only_if_affected: true) if user_signed_in? %>
+  <%= render "shared/page_header",
+             title: "Screenshot Studio",
+             description: "Create polished App Store and Google Play screenshots with captions, backgrounds, and device frames.",
+             gradient: "from-violet-500/10 via-base-100 to-fuchsia-500/10",
+             badge_icon: "fa-solid fa-images",
+             badge_text: "Screenshot Studio",
+             stats: (capture do %>
+        <div class="stat py-3 px-5">
+          <div class="stat-title text-xs">Projects</div>
+          <div class="stat-value text-2xl"><%= @projects.size %></div>
+          <div class="stat-desc">total</div>
+        </div>
+             <% end),
+             actions: (capture do %>
+      <%= link_to new_organization_screenshot_project_path(@organization), class: "btn btn-primary gap-2" do %>
+        <i class="fa-solid fa-plus"></i>
+        New Project
+      <% end %>
+             <% end) %>
+
+  <% overage_status = pricing_overage_status(@organization) %>
+  <%= render "shared/plan_overage_banner", status: overage_status %>
+  <% if scheduled_change_impact.present? %>
+    <%= render "shared/scheduled_plan_change_banner", impact: scheduled_change_impact, compact: true, current_only: true %>
+  <% end %>
+
+  <%= render "shared/content_card" do %>
+    <% if @projects.any? %>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <% @projects.each do |project| %>
+          <% project_frozen = overage_status&.project_overflow?(project) %>
+          <% project_prompt = project.plan_upgrade_prompt_payload(source: "screenshot_projects#index:project-card") if project_frozen %>
+          <div class="card border border-base-200 shadow-sm hover:shadow-md hover:border-primary/30 transition-all">
+            <div class="card-body p-4 sm:p-5">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center shrink-0">
+                  <i class="fa-solid fa-images text-violet-600"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <%= link_to project.name,
+                              editor_organization_screenshot_project_path(@organization, project),
+                              class: "font-semibold hover:text-primary transition-colors block truncate",
+                              data: (project_frozen ? {
+                                controller: "upgrade-gate",
+                                action: "click->upgrade-gate#intercept",
+                                upgrade_gate_blocked_value: true,
+                                upgrade_gate_prompt_value: json_escape(project_prompt.to_json)
+                              } : {}) %>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="badge badge-ghost badge-xs gap-1">
+                      <% case project.platform %>
+                      <% when "ios" %>
+                        <i class="fa-brands fa-apple text-[10px]"></i> iOS
+                      <% when "android" %>
+                        <i class="fa-brands fa-android text-[10px]"></i> Android
+                      <% when "both" %>
+                        <i class="fa-solid fa-mobile-screen text-[10px]"></i> Both
+                      <% end %>
+                    </span>
+                    <% if project_frozen %>
+                      <span class="badge badge-warning badge-xs">Overflow</span>
+                    <% end %>
+                    <span class="text-xs text-base-content/50"><%= project.scenes_count %> scene<%= "s" unless project.scenes_count == 1 %></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-base-200">
+                <%= link_to editor_organization_screenshot_project_path(@organization, project),
+                            class: "btn btn-primary btn-xs gap-1.5",
+                            data: (project_frozen ? {
+                              controller: "upgrade-gate",
+                              action: "click->upgrade-gate#intercept",
+                              upgrade_gate_blocked_value: true,
+                              upgrade_gate_prompt_value: json_escape(project_prompt.to_json)
+                            } : {}) do %>
+                  <i class="fa-solid fa-pen-to-square"></i>
+                  Open
+                <% end %>
+                <%= link_to edit_organization_screenshot_project_path(@organization, project),
+                            class: "btn btn-ghost btn-xs gap-1.5",
+                            data: (project_frozen ? {
+                              controller: "upgrade-gate",
+                              action: "click->upgrade-gate#intercept",
+                              upgrade_gate_blocked_value: true,
+                              upgrade_gate_prompt_value: json_escape(project_prompt.to_json)
+                            } : {}) do %>
+                  <i class="fa-solid fa-gear"></i>
+                  Settings
+                <% end %>
+                <% modal_id = "delete_project_#{project.id}" %>
+                <button type="button" class="btn btn-ghost btn-xs gap-1.5 text-error" data-controller="modal" data-action="click->modal#open" data-modal-target-value="<%= modal_id %>">
+                  <i class="fa-solid fa-trash"></i>
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <dialog id="<%= modal_id %>" class="modal modal-bottom sm:modal-middle">
+            <div class="modal-box">
+              <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center flex-shrink-0">
+                  <i class="fa-solid fa-trash text-error text-lg"></i>
+                </div>
+                <div class="space-y-2">
+                  <h3 class="text-lg font-bold">Delete project?</h3>
+                  <p class="text-sm text-base-content/70">
+                    Are you sure you want to delete <span class="font-semibold"><%= project.name %></span> and all its scenes?
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div class="modal-action">
+                <form method="dialog">
+                  <button class="btn btn-ghost">Cancel</button>
+                </form>
+                <%= button_to organization_screenshot_project_path(@organization, project), method: :delete, class: "btn btn-error gap-2" do %>
+                  <i class="fa-solid fa-trash"></i>
+                  Delete
+                <% end %>
+              </div>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+              <button>close</button>
+            </form>
+          </dialog>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center mb-4">
+          <i class="fa-solid fa-images text-3xl text-violet-500/50"></i>
+        </div>
+        <h3 class="text-xl font-bold">No Projects Yet</h3>
+        <p class="text-base-content/60 max-w-sm mt-2 mb-6">
+          Create your first screenshot project to start generating beautiful App Store and Play Store screenshots.
+        </p>
+        <%= link_to new_organization_screenshot_project_path(@organization), class: "btn btn-primary gap-2" do %>
+          <i class="fa-solid fa-plus"></i>
+          Create Your First Project
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+</section>

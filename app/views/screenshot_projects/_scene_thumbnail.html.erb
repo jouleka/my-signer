@@ -1,0 +1,50 @@
+<%# locals: (scene:, organization:, project:, selected: false, has_other_projects: false) %>
+<div class="flex-shrink-0 w-20 sm:w-24 cursor-pointer group"
+     data-action="click->screenshot-editor#selectScene"
+     data-screenshot-editor-scene-id-param="<%= scene.id %>"
+     data-screenshot-editor-target="thumbnail">
+  <div class="relative rounded-2xl overflow-hidden border-2 transition-all <%= selected ? "border-primary shadow-lg" : "border-base-200 hover:border-primary/50" %>">
+    <div class="aspect-[9/16] bg-base-200 flex items-center justify-center">
+      <% thumb_1x = thumbnail_organization_screenshot_project_screenshot_scene_path(organization, project, scene, w: 96, h: 170, format: :webp) %>
+      <% thumb_2x = thumbnail_organization_screenshot_project_screenshot_scene_path(organization, project, scene, w: 192, h: 340, format: :webp) %>
+      <img src="<%= thumb_1x %>"
+           srcset="<%= thumb_1x %> 1x, <%= thumb_2x %> 2x"
+           sizes="(max-width: 640px) 80px, 96px"
+           class="w-full h-full object-cover"
+           loading="<%= selected ? "eager" : "lazy" %>"
+           fetchpriority="<%= selected ? "high" : "low" %>"
+           decoding="async"
+           width="96" height="170"
+           alt="Scene <%= scene.position %>">
+    </div>
+    <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-1">
+      <p class="text-white text-[10px] font-medium text-center truncate"><%= scene.caption_text.presence || "Scene #{scene.position}" %></p>
+    </div>
+    <div class="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary hidden"
+         data-scene-unsaved-dot
+         title="Unsaved changes"></div>
+  </div>
+  <div class="flex items-center justify-between mt-1 px-0.5">
+    <span class="text-[10px] text-base-content/50">#<%= scene.position %></span>
+    <div class="flex items-center gap-0.5">
+      <% if has_other_projects %>
+        <button type="button"
+                class="btn btn-ghost btn-xs btn-circle opacity-0 group-hover:opacity-100 transition-opacity"
+                data-action="click->screenshot-editor#openCopySceneModal"
+                data-scene-id="<%= scene.id %>"
+                title="Copy to another project"
+                aria-label="Copy to another project">
+          <i class="fa-solid fa-copy text-[10px]"></i>
+        </button>
+      <% end %>
+      <button type="button"
+              class="btn btn-ghost btn-xs btn-circle opacity-0 group-hover:opacity-100 transition-opacity"
+              data-action="click->screenshot-editor#confirmDeleteScene"
+              data-delete-url="<%= organization_screenshot_project_screenshot_scene_path(organization, project, scene) %>"
+              data-scene-name="Scene <%= scene.position %>"
+              aria-label="Delete Scene <%= scene.position %>">
+        <i class="fa-solid fa-xmark text-error text-[10px]"></i>
+      </button>
+    </div>
+  </div>
+</div>

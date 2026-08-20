@@ -1,0 +1,47 @@
+<% help_links = [] %>
+<% if devise_mapping.recoverable? && controller_name != 'passwords' && controller_name != 'registrations' %>
+  <% help_links << [t('devise.shared.links.forgot_password'), new_password_path(resource_name)] %>
+<% end %>
+<% if devise_mapping.confirmable? && controller_name != 'confirmations' %>
+  <% help_links << [t('devise.shared.links.didnt_receive_confirmation'), new_user_confirmation_path] %>
+<% end %>
+<% if devise_mapping.lockable? && resource_class.unlock_strategy_enabled?(:email) && controller_name != 'unlocks' %>
+  <% help_links << [t('devise.shared.links.didnt_receive_unlock'), new_unlock_path(resource_name)] %>
+<% end %>
+
+<div class="mt-4 text-sm">
+  <div class="space-y-2">
+    <%- if controller_name != 'sessions' %>
+      <div>
+        <%= t('devise.shared.links.already_have_account') %>
+        <%= link_to t('devise.shared.links.log_in'), new_session_path(resource_name), class: "link link-hover" %>
+      </div>
+    <% end %>
+
+    <%- if devise_mapping.registerable? && controller_name != 'registrations' %>
+      <div>
+        <%= t('devise.shared.links.dont_have_account') %>
+        <%= link_to t('devise.shared.links.sign_up'), new_registration_path(resource_name), class: "link link-hover" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if help_links.any? %>
+    <div class="mt-2 hidden sm:flex sm:flex-col sm:gap-2">
+      <% help_links.each do |label, path| %>
+        <div><%= link_to label, path, class: "link link-hover opacity-80" %></div>
+      <% end %>
+    </div>
+
+    <details class="mt-3 rounded-xl border border-base-300/70 bg-base-200/30 px-3 py-2 sm:hidden">
+      <summary class="cursor-pointer list-none text-xs font-medium text-base-content/70">
+        <span><%= t('devise.shared.links.need_help') %></span>
+      </summary>
+      <div class="mt-2 space-y-1.5">
+        <% help_links.each do |label, path| %>
+          <div><%= link_to label, path, class: "link link-hover text-sm opacity-80" %></div>
+        <% end %>
+      </div>
+    </details>
+  <% end %>
+</div>

@@ -1,0 +1,15 @@
+Your payment is past due
+
+Hi <%= @user.name.presence || @user.email %>,
+
+We couldn't charge your card for your MySigner subscription. Update your
+payment method soon to keep your current plan — otherwise your account will
+downgrade to Free.
+
+A quick update in your billing portal takes less than a minute. Your data and
+settings stay put either way.
+
+Manage billing: <%= pricing_url %>
+
+—
+Change notification preferences: <%= settings_url(tab: "notifications") %>

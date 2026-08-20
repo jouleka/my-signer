@@ -1,0 +1,102 @@
+<%= breadcrumbs([
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "Permissions" }
+]) %>
+
+<section class="flex flex-col gap-5">
+  <%# Header %>
+  <div>
+    <h1 class="text-[1.375rem] font-extrabold leading-tight tracking-[-0.02em] text-base-content/95">
+      <i class="fa-solid fa-key text-primary/50 mr-1"></i>
+      Permissions
+    </h1>
+    <p class="text-xs text-base-content/40 mt-1">Role-based access control for your team</p>
+  </div>
+
+  <%# Role-permission matrix %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_classes %>">
+      <div class="<%= card_icon_classes %>"><i class="fa-solid fa-shield"></i></div>
+      <span class="<%= card_title_classes %>">What each role can do</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-base-content/[0.06]">
+            <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">Capability</th>
+            <th class="<%= label_uppercase_classes %> px-5 py-3 text-center">Viewer</th>
+            <th class="<%= label_uppercase_classes %> px-5 py-3 text-center">Developer</th>
+            <th class="<%= label_uppercase_classes %> px-5 py-3 text-center">Admin</th>
+            <th class="<%= label_uppercase_classes %> px-5 py-3 text-center">Owner</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% permission_matrix.each do |row| %>
+            <tr class="border-b border-base-content/[0.04] hover:bg-base-content/[0.015]">
+              <td class="px-5 py-3">
+                <div class="font-medium text-base-content/85"><%= row[:label] %></div>
+                <% if row[:hint].present? %>
+                  <div class="<%= meta_text_classes %> mt-0.5"><%= row[:hint] %></div>
+                <% end %>
+              </td>
+              <% [:viewer, :developer, :admin, :owner].each do |role| %>
+                <td class="px-5 py-3 text-center">
+                  <% if row[role] %>
+                    <i class="fa-solid fa-check text-success" aria-label="Yes"></i>
+                  <% else %>
+                    <span class="text-base-content/20" aria-label="No">—</span>
+                  <% end %>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <%# Current team roster %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_classes %>">
+      <div class="<%= card_icon_classes %>"><i class="fa-solid fa-users"></i></div>
+      <span class="<%= card_title_classes %>">Your team roster</span>
+      <span class="<%= count_badge_classes %> ml-2"><%= @memberships.count %></span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-base-content/[0.06]">
+            <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">Member</th>
+            <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">Role</th>
+            <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @memberships.each do |m| %>
+            <% is_owner = m.user_id == @organization.owner_id %>
+            <tr class="border-b border-base-content/[0.04]">
+              <td class="px-5 py-3">
+                <div class="font-medium text-base-content/85"><%= m.user.name.presence || m.user.email %></div>
+                <div class="<%= meta_text_classes %>"><%= m.user.email %></div>
+              </td>
+              <td class="px-5 py-3">
+                <% if is_owner %>
+                  <span class="badge badge-primary badge-sm gap-1">
+                    <i class="fa-solid fa-crown text-[0.5rem]"></i> Owner
+                  </span>
+                <% else %>
+                  <span class="<%= muted_badge_classes %>"><%= m.role.to_s.titleize %></span>
+                <% end %>
+              </td>
+              <td class="px-5 py-3"><span class="<%= meta_text_classes %>"><%= l(m.created_at, format: :short) %></span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<% content_for :page_end do %>
+  <%# Placeholder for future per-role permission editing UI. %>
+<% end %>

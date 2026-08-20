@@ -1,0 +1,209 @@
+<%# Editorial choose-new-password — final step of the reset flow.
+    Same visual system as sign-up / sign-in / forgot. Right rail
+    explains what makes a good password and what saving it changes
+    (sessions, CLI tokens, audit log, email) so the user knows the
+    side-effects before they commit. %>
+<% minimum_password_length = @minimum_password_length || Devise.password_length.min %>
+
+<div class="auth-shell grid lg:grid-cols-2 h-screen w-full overflow-hidden">
+
+  <%# ── Left: editorial form ─────────────────────────────────────── %>
+  <div class="relative flex flex-col h-full overflow-y-auto bg-base-100">
+    <%# Top chrome — Back to Home %>
+    <div class="absolute top-5 left-5 sm:top-6 sm:left-8 z-20">
+      <%= link_to unauthenticated_root_path,
+            class: "inline-flex items-center gap-2 text-xs text-base-content/60 hover:text-base-content transition-colors" do %>
+        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+        <span>Back to Home</span>
+      <% end %>
+    </div>
+
+    <%# Both columns center vertically — content blocks are roughly
+        the same height so the wordmark and the right rail's section
+        marker land on similar y-positions while leaving balanced
+        breathing room top + bottom. %>
+    <div class="flex flex-col min-h-full px-6 sm:px-12 lg:px-14 xl:px-20 pt-20 lg:pt-12 pb-12">
+      <div class="w-full max-w-[440px] mx-auto my-auto">
+
+        <%# Wordmark — official MySigner logo + Instrument Serif wordmark %>
+        <div class="mb-8">
+          <div class="flex items-center gap-2.5 mb-6">
+            <img src="/icon.svg" alt="" class="h-7 w-7" aria-hidden="true">
+            <span class="font-display text-[26px] tracking-tight">MySigner</span>
+          </div>
+          <%# Editorial section marker — step 02 of the reset flow %>
+          <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em]" style="color: color-mix(in oklab, var(--color-base-content) 55%, transparent);">
+            <span class="secnum text-[14px] normal-case tracking-normal">№ 02</span>
+            <span class="editorial-rule w-10"></span>
+            <span>Choose a new password</span>
+          </div>
+        </div>
+
+        <%# Headline + lede %>
+        <h1 class="font-display leading-[0.96] tracking-tight" style="font-size: clamp(48px, 5.5vw, 64px);">
+          Cut a <span class="italic" style="color: var(--color-primary);">new key.</span>
+        </h1>
+        <p class="mt-4 text-[14.5px] leading-relaxed text-mute max-w-[420px]">
+          Your reset link is good. Make this one <%= minimum_password_length %> characters or longer &mdash; and not one you've used elsewhere.
+        </p>
+
+        <%= render "devise/shared/error_messages", resource: resource %>
+
+        <%= form_for(resource, as: resource_name, url: password_path(resource_name),
+              html: { method: :put, class: "mt-8 space-y-0",
+                      data: { controller: "form-validator",
+                              form_validator_min_password_length_value: minimum_password_length } }) do |f| %>
+          <%= f.hidden_field :reset_password_token %>
+
+          <%# New password + 4-bar strength meter %>
+          <div class="form-control mb-3"
+               data-controller="password-strength"
+               data-password-strength-min-length-value="<%= minimum_password_length %>">
+            <div class="label-row">
+              <span class="lbl"><%= t('.password_label') %></span>
+              <span class="alt">min <%= minimum_password_length %> characters</span>
+            </div>
+            <%= f.label :password, class: "input input-bordered field #{'input-error' if resource.errors[:password].any?}" do %>
+              <i class="fa-solid fa-key lead"></i>
+              <%= f.password_field :password, autofocus: true, autocomplete: "new-password", required: true,
+                    minlength: minimum_password_length,
+                    placeholder: "••••••••••••••••",
+                    data: { action: "input->form-validator#validate blur->form-validator#validate input->password-strength#update", field: "password" } %>
+            <% end %>
+            <div class="validator-error text-error text-[11px] mt-1.5 hidden items-center gap-1.5">
+              <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+              <span></span>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5 mt-2.5">
+              <div class="meter" data-password-strength-target="bar"><span style="width: 0%;"></span></div>
+              <div class="meter" data-password-strength-target="bar"><span style="width: 0%;"></span></div>
+              <div class="meter" data-password-strength-target="bar"><span style="width: 0%;"></span></div>
+              <div class="meter" data-password-strength-target="bar"><span style="width: 0%;"></span></div>
+            </div>
+            <div class="validator-hint hint" data-password-strength-target="summary">
+              Use <%= minimum_password_length %>+ characters with letters, numbers, and a symbol.
+            </div>
+          </div>
+
+          <%# Confirm new password %>
+          <div class="form-control mb-4">
+            <div class="label-row">
+              <span class="lbl"><%= t('.password_confirmation_label') %></span>
+            </div>
+            <%= f.label :password_confirmation, class: "input input-bordered field #{'input-error' if resource.errors[:password_confirmation].any?}" do %>
+              <i class="fa-solid fa-lock lead"></i>
+              <%= f.password_field :password_confirmation, autocomplete: "new-password", required: true,
+                    placeholder: "••••••••••••••••",
+                    data: { action: "input->form-validator#validate blur->form-validator#validate", field: "password_confirmation" } %>
+            <% end %>
+            <div class="validator-error text-error text-[11px] mt-1.5 hidden items-center gap-1.5">
+              <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+              <span></span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary-ms mt-2" data-form-validator-target="submit">
+            <i class="fa-solid fa-key text-[11px]"></i>
+            <%= t('.submit') %>
+          </button>
+        <% end %>
+
+        <%# Side-effects note — what saving does to tokens / audit %>
+        <div class="mt-5 text-[11.5px] text-mute flex items-start gap-2">
+          <i class="fa-solid fa-circle-info mt-0.5"></i>
+          <span>
+            Saving writes an entry to your account audit log and re-authenticates this device.
+            CLI tokens are kept &mdash; revoke them in <span class="kbd-mono">Settings &rarr; API tokens</span>.
+          </span>
+        </div>
+
+        <%# Foot links %>
+        <div class="mt-6 text-[12.5px] text-mute space-y-1.5">
+          <div>
+            Changed your mind?
+            <%= link_to "Back to sign in", new_user_session_path, class: "alink" %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── Right: editorial right rail (hidden under lg) ────────────── %>
+  <div class="editorial-right hidden lg:block h-full overflow-hidden relative">
+    <div class="absolute inset-0 grain p-12 flex flex-col justify-center">
+      <%# Editorial header %>
+      <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em] text-mute">
+        <span class="secnum text-[14px] normal-case tracking-normal">№ 03</span>
+        <span class="editorial-rule w-10"></span>
+        <span>Almost done</span>
+      </div>
+
+      <h2 class="mt-6 font-display leading-[0.96] tracking-tight" style="font-size: 56px;">
+        New key,<br>
+        <span class="italic" style="color: var(--color-primary);">same vault.</span>
+      </h2>
+
+      <%# Strength explainer — what makes a good MySigner password %>
+      <div class="mt-10 rounded-[var(--radius-box)] border border-soft p-5"
+           style="background: var(--color-base-100);">
+        <div class="flex items-center gap-2 text-xs">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span class="font-medium">A good MySigner password</span>
+        </div>
+        <%# Right-rail checklist = what we ACTUALLY enforce. Every line here
+            is verified somewhere: items 1 + 2 + 3 by User#password_complexity
+            (server-side); item 4 by the password-strength Stimulus controller
+            (client-side, penalizes repeats / sequential runs / common
+            patterns). We don't make a "previously-leaked password" claim
+            because we don't run a HIBP / k-anonymity check. %>
+        <ul class="mt-4 space-y-2.5 text-[12.5px] text-mute">
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            <%= minimum_password_length %> characters or more
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            Mix of upper, lower, number, symbol
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            Doesn't contain your email username
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            Avoids common patterns (qwerty, 12345, repeats)
+          </li>
+        </ul>
+      </div>
+
+      <%# Side-effects panel — 2x2 grid of what saving changes %>
+      <div class="mt-3 rounded-[var(--radius-box)] border border-soft p-5"
+           style="background: var(--color-base-100);">
+        <div class="text-[10.5px] uppercase tracking-[0.18em] text-faint mb-3">When you save this</div>
+        <div class="grid grid-cols-2 gap-3 text-[12px]">
+          <div class="rounded-md border border-soft p-3">
+            <div class="font-medium">Session</div>
+            <div class="text-mute mt-0.5">Re-authenticated on this device.</div>
+          </div>
+          <div class="rounded-md border border-soft p-3">
+            <div class="font-medium">CLI tokens</div>
+            <div class="text-mute mt-0.5">Kept &mdash; revoke from <span class="kbd-mono">Settings &rarr; API tokens</span>.</div>
+          </div>
+          <div class="rounded-md border border-soft p-3">
+            <div class="font-medium">Audit log</div>
+            <div class="text-mute mt-0.5"><span class="kbd-mono">password_changed</span> &mdash; append-only.</div>
+          </div>
+          <div class="rounded-md border border-soft p-3">
+            <div class="font-medium">Reset link</div>
+            <div class="text-mute mt-0.5">Single-use; expires after 6 hours.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 text-[11px] text-faint">
+        <i class="fa-solid fa-lock mr-1"></i>
+        Sensitive fields encrypted at rest with AES-256-GCM, passwords hashed with bcrypt (cost 12).
+      </div>
+    </div>
+  </div>
+</div>

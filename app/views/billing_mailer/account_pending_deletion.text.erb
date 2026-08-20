@@ -1,0 +1,22 @@
+Your account is scheduled for deletion
+
+Hi <%= @user.name.presence || @user.email %>,
+
+Your MySigner account is now deactivated and is scheduled for permanent
+deletion on <%= @deletes_at.strftime("%B %-d, %Y") %>.
+
+On that date your account, organizations you own, store credentials, signing
+keys, screenshots, release notes, and all related records will be permanently
+deleted from our production systems. The action is not reversible after that.
+
+Changed your mind? Restore your account any time in the next 90 days using
+your personal restoration link below. The link stops working once you've
+used it to restore, or after 90 days — whichever comes first.
+
+Restore my account:
+<%= account_restoration_url(token: @restore_token) %>
+
+Need to export your data first? Reply to this email and we'll help.
+
+Didn't request this? Use the link above to immediately restore your account,
+then change your password.

@@ -1,0 +1,126 @@
+<%# ── Releases hub: tabbed dashboard for a single app ──
+    Tabs: Listing / What's New / Build / Submission / Checklist %>
+<% app_label = (@app.respond_to?(:name) && @app.name.present?) ?
+    @app.name :
+    (@app.is_a?(AppleApp) ? @app.bundle_id : @app.package_name) %>
+
+<%= breadcrumbs([
+  { label: "Releases", path: organization_releases_path(@organization) },
+  { label: app_label }
+]) %>
+
+<section class="flex flex-col gap-4" data-controller="store-listing-sync"
+         data-store-listing-sync-status-url-value="<%= sync_status_organization_release_path(@organization, params[:id]) %>">
+
+  <%# ── Header ── %>
+  <div class="flex flex-wrap items-start justify-between gap-4 mb-2">
+    <div class="flex items-start gap-[0.875rem]">
+      <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/[0.08] text-primary/60 shrink-0">
+        <i class="<%= @app.is_a?(AppleApp) ? 'fa-brands fa-apple' : 'fa-brands fa-google-play' %> text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-2xl font-extrabold leading-tight tracking-[-0.02em] text-base-content/95"><%= app_label %></h1>
+        <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+          <span class="<%= platform_badge_classes %>">
+            <i class="<%= @app.is_a?(AppleApp) ? 'fa-brands fa-apple' : 'fa-brands fa-google-play' %>"></i>
+            <%= @app.is_a?(AppleApp) ? "iOS" : "Android" %>
+          </span>
+          <% if @app_release.version_string.present? && @app_release.version_string != "unversioned" %>
+            <span class="<%= version_badge_classes %>">v<%= @app_release.version_string %></span>
+          <% end %>
+          <span class="<%= status_badge_classes(@app_release.computed_status) %>">
+            <%= @app_release.computed_status_label %>
+          </span>
+          <% if @app.is_a?(AppleApp) && @app.bundle_id.present? %>
+            <span class="<%= meta_text_classes %>"><%= @app.bundle_id %></span>
+          <% elsif @app.respond_to?(:package_name) && @app.package_name.present? %>
+            <span class="<%= meta_text_classes %>"><%= @app.package_name %></span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-2 shrink-0">
+      <button type="button" class="<%= btn_ghost_classes %>"
+              data-action="store-listing-sync#sync"
+              data-url="<%= sync_organization_release_path(@organization, params[:id]) %>">
+        <i class="fa-solid fa-arrows-rotate"></i> Sync from Store
+      </button>
+
+      <% if @entitlements.store_listing_push_enabled? %>
+        <%= button_to push_organization_release_path(@organization, params[:id]),
+            method: :post, class: btn_success_classes,
+            form: { class: "inline", data: { action: "turbo:before-fetch-request->store-listing-sync#interceptPush" } },
+            data: { turbo_confirm: "Push all changes to #{@app.is_a?(AppleApp) ? 'App Store' : 'Google Play'}?" } do %>
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          Push to <%= @app.is_a?(AppleApp) ? "App Store" : "Google Play" %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <%# ── Sync status banner (populated by store-listing-sync controller) ── %>
+  <div id="sync-status">
+    <% if @store_listing&.push_status == "pushing" %>
+      <%# Server-rendered fallback so Stimulus connect() can resume polling %>
+      <div class="<%= sn_loading_classes %>" data-push-active="true">
+        <div class="flex items-center gap-3">
+          <span class="loading loading-spinner loading-xs text-primary"></span>
+          <div>
+            <span class="text-sm font-medium text-base-content/80">Pushing changes to <%= @app.is_a?(AppleApp) ? "App Store Connect" : "Google Play" %>&hellip;</span>
+            <p class="text-xs text-base-content/40 mt-0.5">This usually takes a few seconds.</p>
+          </div>
+        </div>
+      </div>
+    <% elsif @store_listing&.push_status == "failed" %>
+      <%# Server-rendered error so the failure is visible on page refresh %>
+      <div class="<%= sn_error_classes %>">
+        <div class="flex items-start gap-3">
+          <div class="<%= sn_icon_error_classes %> mt-0.5">
+            <i class="fa-solid fa-xmark text-[0.625rem]"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <span class="text-sm font-semibold text-base-content/90">Push failed</span>
+            <p class="text-xs text-base-content/50 mt-1 leading-relaxed"><%= @store_listing.push_error || "An unknown error occurred." %></p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <%# ── Tab navigation ── %>
+  <div class="<%= tab_bar_classes %>">
+    <% tabs = [
+      { key: "listing",    label: "Listing",    icon: "fa-solid fa-tag" },
+      { key: "whats_new",  label: "What's New", icon: "fa-solid fa-sparkles" },
+      { key: "build",      label: "Build",      icon: "fa-solid fa-cube" },
+      { key: "submission", label: "Submission", icon: "fa-solid fa-paper-plane" },
+      { key: "checklist",  label: "Checklist",  icon: "fa-solid fa-clipboard-check" }
+    ] %>
+    <% tabs.each do |t| %>
+      <% link_params = { tab: t[:key] } %>
+      <% link_params[:locale] = @current_locale if t[:key] == "listing" && @current_locale.present? %>
+      <%= link_to organization_release_path(@organization, params[:id], link_params),
+          class: (@tab == t[:key] ? tab_active_classes : tab_inactive_classes) do %>
+        <i class="<%= t[:icon] %>"></i> <%= t[:label] %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <%# ── Tab content ── %>
+  <div>
+    <% case @tab %>
+    <% when "listing" %>
+      <%= render "releases/listing_tab" %>
+    <% when "whats_new" %>
+      <%= render "releases/whats_new_tab" %>
+    <% when "build" %>
+      <%= render "releases/build_tab" %>
+    <% when "submission" %>
+      <%= render "releases/submission_tab" %>
+    <% when "checklist" %>
+      <%= render "releases/checklist_tab" %>
+    <% else %>
+      <%= render "releases/listing_tab" %>
+    <% end %>
+  </div>
+</section>

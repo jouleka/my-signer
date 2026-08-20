@@ -1,0 +1,103 @@
+<% content_for(:title) { "Refund Policy" } %>
+<% content_for(:description) { "Refund, cancellation, and billing-support policy for MySigner subscriptions and purchases." } %>
+
+<section class="space-y-6">
+  <%= render "shared/page_header",
+             title: "Refund Policy",
+             description: "This page explains how cancellations and refund requests are handled for #{legal_business_name} purchases.",
+             gradient: "from-rose-500/10 via-base-100 to-orange-500/10",
+             badge_icon: "fa-solid fa-receipt",
+             badge_text: "Billing",
+             actions: (capture do %>
+    <span class="badge badge-outline">Last updated <%= legal_last_updated_label(:refund) %></span>
+    <%= link_to pricing_path, class: "btn btn-sm btn-outline gap-2" do %>
+      <i class="fa-solid fa-tags"></i>
+      Pricing
+    <% end %>
+    <%= link_to terms_of_service_path, class: "btn btn-sm btn-outline gap-2" do %>
+      <i class="fa-solid fa-scale-balanced"></i>
+      Terms
+    <% end %>
+  <% end) %>
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="space-y-4">
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">1. Orders Processed Through Paddle</h2>
+        <p class="text-sm text-base-content/75">
+          Purchases made through MySigner checkout are processed by Paddle.com as merchant of record. Refunds, consumer cancellation rights, and subscription billing for those purchases follow Paddle's
+          <a href="https://www.paddle.com/legal/buyer-terms" target="_blank" rel="noopener" class="link link-primary">Buyer Terms</a>.
+        </p>
+        <p class="text-sm text-base-content/75">
+          If you need help with an order, receipt, cancellation, or refund request, you can contact
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>
+          or visit
+          <a href="https://paddle.net" target="_blank" rel="noopener" class="link link-primary">paddle.net</a>.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">2. Consumer Right to Cancel</h2>
+        <p class="text-sm text-base-content/75">
+          If you would like to request a refund or exercise any applicable statutory withdrawal rights, please refer to Paddle's buyer terms and any country-specific terms that apply to your purchase. Nothing in this policy limits any statutory rights you may have under applicable consumer-protection law.
+        </p>
+        <p class="text-sm text-base-content/75">
+          For the authoritative terms that apply to MySigner purchases, please refer to Paddle's
+          <a href="https://www.paddle.com/legal/buyer-terms" target="_blank" rel="noopener" class="link link-primary">Buyer Terms</a>.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">3. Subscription Cancellations</h2>
+        <p class="text-sm text-base-content/75">
+          Paddle-managed subscriptions renew automatically until cancelled. You can cancel a subscription at any time with effect from the end of the current billing period through Paddle's buyer portal,
+          which is linked in the subscription confirmation email, or by contacting Paddle through
+          <a href="https://paddle.net" target="_blank" rel="noopener" class="link link-primary">paddle.net</a>
+          or contact us at
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>.
+          We do not pro-rate refunds for the unused portion of a paid period; access continues until the end of that period.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">4. Refunds and Support Requests</h2>
+        <p class="text-sm text-base-content/75">
+          Refunds are handled by Paddle under its buyer terms and applicable consumer law. Outside any statutory right, refunds for completed billing periods (including paid annual plans) are at our discretion and are typically not granted once the period has been used; we will work in good faith to resolve clear billing errors and accidental charges.
+        </p>
+        <p class="text-sm text-base-content/75">
+          For the most current and controlling refund terms, refer to Paddle's buyer terms linked above. This policy is about billing only — for what happens to your <em>data</em> after cancellation, see the
+          <%= link_to "Privacy Policy", privacy_policy_path, class: "link link-primary" %>
+          (Section 8, "Data Retention and Deletion").
+        </p>
+      </div>
+    </div>
+
+    <aside class="space-y-4">
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-3">
+        <div class="text-xs uppercase tracking-[0.2em] text-base-content/50">Billing Support</div>
+        <p class="text-sm text-base-content/75">
+          Email:
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-3">
+        <div class="text-xs uppercase tracking-[0.2em] text-base-content/50">Related Pages</div>
+        <div class="flex flex-col gap-2">
+          <%= link_to pricing_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-tags"></i>
+            Pricing
+          <% end %>
+          <%= link_to terms_of_service_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-scale-balanced"></i>
+            Terms of Service
+          <% end %>
+          <%= link_to privacy_policy_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-shield-halved"></i>
+            Privacy Policy
+          <% end %>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>

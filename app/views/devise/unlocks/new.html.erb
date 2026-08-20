@@ -1,0 +1,193 @@
+<%# Editorial unlock account — same visual system as the rest of the
+    auth shell. Right rail shows a recent-attempts timeline (5 wrong
+    + 1 ok-from-this-device row with a YOU pill) so the user can
+    eyeball whether the misfires are theirs or someone else's, and a
+    "what unlocking does" 3-up explainer (resets count / restores
+    sign-in / writes audit entry). %>
+
+<div class="auth-shell grid lg:grid-cols-2 h-screen w-full overflow-hidden">
+
+  <%# ── Left: editorial form ─────────────────────────────────────── %>
+  <div class="relative flex flex-col h-full overflow-y-auto bg-base-100">
+    <%# Top chrome — Back to Home %>
+    <div class="absolute top-5 left-5 sm:top-6 sm:left-8 z-20">
+      <%= link_to unauthenticated_root_path,
+            class: "inline-flex items-center gap-2 text-xs text-base-content/60 hover:text-base-content transition-colors" do %>
+        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+        <span>Back to Home</span>
+      <% end %>
+    </div>
+
+    <%# Both columns center vertically — content blocks are roughly
+        the same height so the wordmark and the right rail's section
+        marker land on similar y-positions while leaving balanced
+        breathing room top + bottom. %>
+    <div class="flex flex-col min-h-full px-6 sm:px-12 lg:px-14 xl:px-20 pt-20 lg:pt-12 pb-12">
+      <div class="w-full max-w-[440px] mx-auto my-auto">
+
+        <%# Wordmark — official MySigner logo + Instrument Serif wordmark %>
+        <div class="mb-8">
+          <div class="flex items-center gap-2.5 mb-6">
+            <img src="/icon.svg" alt="" class="h-7 w-7" aria-hidden="true">
+            <span class="font-display text-[26px] tracking-tight">MySigner</span>
+          </div>
+          <%# Editorial section marker %>
+          <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em]" style="color: color-mix(in oklab, var(--color-base-content) 55%, transparent);">
+            <span class="secnum text-[14px] normal-case tracking-normal">№ 01</span>
+            <span class="editorial-rule w-10"></span>
+            <span>Unlock account</span>
+          </div>
+        </div>
+
+        <%# Headline + lede %>
+        <h1 class="font-display leading-[0.96] tracking-tight" style="font-size: clamp(48px, 5.5vw, 64px);">
+          Locked <span class="italic" style="color: var(--color-primary);">out.</span>
+        </h1>
+        <p class="mt-4 text-[14.5px] leading-relaxed text-mute max-w-[420px]">
+          Ten wrong passwords lock your account for an hour. We can email you a key to skip the wait.
+        </p>
+
+        <%= render "devise/shared/error_messages", resource: resource %>
+
+        <%= form_for(resource, as: resource_name, url: unlock_path(resource_name),
+              html: { method: :post, class: "mt-8 space-y-0",
+                      data: { controller: "form-validator" } }) do |f| %>
+
+          <%# Email %>
+          <div class="form-control mb-4">
+            <div class="label-row">
+              <span class="lbl"><%= t('.email_label') %></span>
+            </div>
+            <%= f.label :email, class: "input input-bordered field #{'input-error' if resource.errors[:email].any?}" do %>
+              <i class="fa-solid fa-envelope lead"></i>
+              <%= f.email_field :email, autofocus: true, autocomplete: "email", required: true,
+                    placeholder: "you@studio.com",
+                    data: { action: "input->form-validator#validate blur->form-validator#validate", field: "email" } %>
+            <% end %>
+            <div class="validator-error text-error text-[11px] mt-1.5 hidden items-center gap-1.5">
+              <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+              <span></span>
+            </div>
+            <div class="validator-hint hint">We'll only send the unlock link if the account is actually locked.</div>
+          </div>
+
+          <button type="submit" class="btn-primary-ms mt-2">
+            <i class="fa-solid fa-lock-open text-[11px]"></i>
+            <%= t('.submit') %>
+          </button>
+        <% end %>
+
+        <%# Wait-it-out callout — subtle warning panel %>
+        <div class="mt-6 rounded-[var(--radius-field)] border p-4 text-[12.5px] flex items-start gap-3"
+             style="border-color: color-mix(in oklab, var(--color-warning) 36%, transparent); background: color-mix(in oklab, var(--color-warning) 8%, transparent);">
+          <i class="fa-solid fa-clock mt-0.5" style="color: var(--color-warning);"></i>
+          <div>
+            <div class="font-medium" style="color: var(--color-warning);">Or just wait it out</div>
+            <div class="text-mute mt-1">
+              Lockouts auto-clear after one hour from the last failed attempt.
+            </div>
+          </div>
+        </div>
+
+        <%# Foot links %>
+        <div class="mt-6 text-[12.5px] text-mute space-y-1.5">
+          <div>
+            Remembered it?
+            <%= link_to "Sign in", new_user_session_path, class: "alink" %>
+          </div>
+          <% if devise_mapping.recoverable? %>
+            <div>
+              Forgot the password?
+              <%= link_to "Reset it instead", new_user_password_path, class: "alink" %>
+            </div>
+          <% end %>
+          <% if devise_mapping.confirmable? %>
+            <div>
+              Need a confirmation email?
+              <%= link_to "Resend", new_user_confirmation_path, class: "alink" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── Right: editorial right rail (hidden under lg) ────────────── %>
+  <div class="editorial-right hidden lg:block h-full overflow-hidden relative">
+    <div class="absolute inset-0 grain p-12 flex flex-col justify-center">
+      <%# Editorial header %>
+      <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em] text-mute">
+        <span class="secnum text-[14px] normal-case tracking-normal">№ 02</span>
+        <span class="editorial-rule w-10"></span>
+        <span>Locked out</span>
+      </div>
+
+      <h2 class="mt-6 font-display leading-[0.96] tracking-tight" style="font-size: 56px;">
+        Too many<br>
+        <span class="italic" style="color: var(--color-primary);">misfires.</span>
+      </h2>
+
+      <%# Login attempt timeline — six wrong (out of the 10-attempt cap)
+          + one OK from this device. The YOU pill is intentionally in
+          success-green so the user can spot their own row at a glance.
+          Failed sign-ins are recorded as `sign_in_failed` audit events. %>
+      <div class="mt-10 rounded-[var(--radius-box)] border border-soft p-5"
+           style="background: var(--color-base-100);">
+        <div class="flex items-center gap-2 text-xs">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span class="font-medium">Recent attempts on your account</span>
+        </div>
+        <div class="mt-4 font-mono-jb text-[11.5px] divide-y" style="--tw-divide-opacity: 1; border-color: color-mix(in oklab, var(--color-base-content) 10%, transparent);">
+          <% [
+            { t: "14:08:41", ip: "203.0.113.42", loc: "Berlin, DE", ok: false, you: false },
+            { t: "14:08:30", ip: "203.0.113.42", loc: "Berlin, DE", ok: false, you: false },
+            { t: "14:08:18", ip: "203.0.113.42", loc: "Berlin, DE", ok: false, you: false },
+            { t: "14:08:05", ip: "203.0.113.42", loc: "Berlin, DE", ok: false, you: false },
+            { t: "14:07:52", ip: "203.0.113.42", loc: "Berlin, DE", ok: false, you: false },
+            { t: "14:07:40", ip: "203.0.113.42", loc: "Berlin, DE", ok: false, you: false },
+            { t: "11:02:09", ip: "198.51.100.7", loc: "this device · Lisbon", ok: true, you: true }
+          ].each do |row| %>
+            <div class="grid gap-3 py-1.5 items-center" style="grid-template-columns: 80px 1fr auto;">
+              <span class="text-faint tnum"><%= row[:t] %></span>
+              <span class="<%= row[:you] ? '' : 'text-mute' %>">
+                <%= row[:ip] %> &middot; <%= row[:loc] %>
+                <% if row[:you] %>
+                  <span class="ml-2 pill" style="background: color-mix(in oklab, var(--color-success) 18%, transparent); color: var(--color-success);">YOU</span>
+                <% end %>
+              </span>
+              <span class="text-[10px]" style="color: <%= row[:ok] ? 'var(--color-success)' : 'var(--color-error)' %>;">
+                <%= row[:ok] ? 'OK' : 'wrong password' %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# What unlocking does — 2 columns. We don't claim an audit
+          entry here because the AuditEvent model has no unlock action
+          in its ACTIONS list (only sign_in_failed for failed attempts). %>
+      <div class="mt-3 rounded-[var(--radius-box)] border border-soft p-5"
+           style="background: var(--color-base-100);">
+        <div class="flex items-center gap-2 text-xs">
+          <i class="fa-solid fa-lock-open"></i>
+          <span class="font-medium">What unlocking does</span>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-3 text-[11.5px]">
+          <div class="rounded-md border border-soft p-3">
+            <div class="font-medium">Resets attempt count</div>
+            <div class="text-mute mt-0.5">10/10 &rarr; 0/10</div>
+          </div>
+          <div class="rounded-md border border-soft p-3">
+            <div class="font-medium">Restores sign-in</div>
+            <div class="text-mute mt-0.5">Effective immediately</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 text-[11px] text-faint">
+        <i class="fa-solid fa-shield-halved mr-1"></i>
+        Lockout kicks in after 10 failed attempts. Cooldown auto-clears one hour after the last failed attempt.
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,157 @@
+<%= breadcrumbs([
+  { label: "Releases" }
+]) %>
+
+<% release_tile_classes = "block px-5 py-4 border border-base-content/[0.06] rounded-[0.875rem] bg-base-content/[0.02] transition-colors hover:border-primary/[0.12]" %>
+
+<section class="flex flex-col gap-6">
+  <%# Header %>
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-[1.375rem] font-extrabold leading-tight tracking-[-0.02em] text-base-content/95">Releases</h1>
+      <p class="text-xs text-base-content/40 mt-1">Track release status across App Store and Google Play</p>
+    </div>
+  </div>
+
+  <%# Pending review banner — only shown to admins of teams using the review workflow %>
+  <% if @pending_review_count.to_i > 0 %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="flex items-center justify-center w-7 h-7 rounded-md bg-[var(--color-cat-fixed)/0.12] text-[var(--color-cat-fixed)] text-xs shrink-0">
+          <i class="fa-solid fa-clock"></i>
+        </div>
+        <span class="<%= card_title_classes %>">
+          <%= @pending_review_count %>
+          <%= "release note".pluralize(@pending_review_count) %> awaiting review
+        </span>
+      </div>
+      <div class="<%= card_body_classes %>">
+        <div class="space-y-2">
+          <% @pending_review_notes.each do |note| %>
+            <% next unless note.listable %>
+            <% listable = note.listable %>
+            <% release_id = listable.is_a?(AppleApp) ? "apple_app_#{listable.id}" : "android_app_#{listable.id}" %>
+            <%= link_to organization_release_path(@organization, release_id, tab: "whats_new", note_id: note.id),
+                class: "flex items-center gap-3 p-3 rounded-lg border border-base-content/5 hover:border-base-content/15 hover:bg-base-content/5 transition-all" do %>
+              <div class="<%= card_icon_classes %>">
+                <i class="<%= listable.is_a?(AppleApp) ? 'fa-brands fa-apple' : 'fa-brands fa-google-play' %>"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-base-content/85 truncate">
+                  <%= listable.respond_to?(:name) && listable.name.present? ? listable.name : (listable.is_a?(AppleApp) ? listable.bundle_id : listable.package_name) %>
+                </p>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <% if note.version_string.present? %>
+                    <span class="<%= version_badge_classes %>">v<%= note.version_string %></span>
+                  <% end %>
+                  <span class="<%= meta_text_classes %>">
+                    Submitted <%= time_ago_in_words(note.submitted_for_review_at || note.updated_at) %> ago
+                  </span>
+                </div>
+              </div>
+              <i class="fa-solid fa-chevron-right text-xs opacity-40"></i>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @apple_apps.empty? && @android_apps.empty? %>
+    <div class="<%= empty_state_classes %>">
+      <div class="<%= empty_state_icon_classes %>">
+        <i class="fa-solid fa-rocket text-2xl"></i>
+      </div>
+      <h2 class="<%= empty_state_title_classes %>">No apps found</h2>
+      <p class="<%= empty_state_text_classes %>">
+        Connect your App Store Connect or Google Play credentials to see release status here.
+      </p>
+      <%= link_to organization_path(@organization), class: btn_primary_classes do %>
+        <i class="fa-solid fa-gear"></i> Go to Organization Settings
+      <% end %>
+    </div>
+  <% else %>
+    <% max_app_count = [@apple_apps.size, @android_apps.size].max %>
+    <% total_rows = max_app_count + 1 %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-3">
+      <%# iOS Releases %>
+      <div class="grid grid-rows-[subgrid] gap-y-3" style="grid-row: span <%= total_rows %>;">
+        <h2 class="flex items-center gap-2 text-[0.9375rem] font-bold text-base-content/70">
+          <i class="fa-brands fa-apple text-[0.875rem] opacity-50"></i>
+          iOS Releases
+          <span class="<%= count_badge_classes %>"><%= @apple_apps.size %></span>
+        </h2>
+
+        <% if @apple_apps.any? %>
+          <% @apple_apps.each do |app| %>
+              <% latest_version = app.app_store_versions.order(created_at: :desc).first %>
+              <%= link_to organization_release_path(@organization, "apple_app_#{app.id}"),
+                  class: release_tile_classes do %>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-semibold text-sm text-base-content/80"><%= app.name.presence || app.bundle_id %></span>
+                  <span class="<%= platform_badge_classes %>">
+                    <i class="fa-brands fa-apple"></i> iOS
+                  </span>
+                </div>
+                <% if latest_version %>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="<%= version_badge_classes %>">v<%= latest_version.version_string %></span>
+                    <span class="<%= status_badge_classes(latest_version.app_store_state) %>">
+                      <%= latest_version.app_store_state&.titleize&.truncate(25) || "Unknown" %>
+                    </span>
+                  </div>
+                <% else %>
+                  <p class="text-xs text-base-content/30 italic">No versions synced</p>
+                <% end %>
+              <% end %>
+            <% end %>
+        <% else %>
+          <div class="text-sm text-base-content/30 italic py-4">No iOS apps connected</div>
+        <% end %>
+      </div>
+
+      <%# Android Releases %>
+      <div class="grid grid-rows-[subgrid] gap-y-3" style="grid-row: span <%= total_rows %>;">
+        <h2 class="flex items-center gap-2 text-[0.9375rem] font-bold text-base-content/70">
+          <i class="fa-brands fa-google-play text-[0.875rem] opacity-50"></i>
+          Android Releases
+          <span class="<%= count_badge_classes %>"><%= @android_apps.size %></span>
+        </h2>
+
+        <% if @android_apps.any? %>
+          <% @android_apps.each do |app| %>
+              <% latest_release = app.play_store_releases.order(Arel.sql("COALESCE(released_at, created_at) DESC")).first %>
+              <%= link_to organization_release_path(@organization, "android_app_#{app.id}"),
+                  class: release_tile_classes do %>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-semibold text-sm text-base-content/80"><%= app.name.presence || app.package_name %></span>
+                  <span class="<%= platform_badge_classes %>">
+                    <i class="fa-brands fa-google-play"></i> Android
+                  </span>
+                </div>
+                <% if latest_release %>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="<%= version_badge_classes %>"><%= latest_release.version_code %></span>
+                    <span class="badge badge-xs badge-outline"><%= latest_release.track %></span>
+                    <span class="<%= status_badge_classes(latest_release.status) %>">
+                      <%= latest_release.status.capitalize %>
+                    </span>
+                    <% if latest_release.user_fraction.present? && latest_release.user_fraction < 1.0 %>
+                      <span class="<%= meta_text_classes %>">
+                        <i class="fa-solid fa-chart-line text-xs"></i>
+                        <%= (latest_release.user_fraction * 100).round %>% rollout
+                      </span>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <p class="text-xs text-base-content/30 italic">No releases synced</p>
+                <% end %>
+              <% end %>
+            <% end %>
+        <% else %>
+          <div class="text-sm text-base-content/30 italic py-4">No Android apps connected</div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</section>

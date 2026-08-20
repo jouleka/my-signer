@@ -1,0 +1,14 @@
+3 days left on your Pro trial
+
+Hi <%= @user.name.presence || @user.email %>,
+
+Your Pro trial ends on <%= @trial_ends_at.strftime("%B %d, %Y") %> — only 3 days away.
+Upgrade now to keep your Pro features without interruption.
+
+Pro is $12/month (or $8/month billed annually). That's 5–6x cheaper than other
+ASO tools — no surprises, no lock-in, cancel anytime.
+
+Upgrade: <%= pricing_url %>
+
+Not ready? No problem. Your data stays safe when you move to Free — you just
+lose Pro features until you upgrade.

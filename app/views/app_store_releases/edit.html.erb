@@ -1,0 +1,161 @@
+<%
+  app_name = @apple_app&.name.presence || @apple_app&.bundle_id || @bundle_id&.identifier || "App"
+  back_path = @apple_app ? organization_apple_app_path(@organization, @apple_app) : organization_apple_apps_path(@organization)
+  items = [
+    { label: "Organizations", path: organizations_path },
+    { label: @organization.name, path: organization_path(@organization) },
+    { label: "iOS" },
+    { label: "Apps", path: organization_apple_apps_path(@organization) },
+    @apple_app ? { label: app_name, path: organization_apple_app_path(@organization, @apple_app) } : nil,
+    { label: "Edit CLI Defaults" }
+  ].compact
+
+  release_type_label = case @apple_app.cli_release_type
+    when "AFTER_APPROVAL" then "Auto-release"
+    when "MANUAL" then "Manual"
+    when "SCHEDULED" then "Scheduled"
+    else "Auto-release"
+  end
+%>
+<%= breadcrumbs(items) %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "Edit CLI Defaults",
+             description: raw("Update <code class='bg-base-200 px-1 rounded text-xs'>mysigner ship appstore</code> defaults for <strong>#{h(app_name)}</strong>"),
+             gradient: "from-violet-500/10 via-base-100 to-blue-500/10",
+             badge_icon: "fa-solid fa-pen-to-square",
+             badge_text: @apple_app.cli_auto_submit? ? "Auto-submit enabled" : "Manual submission",
+             actions: (capture do %>
+    <%= link_to back_path, class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+      <i class="fa-solid fa-arrow-left"></i>
+      <span class="hidden sm:inline">Back</span>
+      <span class="sm:hidden">Back</span>
+    <% end %>
+             <% end) %>
+
+  <div class="grid lg:grid-cols-12 gap-4 sm:gap-6">
+    <%# Main Form %>
+    <div class="lg:col-span-8 min-w-0 overflow-hidden space-y-4 sm:space-y-5">
+      <%= render "form",
+          app_store_release: @app_store_release,
+          url: organization_app_store_release_path(@organization, @apple_app),
+          method: :patch,
+          submit_label: "Save Changes" %>
+
+      <%# Danger Zone %>
+      <div class="card bg-base-100 border border-error/30 overflow-hidden">
+        <div class="card-body p-3 sm:p-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-trash text-error text-sm"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="font-bold text-sm">Clear CLI Defaults</p>
+                <p class="text-xs text-base-content/60">Reset all CLI defaults for this app</p>
+              </div>
+            </div>
+            <%= button_to organization_app_store_release_path(@organization, @apple_app),
+                method: :delete,
+                class: "btn btn-error btn-outline btn-sm gap-2 w-full sm:w-auto shrink-0",
+                form: { data: { turbo_confirm: "Clear CLI defaults for #{app_name}? This does not affect existing builds or the web Submission tab." } } do %>
+              <i class="fa-solid fa-trash"></i>
+              Clear
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Sidebar %>
+    <div class="lg:col-span-4 space-y-4 sm:space-y-5">
+      <%# Current Config Summary %>
+      <div class="card bg-gradient-to-br from-primary/5 to-violet-500/10 border border-primary/20 overflow-hidden">
+        <div class="card-body p-4 sm:p-5">
+          <div class="flex items-center gap-3 mb-3 sm:mb-4">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-primary to-violet-600 flex items-center justify-center text-white shadow-lg shrink-0">
+              <i class="fa-brands fa-apple sm:text-xl"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-bold text-sm sm:text-base truncate"><%= @apple_app.name.presence || "App" %></h3>
+              <code class="text-xs text-base-content/60 block truncate"><%= @apple_app.bundle_id %></code>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="text-base-content/60">Version</span>
+              <span class="font-mono font-medium truncate ml-2"><%= @apple_app.cli_version_string.presence || "From Xcode" %></span>
+            </div>
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="text-base-content/60">Min Build</span>
+              <span class="font-mono font-medium"><%= @apple_app.cli_build_number.presence ? "##{@apple_app.cli_build_number}" : "Any" %></span>
+            </div>
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="text-base-content/60">Release</span>
+              <span class="badge badge-primary badge-sm"><%= release_type_label %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Feature Toggles Summary %>
+      <div class="card bg-base-100 border border-base-200 overflow-hidden">
+        <div class="card-body p-4 sm:p-5">
+          <h3 class="font-bold text-sm mb-2 sm:mb-3">Features</h3>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="flex items-center gap-2">
+                <i class="fa-solid fa-bolt text-warning text-xs"></i>
+                Auto-submit
+              </span>
+              <% if @apple_app.cli_auto_submit? %>
+                <span class="badge badge-success badge-sm gap-1"><i class="fa-solid fa-check text-[8px]"></i> On</span>
+              <% else %>
+                <span class="badge badge-ghost badge-sm">Off</span>
+              <% end %>
+            </div>
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-info text-xs"></i>
+                Phased Release
+              </span>
+              <% if @apple_app.cli_phased_release? %>
+                <span class="badge badge-success badge-sm gap-1"><i class="fa-solid fa-check text-[8px]"></i> On</span>
+              <% else %>
+                <span class="badge badge-ghost badge-sm">Off</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# CLI Commands %>
+      <div class="card bg-base-100 border border-base-200 overflow-hidden">
+        <div class="card-body p-4 sm:p-5">
+          <h3 class="font-bold flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-terminal text-primary"></i>
+            CLI Commands
+          </h3>
+          <div class="mt-3 space-y-2">
+            <div class="bg-base-200/70 rounded-lg p-2.5 sm:p-3 overflow-hidden">
+              <code class="text-xs text-primary break-all">mysigner ship appstore</code>
+              <p class="text-xs text-base-content/60 mt-1">Full build & submit workflow</p>
+            </div>
+            <div class="bg-base-200/70 rounded-lg p-2.5 sm:p-3 overflow-hidden">
+              <code class="text-xs text-primary break-all">mysigner submit</code>
+              <p class="text-xs text-base-content/60 mt-1">Submit existing build</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Last Updated %>
+      <div class="text-center text-xs text-base-content/40 py-2">
+        <i class="fa-solid fa-clock mr-1"></i>
+        Last updated <%= time_ago_in_words(@apple_app.updated_at) %> ago
+      </div>
+    </div>
+  </div>
+</section>

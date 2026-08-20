@@ -1,0 +1,22 @@
+<dialog id="raw-json-modal" class="modal">
+  <div class="modal-box max-w-3xl">
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <h3 class="font-bold text-lg" data-raw-json-element="title">Apple Payload</h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-ghost"><i class="fa-solid fa-xmark"></i></button>
+      </form>
+    </div>
+    <div class="mockup-code text-xs max-h-[60vh] overflow-auto">
+      <pre class="whitespace-pre-wrap"><code data-raw-json-element="code"></code></pre>
+    </div>
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost" data-raw-json-element="copy">Copy JSON</button>
+      <form method="dialog">
+        <button class="btn">Close</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

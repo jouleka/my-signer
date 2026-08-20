@@ -1,0 +1,285 @@
+<%# Overview tab: CPP settings — all fields save directly to Apple (no local draft) %>
+<% draft_version = @cpp.draft_version || @cpp.latest_version %>
+<% localizations = draft_version&.custom_product_page_localizations&.order(:locale) || [] %>
+
+<div class="flex flex-col gap-5">
+  <%# Submission status banner (shown when submitted or failed) %>
+  <% if draft_version&.submission_status == "submitted" %>
+    <div class="<%= sn_success_classes %>">
+      <div class="flex items-center gap-2">
+        <div class="<%= sn_icon_success_classes %>">
+          <i class="fa-solid fa-check text-[0.5rem]"></i>
+        </div>
+        <p class="text-xs text-base-content/60">
+          <strong class="text-base-content/80">Submitted for review.</strong>
+          The version state will update on the next sync cycle.
+        </p>
+      </div>
+    </div>
+  <% elsif draft_version&.submission_status == "failed" %>
+    <div class="<%= sn_error_classes %>">
+      <div class="flex items-center gap-2">
+        <div class="<%= sn_icon_error_classes %>">
+          <i class="fa-solid fa-xmark text-[0.5rem]"></i>
+        </div>
+        <div>
+          <p class="text-xs font-semibold text-error/80">Submission failed</p>
+          <p class="text-xs text-base-content/50 mt-0.5"><%= draft_version.submission_error %></p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Live-save info banner %>
+  <div class="<%= sn_info_classes %>">
+    <div class="flex items-center gap-2">
+      <div class="<%= sn_icon_info_classes %>">
+        <i class="fa-solid fa-bolt text-[0.5rem]"></i>
+      </div>
+      <p class="text-xs text-base-content/60">
+        Changes below save <strong class="text-base-content/80">directly to App Store Connect</strong> — no draft or push step needed.
+      </p>
+    </div>
+  </div>
+
+  <%# ── Page Settings Card (name, visibility, deep link — all CPP-level) ── %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_split_classes %>">
+      <div class="flex items-center gap-2.5">
+        <div class="<%= card_icon_classes %>">
+          <i class="fa-solid fa-sliders"></i>
+        </div>
+        <span class="<%= card_title_classes %>">Page Settings</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="<%= meta_text_classes %> font-mono text-[0.6rem]"><%= @cpp.remote_id %></span>
+      </div>
+    </div>
+    <div class="<%= card_body_classes %>">
+      <%= form_tag organization_custom_product_page_path(@organization, @cpp), method: :patch, class: "space-y-0" do %>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-5">
+          <%# Name — takes 2 columns %>
+          <div class="lg:col-span-2">
+            <label class="<%= label_form_classes %> mb-1.5">Page Name</label>
+            <input type="text"
+                   name="name"
+                   value="<%= @cpp.name %>"
+                   class="<%= input_field_classes %>"
+                   placeholder="e.g., Summer Campaign, Holiday Promo"
+                   required />
+          </div>
+
+          <%# Visibility toggle %>
+          <div>
+            <label class="<%= label_form_classes %> mb-1.5">Visibility</label>
+            <div class="flex items-center gap-3 h-[2.625rem] px-3 rounded-lg border border-base-content/[0.1] bg-base-content/[0.03]">
+              <input type="hidden" name="visible" value="0" />
+              <input type="checkbox"
+                     name="visible"
+                     value="1"
+                     class="toggle toggle-sm toggle-primary"
+                     id="cpp_visible_toggle"
+                     <%= "checked" if @cpp.visible? %> />
+              <label for="cpp_visible_toggle" class="text-sm text-base-content/70 cursor-pointer select-none">
+                <%= @cpp.visible? ? "Visible" : "Hidden" %>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <%# Read-only metadata row %>
+        <div class="flex items-center gap-6 mt-4 pt-3 border-t border-base-content/[0.04]">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-brands fa-apple text-[0.6rem] text-base-content/30"></i>
+            <span class="<%= meta_text_classes %>"><%= @app.name.presence || @app.bundle_id %></span>
+          </div>
+          <% if draft_version %>
+            <span class="<%= cpp_state_badge_classes(draft_version.state) %>">
+              <%= draft_version.published? ? "Published" : "Draft" %>
+            </span>
+          <% end %>
+          <div class="flex-1"></div>
+          <button type="submit" class="<%= btn_primary_sm_classes %>">
+            <i class="fa-solid fa-cloud-arrow-up text-[0.625rem]"></i> Save
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# ── Content Card (promotional text + deep link combined) ── %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_classes %>">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-solid fa-pen-to-square"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Content & Links</span>
+    </div>
+
+    <% if draft_version && localizations.any? %>
+      <div class="<%= card_body_classes %> space-y-6">
+        <%# ── Promotional Text ── %>
+        <div data-controller="cpp-promo-tab"
+             data-cpp-promo-tab-active-class="<%= subtab_active_classes %>"
+             data-cpp-promo-tab-inactive-class="<%= subtab_inactive_classes %>">
+          <% if localizations.size > 1 %>
+            <div class="<%= subtab_bar_classes %> mb-4">
+              <% localizations.each_with_index do |loc, idx| %>
+                <button type="button"
+                        class="<%= idx == 0 ? subtab_active_classes : subtab_inactive_classes %> cpp-promo-tab"
+                        data-locale="<%= loc.locale %>"
+                        data-cpp-promo-tab-target="tab"
+                        data-action="click->cpp-promo-tab#switch">
+                  <span class="<%= locale_badge_classes %>"><%= loc.locale %></span>
+                </button>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% localizations.each_with_index do |loc, idx| %>
+            <% current_length = loc.promotional_text.to_s.length %>
+            <% promo_limit = 170 %>
+            <% pct = (current_length.to_f / promo_limit * 100).clamp(0, 100) %>
+            <div data-locale="<%= loc.locale %>"
+                 data-cpp-promo-tab-target="panel"
+                 class="cpp-promo-panel <%= 'hidden' if idx > 0 && localizations.size > 1 %>">
+              <%= form_tag update_localization_organization_custom_product_page_path(@organization, @cpp), method: :patch do %>
+                <%= hidden_field_tag :locale, loc.locale %>
+
+                <div data-controller="char-counter" data-char-counter-limit-value="<%= promo_limit %>">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <label class="<%= label_form_classes %>">
+                      <i class="fa-solid fa-bullhorn text-[0.5rem] text-primary/40 mr-1"></i>
+                      Promotional Text
+                      <% if localizations.size > 1 %>
+                        <span class="<%= locale_badge_classes %> ml-1.5"><%= loc.locale %></span>
+                      <% end %>
+                    </label>
+                    <span class="<%= char_badge_classes(current_length, promo_limit) %>"
+                          data-char-counter-target="display">
+                      <span data-char-counter-target="count"><%= current_length %></span>/<%= promo_limit %>
+                    </span>
+                  </div>
+
+                  <textarea name="promotional_text"
+                            class="<%= textarea_field_classes %>"
+                            rows="2"
+                            placeholder="Highlight features, promotions, or seasonal content..."
+                            data-action="input->char-counter#update"
+                            data-char-counter-target="input"><%= loc.promotional_text %></textarea>
+
+                  <div class="<%= progress_track_classes %> mt-1.5" data-char-counter-target="track">
+                    <div class="<%= progress_fill_classes(current_length, promo_limit) %>"
+                         data-char-counter-target="bar"
+                         style="width: <%= [pct, 100].min %>%"></div>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between mt-3">
+                  <p class="<%= hint_text_classes %>">Appears on your Custom Product Page. Editable without App Review.</p>
+                  <button type="submit" class="<%= btn_primary_sm_classes %>">
+                    <i class="fa-solid fa-cloud-arrow-up text-[0.625rem]"></i> Save
+                  </button>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+        <%# ── Deep Link (visual divider) ── %>
+        <div class="border-t border-base-content/[0.06] pt-5">
+          <% if draft_version %>
+            <%= form_tag update_version_organization_custom_product_page_path(@organization, @cpp), method: :patch do %>
+              <%= hidden_field_tag :version_id, draft_version.id %>
+
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="<%= label_form_classes %>">
+                  <i class="fa-solid fa-link text-[0.5rem] text-primary/40 mr-1"></i>
+                  Deep Link URL
+                </label>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <input type="url"
+                       name="deep_link"
+                       class="<%= input_field_classes %> flex-1"
+                       value="<%= draft_version.deep_link %>"
+                       placeholder="myapp://promo/summer-sale">
+                <button type="submit" class="<%= btn_primary_sm_classes %> shrink-0">
+                  <i class="fa-solid fa-cloud-arrow-up text-[0.625rem]"></i> Save
+                </button>
+              </div>
+
+              <p class="<%= hint_text_classes %> mt-1.5">Opens a specific screen in your app when users tap this Custom Product Page.</p>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <div class="<%= card_body_classes %>">
+        <p class="<%= empty_inline_classes %>">
+          <i class="fa-solid fa-arrows-rotate text-[0.625rem]"></i>
+          Sync from Apple to load localizations and version data.
+        </p>
+      </div>
+    <% end %>
+  </div>
+
+  <%# ── Version History (collapsed, reference info) ── %>
+  <details class="group">
+    <summary class="<%= card_container_classes %> cursor-pointer select-none list-none">
+      <div class="<%= card_header_split_classes %>">
+        <div class="flex items-center gap-2.5">
+          <div class="<%= card_icon_classes %>">
+            <i class="fa-solid fa-code-branch"></i>
+          </div>
+          <span class="<%= card_title_classes %>">Version History</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <% versions = @cpp.custom_product_page_versions.order(created_at: :desc) %>
+          <span class="<%= count_badge_classes %>"><%= versions.size %></span>
+          <i class="fa-solid fa-chevron-down text-[0.5rem] text-base-content/30 transition-transform group-open:rotate-180"></i>
+        </div>
+      </div>
+    </summary>
+
+    <% if versions.any? %>
+      <div class="<%= card_container_classes %> rounded-t-none -mt-px border-t-0">
+        <div class="divide-y divide-base-content/[0.04]">
+          <% versions.each do |version| %>
+            <div class="px-5 py-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="<%= cpp_state_badge_classes(version.state) %>">
+                    <%= version.published? ? "Published" : "Draft" %>
+                  </span>
+                  <span class="<%= meta_text_classes %> font-mono text-[0.6rem]"><%= version.remote_id %></span>
+                </div>
+                <span class="<%= hint_text_classes %>"><%= time_ago_in_words(version.created_at) %> ago</span>
+              </div>
+
+              <% if version.deep_link.present? %>
+                <div class="flex items-center gap-1.5 mt-1.5">
+                  <i class="fa-solid fa-link text-[0.5rem] text-base-content/25"></i>
+                  <span class="<%= meta_text_classes %> font-mono text-[0.6rem]"><%= version.deep_link %></span>
+                </div>
+              <% end %>
+
+              <% locs = version.custom_product_page_localizations.order(:locale) %>
+              <% if locs.any? %>
+                <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                  <% locs.each do |loc| %>
+                    <span class="<%= locale_badge_classes %>"><%= loc.locale %></span>
+                    <% if loc.promotional_text.present? %>
+                      <span class="<%= meta_text_classes %> text-[0.6rem] truncate max-w-[16rem]"><%= loc.promotional_text %></span>
+                    <% end %>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </details>
+</div>

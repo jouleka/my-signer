@@ -1,0 +1,41 @@
+<% @preheader = "Heads up — the owner of #{@organization.name} is closing their account. Here's what that means for you." %>
+
+<%= ms_eyebrow(12, "Organization · Owner closure") %>
+<%= ms_headline("Heads up about <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">#{ERB::Util.h(@organization.name)}.</em>", size: 40) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@co_member.name.presence || @co_member.email)},") %>
+
+<%= ms_body("The owner of <strong style=\"color:#f4ede0;\">#{ERB::Util.h(@organization.name)}</strong> has requested that their MySigner account be deleted. Because they own this organization, the org and everything inside it &mdash; builds, store credentials, signing keys, screenshots, release notes, audit log &mdash; will be deleted along with their account on <strong style=\"color:#f4ede0;\">#{@deletes_at.strftime('%B %-d, %Y')}</strong>.") %>
+
+<%= ms_callout(
+  "You have <strong style=\"color:inherit;\">90 days</strong> from today to export anything you need. After #{@deletes_at.strftime('%B %-d, %Y')} the data is unrecoverable.",
+  variant: :warning,
+  accent_label: "Window ends #{@deletes_at.strftime('%B %-d')}"
+) %>
+
+<%= ms_body("Things you can do right now:", margin_bottom: 10) %>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 24px 0;">
+  <tr>
+    <td valign="top" width="28" class="ms-primary" style="width:28px; vertical-align:top; padding-top:4px; font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-style:italic; font-size:18px; color:#c8a8f5;">i.</td>
+    <td valign="top" class="ms-mute" style="vertical-align:top; padding-bottom:14px; font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:16px; line-height:1.6; color:#cdc4b6;">
+      Sign in and pull builds, screenshots, and listings via the CLI: <%= ms_meta_pill("mysigner sync") %>.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top" class="ms-primary" style="vertical-align:top; padding-top:4px; font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-style:italic; font-size:18px; color:#c8a8f5;">ii.</td>
+    <td valign="top" class="ms-mute" style="vertical-align:top; padding-bottom:14px; font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:16px; line-height:1.6; color:#cdc4b6;">
+      Reach out to the owner if you think this was a mistake &mdash; they can restore the account at any time in the next 90 days.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top" class="ms-primary" style="vertical-align:top; padding-top:4px; font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-style:italic; font-size:18px; color:#c8a8f5;">iii.</td>
+    <td valign="top" class="ms-mute" style="vertical-align:top; font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:16px; line-height:1.6; color:#cdc4b6;">
+      Reply to this email and we'll help export data or transfer ownership of this organization to a different account.
+    </td>
+  </tr>
+</table>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 18) %>
+
+<%= ms_fine_print("This message is sent once at the start of the 90-day grace window so you have the full window to act. We won't email you again unless you write back.") %>

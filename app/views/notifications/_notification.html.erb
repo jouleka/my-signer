@@ -1,0 +1,85 @@
+<li id="<%= dom_id(notification) %>" class="group relative flex gap-x-2 sm:gap-x-4 px-3 sm:px-6 py-3 sm:py-5 hover:bg-base-200/50 transition-colors <%= notification.read? ? '' : 'bg-primary/5' %>">
+  <%# Status Indicator %>
+  <% is_expired = notification.notification_type == "expired" %>
+  <% is_revoked = notification.notification_type == "resource_revoked" %>
+  <% is_sync_failed = notification.notification_type == "sync_failed" %>
+  <% is_error = is_expired || is_revoked || is_sync_failed %>
+  <% is_team_join = notification.notification_type == "team_member_joined" %>
+  <% is_api_token = notification.notification_type == "api_token_created" %>
+  <% is_sync_completed = notification.notification_type == "sync_completed" %>
+  <div class="mt-0.5 sm:mt-1 flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-lg text-xs sm:text-sm <%= if is_error
+      notification.read? ? 'bg-error/10 text-error/60' : 'bg-error/10 text-error'
+    elsif is_team_join
+      notification.read? ? 'bg-success/10 text-success/60' : 'bg-success/10 text-success'
+    elsif is_api_token
+      notification.read? ? 'bg-warning/10 text-warning/60' : 'bg-warning/10 text-warning'
+    elsif is_sync_completed
+      notification.read? ? 'bg-info/10 text-info/60' : 'bg-info/10 text-info'
+    else
+      notification.read? ? 'bg-base-200' : 'bg-primary/10 text-primary'
+    end %>">
+    <% if is_expired %>
+      <i class="fa-solid fa-circle-exclamation"></i>
+    <% elsif is_revoked %>
+      <i class="fa-solid fa-ban"></i>
+    <% elsif is_sync_failed %>
+      <i class="fa-solid fa-triangle-exclamation"></i>
+    <% elsif is_team_join %>
+      <i class="fa-solid fa-user-plus"></i>
+    <% elsif is_api_token %>
+      <i class="fa-solid fa-key"></i>
+    <% elsif is_sync_completed %>
+      <i class="fa-solid fa-arrows-rotate"></i>
+    <% elsif notification.resource_type == "AppleCertificate" %>
+      <i class="fa-solid fa-certificate"></i>
+    <% elsif notification.resource_type == "AppleProvisioningProfile" %>
+      <i class="fa-solid fa-id-card"></i>
+    <% elsif notification.resource_type == "AndroidKeystore" %>
+      <i class="fa-brands fa-android"></i>
+    <% else %>
+      <i class="fa-solid fa-bell"></i>
+    <% end %>
+  </div>
+
+  <div class="flex-auto min-w-0">
+    <%# Header %>
+    <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-x-4">
+      <p class="text-xs sm:text-sm font-semibold leading-5 sm:leading-6 text-base-content min-w-0">
+        <span class="line-clamp-1"><%= notification.title %></span>
+        <% unless notification.read? %>
+          <span class="ml-1 sm:ml-2 inline-flex items-center rounded-full bg-primary/10 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">New</span>
+        <% end %>
+      </p>
+      <p class="flex-none text-[10px] sm:text-xs text-base-content/50 whitespace-nowrap">
+        <%= time_ago_in_words(notification.created_at) %> ago
+      </p>
+    </div>
+
+    <%# Content %>
+    <p class="mt-0.5 sm:mt-1 text-xs sm:text-sm leading-5 sm:leading-6 text-base-content/70 line-clamp-2">
+      <%= notification.message %>
+    </p>
+
+    <%# Actions %>
+    <div class="mt-2 sm:mt-3 flex items-center gap-2 sm:gap-4">
+      <% if notification.resource %>
+        <%= link_to polymorphic_url([notification.resource.organization, notification.resource]), class: "text-[10px] sm:text-xs font-medium text-primary hover:text-primary-focus flex items-center gap-1" do %>
+          View details
+          <i class="fa-solid fa-arrow-right text-[10px]"></i>
+        <% end rescue nil %>
+      <% end %>
+
+      <div class="flex items-center gap-1 sm:gap-2 ml-auto sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <% unless notification.read? %>
+          <%= button_to mark_as_read_notification_path(notification), class: "btn btn-ghost btn-xs btn-square sm:tooltip sm:tooltip-left", data: { tip: "Mark as read" } do %>
+            <i class="fa-solid fa-check text-base-content/60"></i>
+          <% end %>
+        <% end %>
+
+        <%= button_to dismiss_notification_path(notification), method: :delete, class: "btn btn-ghost btn-xs btn-square sm:tooltip sm:tooltip-left", data: { tip: "Dismiss" } do %>
+          <i class="fa-solid fa-xmark text-base-content/60"></i>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</li>

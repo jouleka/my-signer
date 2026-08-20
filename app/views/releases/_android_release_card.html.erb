@@ -1,0 +1,62 @@
+<%# Android release status card %>
+<% app = local_assigns[:app] %>
+<% latest = app.play_store_releases.order(Arel.sql("COALESCE(released_at, created_at) DESC")).first %>
+
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_split_classes %>">
+    <div class="flex items-center gap-2.5">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-brands fa-google-play"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Current Release</span>
+    </div>
+    <% if latest %>
+      <span class="<%= version_badge_classes %>"><%= latest.version_code %></span>
+    <% end %>
+  </div>
+  <div class="<%= card_body_classes %>">
+    <% if latest %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <p class="<%= label_uppercase_classes %>">Version Code</p>
+          <p class="<%= field_text_classes %>"><%= latest.version_code %></p>
+        </div>
+        <div>
+          <p class="<%= label_uppercase_classes %>">Track</p>
+          <span class="badge badge-sm badge-outline"><%= latest.track&.capitalize || "N/A" %></span>
+        </div>
+        <div>
+          <p class="<%= label_uppercase_classes %>">Status</p>
+          <span class="<%= status_badge_classes(latest.status) %>">
+            <%= latest.status.capitalize %>
+          </span>
+        </div>
+      </div>
+
+      <%# Staged rollout %>
+      <% if latest.user_fraction.present? && latest.user_fraction < 1.0 %>
+        <div class="mt-4 pt-4 border-t border-base-content/5">
+          <p class="<%= label_uppercase_classes %> mb-2">Staged Rollout</p>
+          <div class="flex items-center gap-3">
+            <div class="flex-1 h-1.5 rounded-[3px] bg-base-content/[0.06] overflow-hidden">
+              <div class="h-full rounded-[3px] bg-primary/60 transition-[width] duration-300" style="width: <%= (latest.user_fraction * 100).round %>%"></div>
+            </div>
+            <span class="text-xs font-semibold text-base-content/60">
+              <%= (latest.user_fraction * 100).round %>%
+            </span>
+          </div>
+        </div>
+      <% end %>
+
+      <% if latest.released_at.present? %>
+        <div class="mt-3 pt-3 border-t border-base-content/5">
+          <p class="<%= hint_text_classes %>">
+            Released <%= time_ago_in_words(latest.released_at) %> ago
+          </p>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="<%= empty_inline_classes %>"><i class="fa-solid fa-box-open"></i> No releases synced yet</p>
+    <% end %>
+  </div>
+</div>

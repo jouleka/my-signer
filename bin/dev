@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+
+if ! gem list foreman -i --silent; then
+  echo "Installing foreman..."
+  gem install foreman
+fi
+
+# Default to port 3000 if not specified
+export PORT="${PORT:-3000}"
+
+# Let the debug gem allow remote connections,
+# but avoid loading until `debugger` is called
+export RUBY_DEBUG_OPEN="true"
+export RUBY_DEBUG_LAZY="true"
+
+PIDFILE="tmp/pids/server.pid"
+if [ -f "$PIDFILE" ]; then
+  PID=$(cat "$PIDFILE" 2>/dev/null)
+  if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+    echo "Killing existing Rails server (PID $PID)..."
+    kill "$PID" 2>/dev/null || true
+    sleep 1
+    if kill -0 "$PID" 2>/dev/null; then
+      echo "Force killing Rails server (PID $PID)..."
+      kill -9 "$PID" 2>/dev/null || true
+      sleep 1
+    fi
+  fi
+  rm -f "$PIDFILE"
+fi
+
+exec foreman start -f Procfile.dev "$@"

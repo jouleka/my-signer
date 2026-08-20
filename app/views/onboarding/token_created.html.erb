@@ -1,0 +1,83 @@
+<% content_for(:title, "Save Your API Token") %>
+
+<%= render "onboarding/layout" do %>
+  <div class="step-body step-animate">
+    <div class="step-eyebrow">
+      <span class="secnum">IV</span>
+      <span class="step-eyebrow-label">Save your token</span>
+      <span class="step-eyebrow-rule"></span>
+    </div>
+
+    <h1 class="step-title">Copy this <em>once</em>, then move on.</h1>
+    <p class="step-lead">
+      For your security, this token will only be displayed on this screen. Save it somewhere safe
+      (a password manager works). If you lose it, you can revoke and create a new one.
+    </p>
+
+    <%# Token reveal — the plain token from ApiToken.generate_for is
+        held in @plain_token by the controller and only rendered here. %>
+    <div class="token-reveal">
+      <div class="token-reveal-warn">Save this token &mdash; shown only once</div>
+      <div class="token-string-wrap">
+        <div class="token-string" id="onboarding-plain-token"><%= @plain_token %></div>
+        <%# Copy via the onboarding-token-copy Stimulus controller. The token
+            is shown ONLY on this screen, so failing silently here would
+            strand the user with a token they can't capture. The previous
+            inline onclick handler was being blocked under the production
+            CSP (script-src has 'strict-dynamic' + nonce, no 'unsafe-inline'). %>
+        <button type="button" class="token-copy"
+                data-controller="onboarding-token-copy"
+                data-onboarding-token-copy-source-id-value="onboarding-plain-token"
+                data-action="click->onboarding-token-copy#copy">
+          Copy
+        </button>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top: 2rem;">
+      <span class="num">i.</span>
+      <span>Connect the CLI</span>
+    </div>
+    <p style="font-size: 13.5px; line-height: 1.55; margin: 0 0 0.875rem;
+              color: color-mix(in oklab, var(--color-base-content) 60%, transparent);">
+      Run <span class="kbd-mono">mysigner login</span> in your terminal and follow the three prompts.
+    </p>
+
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="label">~ &middot; zsh</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line"><span class="prompt">$</span><span>mysigner login</span></div>
+      </div>
+    </div>
+
+    <div class="prompt-list">
+      <div class="row">
+        <span class="key">API URL: </span>
+        <span class="val"><%= request.protocol %><%= request.host_with_port %></span>
+        <span class="hintline">&#x21B3; Press <span class="kbd-mono">&#9166;</span> to accept the default</span>
+      </div>
+      <div class="row" style="margin-top: 0.75rem;">
+        <span class="key">Your Email: </span>
+        <span class="val user"><%= current_user.email %></span>
+        <span class="hintline">&#x21B3; Type your account email and press <span class="kbd-mono">&#9166;</span></span>
+      </div>
+      <div class="row" style="margin-top: 0.75rem;">
+        <span class="key">API Token: </span>
+        <span class="val">****</span>
+        <span class="hintline">&#x21B3; Paste the token above (it won't echo as you type)</span>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <span class="filler"></span>
+      <%= link_to onboarding_path(step: "connect"), class: "btn-primary-ms",
+            style: "text-decoration: none;" do %>
+        I've saved my token
+        <span style="font-size: 16px; margin-left: 2px;">&rarr;</span>
+      <% end %>
+    </div>
+  </div>
+<% end %>

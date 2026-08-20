@@ -1,0 +1,19 @@
+<%= @upgraded ? "Welcome to #{@to_tier}" : "Plan changed to #{@to_tier}" %>
+
+Hi <%= @user.name.presence || @user.email %>,
+
+Your MySigner plan moved from <%= @from_tier %> to <%= @to_tier %>.
+<% if @upgraded %>
+Enjoy expanded limits and new features on the <%= @to_tier %> tier.
+Your new limits are live right away — jump back into the dashboard to explore
+what's unlocked.
+<% else %>
+Your entitlements have been adjusted to match the <%= @to_tier %> plan. You'll
+keep access until the end of the current billing period, after which the
+adjusted limits apply.
+<% end %>
+
+Dashboard: <%= authenticated_root_url %>
+
+—
+Change notification preferences: <%= settings_url(tab: "notifications") %>

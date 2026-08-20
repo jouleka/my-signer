@@ -1,0 +1,49 @@
+<%# 
+  Shared page header component with gradient background, badge, title, description, stats, and actions.
+  
+  Required locals:
+    - title: String - Main heading text
+    - description: String - Subtitle/description text
+    
+  Optional locals:
+    - gradient: String - Tailwind gradient classes (default: "from-primary/15 via-base-100 to-secondary/10")
+    - badge_icon: String - FontAwesome icon class for badge (default: nil, no badge shown)
+    - badge_text: String - Text inside badge (default: nil)
+    - stats: Captured HTML content for stats section (use capture block)
+    - actions: Captured HTML content for action buttons (use capture block)
+%>
+
+<%
+  gradient ||= "from-primary/15 via-base-100 to-secondary/10"
+  badge_icon ||= nil
+  badge_text ||= nil
+  stats ||= nil
+  actions ||= nil
+%>
+
+<div class="w-full min-w-0 rounded-2xl md:rounded-3xl border border-base-200 bg-gradient-to-br <%= gradient %> p-4 sm:p-6 md:p-8 shadow-xl">
+  <div class="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-start lg:justify-between">
+    <div class="space-y-1 sm:space-y-2">
+      <% if badge_icon.present? && badge_text.present? %>
+        <span class="badge badge-outline badge-sm sm:badge-lg gap-1.5 sm:gap-2">
+          <i class="<%= badge_icon %> text-xs sm:text-sm"></i>
+          <%= badge_text %>
+        </span>
+      <% end %>
+      <h1 class="text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight"><%= title %></h1>
+      <p class="text-base-content/70 max-w-xl text-sm sm:text-base hidden sm:block"><%= description %></p>
+    </div>
+
+    <% if stats.present? %>
+      <div class="stats stats-horizontal bg-base-100 border border-base-200 shadow w-full sm:w-auto">
+        <%= stats %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if actions.present? %>
+    <div class="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
+      <%= actions %>
+    </div>
+  <% end %>
+</div>

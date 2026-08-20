@@ -1,0 +1,50 @@
+<% case @append_outcome %>
+<% when :stale %>
+  <%= turbo_stream.prepend "keywords-flash-zone" do %>
+    <div class="<%= sn_warning_classes %>" data-controller="inline-notification">
+      <p class="text-xs text-warning/90">
+        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+        Listing was updated by someone else. Review refreshed &mdash; please re-open the commit modal.
+      </p>
+    </div>
+  <% end %>
+<% when :invalid %>
+  <%= turbo_stream.prepend "keywords-flash-zone" do %>
+    <div class="<%= sn_warning_classes %>" data-controller="inline-notification">
+      <p class="text-xs text-warning/90">
+        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+        Couldn't save &mdash; the total keyword field exceeded 100 characters. Remove some staged items and try again.
+      </p>
+    </div>
+  <% end %>
+<% when :noop %>
+  <%= turbo_stream.prepend "keywords-flash-zone" do %>
+    <div class="<%= sn_info_classes %>" data-controller="inline-notification">
+      <p class="text-xs text-base-content/70">
+        Nothing new to add &mdash; those keywords are already in your listing.
+      </p>
+    </div>
+  <% end %>
+<% when :ok %>
+  <%= turbo_stream.replace "keyword-budget-bar" do %>
+    <%= render "keywords/budget_bar" %>
+  <% end %>
+  <%= turbo_stream.prepend "keywords-flash-zone" do %>
+    <div class="<%= sn_success_classes %>" data-controller="inline-notification">
+      <p class="text-xs text-success/90">
+        <i class="fa-solid fa-check mr-1"></i>
+        Added to listing &mdash; <%= @store_listing.keywords.length %>/100 characters used.
+      </p>
+    </div>
+  <% end %>
+  <%# Inline script fires after Turbo applies the streams. Dispatches a
+      CustomEvent carrying the new keywords string — the keyword-editor
+      controller listens at document level and clears basket + modal. %>
+  <%= turbo_stream.append "keywords-flash-zone" do %>
+    <%= content_tag :script, nonce: true do %>
+      document.dispatchEvent(new CustomEvent("keyword-editor:committed", {
+        detail: { keywords: <%= @store_listing.keywords.to_json.html_safe %> }
+      }));
+    <% end %>
+  <% end %>
+<% end %>

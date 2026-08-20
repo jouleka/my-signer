@@ -1,0 +1,14 @@
+New Contact Form Submission - MySigner Early Access
+==================================================
+
+Category: <%= { "bug" => "Bug Report", "feature" => "Feature Request", "question" => "Question", "feedback" => "Feedback", "other" => "Other" }[@category] || @category.to_s.titleize %>
+
+From: <%= @name %> (<%= @email %>)
+
+Message:
+---------
+<%= @message %>
+
+--
+This message was sent from the MySigner contact form.
+Reply directly to this email to respond to <%= @name %>.

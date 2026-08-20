@@ -1,0 +1,820 @@
+<%= render "shared/ios_breadcrumbs", organization: @organization, active_tab: :bundle_ids %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: @bundle_id.name,
+             description: @bundle_id.identifier,
+             gradient: "from-purple-500/10 via-base-100 to-indigo-500/10",
+             badge_icon: "fa-solid fa-fingerprint",
+             badge_text: @bundle_id.platform,
+             stats: (capture do %>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Capabilities</div>
+          <div class="stat-value text-xl sm:text-2xl"><%= @capabilities.size %></div>
+          <div class="stat-desc">enabled</div>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Profiles</div>
+          <div class="stat-value text-xl sm:text-2xl"><%= @profiles.count %></div>
+          <div class="stat-desc">using this ID</div>
+        </div>
+             <% end),
+             actions: (capture do %>
+      <button type="button" class="btn btn-ghost btn-sm sm:btn-md gap-2"
+              data-controller="copy"
+              data-action="click->copy#copy"
+              data-copy-text-value="<%= @bundle_id.identifier %>">
+        <i class="fa-solid fa-copy"></i>
+        <span class="hidden sm:inline">Copy ID</span>
+        <span class="sm:hidden">Copy</span>
+      </button>
+      <button type="button" class="btn btn-ghost btn-sm sm:btn-md gap-2"
+              data-controller="raw-json"
+              data-action="click->raw-json#show"
+              data-raw-json-content-value="<%= @bundle_id.raw_json %>"
+              data-raw-json-title-value="Bundle ID: <%= @bundle_id.identifier %>">
+        <i class="fa-solid fa-code"></i>
+        JSON
+      </button>
+      <%= link_to organization_apple_bundle_ids_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back to List</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+             <% end) %>
+
+  <%# Enabled Capabilities %>
+  <div class="card border border-base-200 shadow-sm overflow-hidden">
+    <div class="card-body p-3 sm:p-6">
+      <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3 mb-3 sm:mb-4">
+        <h2 class="card-title text-base sm:text-lg">
+          <i class="fa-solid fa-puzzle-piece text-purple-500"></i>
+          Enabled Capabilities
+        </h2>
+        <button class="btn btn-primary btn-xs sm:btn-sm gap-2" data-controller="modal" data-action="click->modal#open" data-modal-target-value="add-capability-modal">
+          <i class="fa-solid fa-plus"></i>
+          Add
+        </button>
+      </div>
+
+      <% if @capabilities.any? %>
+        <div class="grid gap-2 sm:gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <% @capabilities.each do |cap| %>
+            <div class="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-base-200 bg-base-100 hover:bg-base-200/50 transition-colors overflow-hidden">
+              <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center shrink-0">
+                  <i class="fa-solid <%= cap.icon %> text-green-600 text-xs sm:text-sm"></i>
+                </div>
+                <div class="min-w-0">
+                  <div class="font-medium text-xs sm:text-sm truncate"><%= cap.display_name %></div>
+                  <div class="text-[10px] sm:text-xs text-base-content/50 truncate"><%= cap.capability_type %></div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button type="button" class="btn btn-ghost btn-xs btn-square"
+                        data-controller="raw-json"
+                        data-action="click->raw-json#show"
+                        data-raw-json-content-value="<%= cap.raw_json.to_json %>"
+                        data-raw-json-title-value="Capability: <%= cap.display_name %>">
+                  <i class="fa-solid fa-code text-base-content/50"></i>
+                </button>
+                <button type="button"
+                        class="btn btn-ghost btn-xs btn-square text-error hover:bg-error/10"
+                        data-controller="modal"
+                        data-action="click->modal#open"
+                        data-modal-target-value="delete-capability-<%= cap.id %>-modal">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            <%# Delete Confirmation Modal for this capability %>
+            <dialog id="delete-capability-<%= cap.id %>-modal" class="modal modal-bottom sm:modal-middle">
+              <div class="modal-box max-w-md">
+                <div class="flex items-start gap-4 mb-6">
+                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-rose-500/20 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-xl font-bold">Disable Capability</h3>
+                    <p class="text-sm text-base-content/60 mt-1">
+                      Are you sure you want to disable <strong><%= cap.display_name %></strong>?
+                    </p>
+                  </div>
+                </div>
+
+                <div class="alert alert-warning text-sm mb-4">
+                  <i class="fa-solid fa-info-circle"></i>
+                  <span>This will remove the capability from your bundle ID in App Store Connect. You can re-enable it later.</span>
+                </div>
+
+                <div class="modal-action pt-4 border-t border-base-200">
+                  <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#close" data-modal-target-value="delete-capability-<%= cap.id %>-modal">Cancel</button>
+                  <%= button_to disable_capability_organization_apple_bundle_id_path(@organization, @bundle_id, capability_id: cap.id),
+                               method: :delete,
+                               class: "btn btn-error gap-1.5" do %>
+                    <i class="fa-solid fa-trash"></i>
+                    Disable Capability
+                  <% end %>
+                </div>
+              </div>
+              <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+              </form>
+            </dialog>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-6 sm:py-8 px-2">
+          <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-puzzle-piece text-xl sm:text-2xl text-purple-500/50"></i>
+          </div>
+          <p class="text-base-content/60 mb-4 text-sm">No capabilities enabled yet.</p>
+          <button class="btn btn-primary btn-xs sm:btn-sm gap-2" data-controller="modal" data-action="click->modal#open" data-modal-target-value="add-capability-modal">
+            <i class="fa-solid fa-plus"></i>
+            Add First Capability
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Associated Identifiers %>
+  <% show_associated_section = @associated_app_groups.any? || @associated_merchant_ids.any? || (@has_app_groups_capability && @available_app_groups.any?) %>
+  <% if show_associated_section %>
+    <div class="card border border-base-200 shadow-sm overflow-hidden">
+      <div class="card-body p-3 sm:p-6">
+        <h2 class="card-title text-base sm:text-lg mb-3 sm:mb-4">
+          <i class="fa-solid fa-link text-violet-500"></i>
+          Associated Identifiers
+        </h2>
+
+        <%# App Groups Section %>
+        <% if @has_app_groups_capability %>
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium text-base-content/70">App Groups</h3>
+              <button class="btn btn-ghost btn-xs gap-1" data-controller="modal" data-action="click->modal#open" data-modal-target-value="add-app-group-modal">
+                <i class="fa-solid fa-plus"></i>
+                Add
+              </button>
+            </div>
+
+            <% if @associated_app_groups.any? %>
+              <div class="flex flex-wrap gap-2">
+                <% @associated_app_groups.each do |ag| %>
+                  <div class="badge badge-outline gap-1.5 py-3 pr-1">
+                    <i class="fa-solid fa-layer-group text-violet-500"></i>
+                    <span class="font-mono text-xs"><%= ag.identifier %></span>
+                    <button type="button"
+                            class="btn btn-ghost btn-xs btn-circle ml-1 hover:bg-error/20 hover:text-error"
+                            data-controller="modal"
+                            data-action="click->modal#open"
+                            data-modal-target-value="dissociate-app-group-<%= ag.id %>-modal">
+                      <i class="fa-solid fa-xmark text-[10px]"></i>
+                    </button>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-sm text-base-content/50 italic">
+                No App Groups associated yet. Click "Add" to register one.
+              </div>
+            <% end %>
+
+            <% unless @associated_app_groups.any? %>
+              <div class="alert alert-info text-xs mt-3">
+                <i class="fa-solid fa-info-circle"></i>
+                <span>Apple's API doesn't expose App Group associations. Register them here after configuring in the Apple Developer Portal.</span>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Dissociate App Group Confirmation Modals %>
+          <% @associated_app_groups.each do |ag| %>
+            <dialog id="dissociate-app-group-<%= ag.id %>-modal" class="modal modal-bottom sm:modal-middle">
+              <div class="modal-box max-w-md">
+                <div class="flex items-start gap-4 mb-6">
+                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-rose-500/20 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-xl font-bold">Remove App Group</h3>
+                    <p class="text-sm text-base-content/60 mt-1">
+                      Are you sure you want to remove <strong class="font-mono"><%= ag.identifier %></strong> from this Bundle ID?
+                    </p>
+                  </div>
+                </div>
+
+                <div class="alert alert-warning text-sm mb-4">
+                  <i class="fa-solid fa-info-circle"></i>
+                  <span>This only removes the association in My Signer. You should also update the configuration in the Apple Developer Portal.</span>
+                </div>
+
+                <div class="modal-action pt-4 border-t border-base-200">
+                  <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#close" data-modal-target-value="dissociate-app-group-<%= ag.id %>-modal">Cancel</button>
+                  <%= button_to dissociate_app_group_organization_apple_bundle_id_path(@organization, @bundle_id, app_group_id: ag.id),
+                               method: :delete,
+                               class: "btn btn-error gap-1.5" do %>
+                    <i class="fa-solid fa-trash"></i>
+                    Remove
+                  <% end %>
+                </div>
+              </div>
+              <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+              </form>
+            </dialog>
+          <% end %>
+        <% elsif @associated_app_groups.any? %>
+          <%# Show associated app groups even if capability is not enabled (for cleanup) %>
+          <div class="mb-4">
+            <h3 class="text-sm font-medium text-base-content/70 mb-2">App Groups</h3>
+            <div class="flex flex-wrap gap-2">
+              <% @associated_app_groups.each do |ag| %>
+                <span class="badge badge-outline gap-1.5 py-3">
+                  <i class="fa-solid fa-layer-group text-violet-500"></i>
+                  <span class="font-mono text-xs"><%= ag.identifier %></span>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <% if @associated_merchant_ids.any? %>
+          <div>
+            <h3 class="text-sm font-medium text-base-content/70 mb-2">Merchant IDs</h3>
+            <div class="flex flex-wrap gap-2">
+              <% @associated_merchant_ids.each do |m| %>
+                <span class="badge badge-outline gap-1.5 py-3">
+                  <i class="fa-solid fa-credit-card text-emerald-500"></i>
+                  <span class="font-mono text-xs"><%= m.identifier %></span>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Add App Group Modal - Register new or select existing %>
+  <% if @has_app_groups_capability %>
+    <dialog id="add-app-group-modal" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box max-w-lg">
+        <div class="flex items-start gap-4 mb-6">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-layer-group text-violet-600 text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold">Add App Group</h3>
+            <p class="text-sm text-base-content/60 mt-1">
+              Register an App Group for <strong><%= @bundle_id.identifier %></strong>
+            </p>
+          </div>
+        </div>
+
+        <%# Register New App Group Form %>
+        <%= form_with url: register_app_group_organization_apple_bundle_id_path(@organization, @bundle_id),
+                      method: :post,
+                      class: "space-y-4" do %>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">App Group Identifier</span>
+            </label>
+            <input type="text"
+                   name="identifier"
+                   placeholder="group.com.example.shared"
+                   class="input input-bordered font-mono"
+                   pattern="group\..*"
+                   required>
+            <label class="label">
+              <span class="label-text-alt text-base-content/50">Must start with "group." (e.g., group.com.oopsfee.shared)</span>
+            </label>
+          </div>
+
+          <div class="alert alert-warning text-sm">
+            <i class="fa-solid fa-exclamation-triangle"></i>
+            <span>Make sure this App Group exists in the Apple Developer Portal and is assigned to this Bundle ID there.</span>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full gap-2">
+            <i class="fa-solid fa-plus"></i>
+            Register App Group
+          </button>
+        <% end %>
+
+        <% if @available_app_groups.any? %>
+          <div class="divider text-xs text-base-content/50">OR SELECT EXISTING</div>
+
+          <div class="space-y-2 max-h-[30vh] overflow-y-auto">
+            <% @available_app_groups.each do |ag| %>
+              <%= form_with url: associate_app_group_organization_apple_bundle_id_path(@organization, @bundle_id),
+                            method: :post,
+                            class: "flex items-center justify-between p-3 rounded-xl border border-base-200 hover:bg-base-200/50 transition-colors" do %>
+                <input type="hidden" name="app_group_id" value="<%= ag.id %>">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                    <i class="fa-solid fa-layer-group text-violet-500 text-sm"></i>
+                  </div>
+                  <span class="font-mono text-sm"><%= ag.identifier %></span>
+                </div>
+                <button type="submit" class="btn btn-ghost btn-sm gap-1">
+                  <i class="fa-solid fa-link"></i>
+                  Use
+                </button>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+
+        <div class="modal-action pt-4 border-t border-base-200">
+          <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#close" data-modal-target-value="add-app-group-modal">Close</button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+  <% end %>
+
+  <%# Related Profiles %>
+  <% if @profiles.any? %>
+    <div class="card border border-base-200 shadow-sm overflow-hidden">
+      <div class="card-body p-3 sm:p-6">
+        <h2 class="card-title text-base sm:text-lg mb-3 sm:mb-4">
+          <i class="fa-solid fa-id-card text-blue-500"></i>
+          <span class="hidden sm:inline">Provisioning Profiles Using This Bundle ID</span>
+          <span class="sm:hidden">Provisioning Profiles</span>
+        </h2>
+
+        <%# Desktop Table %>
+        <div class="hidden md:block">
+          <div class="overflow-x-auto rounded-2xl border border-base-200">
+            <table class="table table-sm">
+              <thead>
+                <tr class="text-xs uppercase text-base-content/60">
+                  <th>Profile</th>
+                  <th>Type</th>
+                  <th>State</th>
+                  <th>Expires</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @profiles.each do |profile| %>
+                  <tr class="hover:bg-base-200/30">
+                    <td class="font-medium"><%= profile.name %></td>
+                    <td><span class="badge badge-ghost badge-sm"><%= profile.profile_type %></span></td>
+                    <td>
+                      <% if profile.state == "ACTIVE" %>
+                        <span class="badge badge-success badge-sm">Active</span>
+                      <% else %>
+                        <span class="badge badge-warning badge-sm"><%= profile.state %></span>
+                      <% end %>
+                    </td>
+                    <td class="text-sm text-base-content/60">
+                      <% if profile.expires_at.present? %>
+                        <%= profile.expires_at.strftime("%b %d, %Y") %>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td>
+                      <%= link_to organization_apple_provisioning_profile_path(@organization, profile), class: "btn btn-ghost btn-xs" do %>
+                        <i class="fa-solid fa-arrow-right"></i>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <%# Mobile Cards %>
+        <div class="md:hidden space-y-2">
+          <% @profiles.each do |profile| %>
+            <div class="card border border-base-200 shadow-sm overflow-hidden">
+              <div class="card-body p-3 space-y-2 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="font-semibold text-sm truncate"><%= profile.name %></div>
+                    <span class="badge badge-ghost badge-xs mt-1"><%= profile.profile_type %></span>
+                  </div>
+                  <% if profile.state == "ACTIVE" %>
+                    <span class="badge badge-success badge-sm shrink-0">Active</span>
+                  <% else %>
+                    <span class="badge badge-warning badge-sm shrink-0"><%= profile.state %></span>
+                  <% end %>
+                </div>
+                <div class="flex items-center justify-between">
+                  <% if profile.expires_at.present? %>
+                    <span class="text-xs text-base-content/60">Expires: <%= profile.expires_at.strftime("%b %d, %Y") %></span>
+                  <% else %>
+                    <span></span>
+                  <% end %>
+                  <%= link_to organization_apple_provisioning_profile_path(@organization, profile), class: "btn btn-ghost btn-xs gap-1" do %>
+                    <i class="fa-solid fa-arrow-right"></i>
+                    View
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Bundle ID Details %>
+  <div class="card border border-base-200 shadow-sm overflow-hidden">
+    <div class="card-body p-3 sm:p-6">
+      <h2 class="card-title text-base sm:text-lg mb-3 sm:mb-4">
+        <i class="fa-solid fa-circle-info text-blue-500"></i>
+        Bundle ID Details
+      </h2>
+      <div class="grid gap-2 sm:gap-4 sm:grid-cols-2">
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4 min-w-0">
+          <div class="text-xs text-base-content/60 mb-1">Identifier</div>
+          <div class="font-mono text-xs sm:text-sm flex items-center gap-2 min-w-0">
+            <span class="truncate"><%= @bundle_id.identifier %></span>
+            <button type="button" class="btn btn-ghost btn-xs btn-square shrink-0"
+                    data-controller="copy"
+                    data-action="click->copy#copy"
+                    data-copy-text-value="<%= @bundle_id.identifier %>">
+              <i class="fa-solid fa-copy text-base-content/50"></i>
+            </button>
+          </div>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4 min-w-0">
+          <div class="text-xs text-base-content/60 mb-1">Name</div>
+          <div class="font-medium text-sm truncate"><%= @bundle_id.name %></div>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Platform</div>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-outline badge-sm gap-1.5">
+              <% if @bundle_id.platform == "IOS" %>
+                <i class="fa-brands fa-apple text-[10px]"></i>
+              <% elsif @bundle_id.platform == "MAC_OS" %>
+                <i class="fa-solid fa-laptop text-[10px]"></i>
+              <% else %>
+                <i class="fa-solid fa-layer-group text-[10px]"></i>
+              <% end %>
+              <%= @bundle_id.platform %>
+            </span>
+          </div>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Team ID</div>
+          <% if @bundle_id.team_id.present? %>
+            <code class="text-xs sm:text-sm"><%= @bundle_id.team_id %></code>
+          <% else %>
+            <span class="text-base-content/50 text-sm">Not set</span>
+          <% end %>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4 min-w-0">
+          <div class="text-xs text-base-content/60 mb-1">Remote ID</div>
+          <code class="text-xs text-base-content/70 break-all"><%= @bundle_id.remote_id %></code>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Created</div>
+          <div class="text-xs sm:text-sm"><%= @bundle_id.created_at.strftime("%B %d, %Y at %I:%M %p") %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%# Add Capability Modal %>
+<dialog id="add-capability-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box max-w-2xl">
+    <div class="flex items-start gap-4 mb-6">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-puzzle-piece text-purple-600 text-lg"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-bold">Add Capability</h3>
+        <p class="text-sm text-base-content/60 mt-1">
+          Enable a new capability for <strong><%= @bundle_id.identifier %></strong>
+        </p>
+      </div>
+    </div>
+
+    <% if @available_capabilities.any? %>
+      <div class="grid gap-2 max-h-[60vh] overflow-y-auto">
+        <% @available_capabilities.sort.each do |cap_type| %>
+          <%
+            cap = AppleBundleIdCapability.new(capability_type: cap_type)
+            # Capabilities that MUST be configured in Apple Developer Portal (no API support for associations)
+            requires_portal = cap_type.in?(["APP_GROUPS", "APPLE_PAY"])
+            # Capabilities that can be configured via API with settings
+            requires_config = cap_type.in?(["ICLOUD", "DATA_PROTECTION"])
+          %>
+          <% if requires_portal %>
+            <%# Capabilities that must be configured in Apple Developer Portal %>
+            <div class="flex items-center justify-between p-3 rounded-xl border border-base-200 hover:bg-base-200/50 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-base-200 flex items-center justify-center">
+                  <i class="fa-solid <%= cap.icon %> text-base-content/50"></i>
+                </div>
+                <div>
+                  <div class="font-medium text-sm"><%= cap.display_name %></div>
+                  <div class="text-xs text-base-content/50"><%= cap_type %></div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm gap-1.5"
+                      data-controller="modal"
+                      data-action="click->modal#switch"
+                      data-modal-target-value="add-capability-modal"
+                      data-modal-open-value="portal-<%= cap_type.downcase.gsub('_', '-') %>-modal">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                Configure in Portal
+              </button>
+            </div>
+          <% elsif requires_config %>
+            <%# Capabilities requiring configuration via API - open a sub-modal %>
+            <div class="flex items-center justify-between p-3 rounded-xl border border-base-200 hover:bg-base-200/50 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-base-200 flex items-center justify-center">
+                  <i class="fa-solid <%= cap.icon %> text-base-content/50"></i>
+                </div>
+                <div>
+                  <div class="font-medium text-sm"><%= cap.display_name %></div>
+                  <div class="text-xs text-base-content/50"><%= cap_type %></div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm gap-1.5"
+                      data-controller="modal"
+                      data-action="click->modal#switch"
+                      data-modal-target-value="add-capability-modal"
+                      data-modal-open-value="configure-<%= cap_type.downcase.gsub('_', '-') %>-modal">
+                <i class="fa-solid fa-cog"></i>
+                Configure
+              </button>
+            </div>
+          <% else %>
+            <%# Simple capabilities - enable directly %>
+            <%= form_with url: enable_capability_organization_apple_bundle_id_path(@organization, @bundle_id),
+                          method: :post,
+                          class: "flex items-center justify-between p-3 rounded-xl border border-base-200 hover:bg-base-200/50 transition-colors" do %>
+              <input type="hidden" name="capability_type" value="<%= cap_type %>">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-base-200 flex items-center justify-center">
+                  <i class="fa-solid <%= cap.icon %> text-base-content/50"></i>
+                </div>
+                <div>
+                  <div class="font-medium text-sm"><%= cap.display_name %></div>
+                  <div class="text-xs text-base-content/50"><%= cap_type %></div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm gap-1.5">
+                <i class="fa-solid fa-plus"></i>
+                Enable
+              </button>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-8">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+          <i class="fa-solid fa-check-double text-2xl text-green-500"></i>
+        </div>
+        <p class="text-base-content/60">All available capabilities are already enabled!</p>
+      </div>
+    <% end %>
+
+    <div class="modal-action pt-4 border-t border-base-200">
+      <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#close" data-modal-target-value="add-capability-modal">Close</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<%# App Groups - Configure in Portal Modal %>
+<dialog id="portal-app-groups-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box max-w-lg">
+    <div class="flex items-start gap-4 mb-6">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-layer-group text-violet-600 text-lg"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-bold">App Groups</h3>
+        <p class="text-sm text-base-content/60 mt-1">
+          This capability requires configuration in Apple Developer Portal.
+        </p>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="alert alert-info">
+        <i class="fa-solid fa-info-circle"></i>
+        <div>
+          <p class="font-medium">Apple's API does not expose App Group associations.</p>
+          <p class="text-sm mt-1">While the capability can be enabled via API, the specific App Group assignments are not returned by Apple's API.</p>
+        </div>
+      </div>
+
+      <div class="bg-base-200/50 rounded-xl p-4">
+        <h4 class="font-medium mb-3">Steps to enable App Groups:</h4>
+        <ol class="list-decimal list-inside space-y-2 text-sm">
+          <li>Go to <a href="https://developer.apple.com/account/resources/identifiers/list/applicationGroup" target="_blank" class="link link-primary">Identifiers → App Groups</a> in Apple Developer Portal</li>
+          <li>Create your App Group (e.g., <code class="text-xs bg-base-300 px-1 rounded">group.com.example.shared</code>)</li>
+          <li>Go to your Bundle ID (<code class="text-xs bg-base-300 px-1 rounded"><%= @bundle_id.identifier %></code>)</li>
+          <li>Enable the App Groups capability and select your group</li>
+          <li>Register the App Group in My Signer (via API or UI)</li>
+          <li>Come back here and <strong>manually associate</strong> the App Group with this Bundle ID</li>
+        </ol>
+      </div>
+
+      <div class="alert alert-warning text-sm">
+        <i class="fa-solid fa-hand-point-right"></i>
+        <span>After configuring in Apple Developer Portal, you'll need to manually associate the App Group with this Bundle ID in My Signer.</span>
+      </div>
+    </div>
+
+    <div class="modal-action pt-4 border-t border-base-200">
+      <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#close" data-modal-target-value="portal-app-groups-modal">Close</button>
+      <a href="https://developer.apple.com/account/resources/identifiers/list/applicationGroup" target="_blank" class="btn btn-primary gap-1.5">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        Open Apple Developer Portal
+      </a>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<%# Apple Pay - Configure in Portal Modal %>
+<dialog id="portal-apple-pay-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box max-w-lg">
+    <div class="flex items-start gap-4 mb-6">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-green-500/20 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-credit-card text-emerald-600 text-lg"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-bold">Apple Pay</h3>
+        <p class="text-sm text-base-content/60 mt-1">
+          This capability must be configured in Apple Developer Portal.
+        </p>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="alert alert-info">
+        <i class="fa-solid fa-info-circle"></i>
+        <div>
+          <p class="font-medium">Apple's API does not support Merchant ID assignments.</p>
+          <p class="text-sm mt-1">While Merchant IDs can be synced, associating them with Bundle IDs must be done in the portal.</p>
+        </div>
+      </div>
+
+      <div class="bg-base-200/50 rounded-xl p-4">
+        <h4 class="font-medium mb-3">Steps to enable Apple Pay:</h4>
+        <ol class="list-decimal list-inside space-y-2 text-sm">
+          <li>Go to <a href="https://developer.apple.com/account/resources/identifiers/list/merchant" target="_blank" class="link link-primary">Identifiers → Merchant IDs</a> in Apple Developer Portal</li>
+          <li>Create your Merchant ID (e.g., <code class="text-xs bg-base-300 px-1 rounded">merchant.com.example.app</code>)</li>
+          <li>Go to your Bundle ID (<code class="text-xs bg-base-300 px-1 rounded"><%= @bundle_id.identifier %></code>)</li>
+          <li>Enable the Apple Pay capability and select your Merchant ID</li>
+          <li>Come back here and <strong>sync your organization</strong></li>
+        </ol>
+      </div>
+
+      <div class="alert alert-warning text-sm">
+        <i class="fa-solid fa-sync"></i>
+        <span>After configuring in Apple Developer Portal, sync your organization to see the changes here.</span>
+      </div>
+    </div>
+
+    <div class="modal-action pt-4 border-t border-base-200">
+      <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#close" data-modal-target-value="portal-apple-pay-modal">Close</button>
+      <a href="https://developer.apple.com/account/resources/identifiers/list/merchant" target="_blank" class="btn btn-primary gap-1.5">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        Open Apple Developer Portal
+      </a>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<%# Configure iCloud Modal %>
+<dialog id="configure-icloud-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box max-w-lg">
+    <div class="flex items-start gap-4 mb-6">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-sky-500/20 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-cloud text-blue-600 text-lg"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-bold">Enable iCloud</h3>
+        <p class="text-sm text-base-content/60 mt-1">
+          Select the iCloud version for this Bundle ID.
+        </p>
+      </div>
+    </div>
+
+    <%= form_with url: enable_capability_organization_apple_bundle_id_path(@organization, @bundle_id),
+                  method: :post,
+                  class: "space-y-4" do |f| %>
+      <input type="hidden" name="capability_type" value="ICLOUD">
+
+      <div class="space-y-3">
+        <label class="flex items-start gap-3 p-4 rounded-xl border border-base-200 hover:bg-base-200/50 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <input type="radio" name="icloud_version" value="XCODE_6" class="radio radio-primary mt-0.5" checked>
+          <div class="flex-1">
+            <div class="font-medium">CloudKit</div>
+            <div class="text-sm text-base-content/60 mt-0.5">Modern cloud storage using CloudKit framework. Recommended for new apps.</div>
+          </div>
+          <span class="badge badge-success badge-sm">Recommended</span>
+        </label>
+
+        <label class="flex items-start gap-3 p-4 rounded-xl border border-base-200 hover:bg-base-200/50 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <input type="radio" name="icloud_version" value="XCODE_5" class="radio radio-primary mt-0.5">
+          <div class="flex-1">
+            <div class="font-medium">Documents & Data</div>
+            <div class="text-sm text-base-content/60 mt-0.5">Legacy iCloud document storage. For apps that need to support older iOS versions.</div>
+          </div>
+          <span class="badge badge-ghost badge-sm">Legacy</span>
+        </label>
+      </div>
+
+      <div class="modal-action pt-4 border-t border-base-200">
+        <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#switch" data-modal-target-value="configure-icloud-modal" data-modal-open-value="add-capability-modal">Back</button>
+        <button type="submit" class="btn btn-primary gap-1.5">
+          <i class="fa-solid fa-plus"></i>
+          Enable iCloud
+        </button>
+      </div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<%# Configure Data Protection Modal %>
+<dialog id="configure-data-protection-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box max-w-lg">
+    <div class="flex items-start gap-4 mb-6">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-shield-halved text-amber-600 text-lg"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-bold">Enable Data Protection</h3>
+        <p class="text-sm text-base-content/60 mt-1">
+          Select the file encryption level for this Bundle ID.
+        </p>
+      </div>
+    </div>
+
+    <%= form_with url: enable_capability_organization_apple_bundle_id_path(@organization, @bundle_id),
+                  method: :post,
+                  class: "space-y-4" do |f| %>
+      <input type="hidden" name="capability_type" value="DATA_PROTECTION">
+
+      <div class="space-y-3">
+        <label class="flex items-start gap-3 p-4 rounded-xl border border-base-200 hover:bg-base-200/50 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <input type="radio" name="data_protection_level" value="COMPLETE_PROTECTION" class="radio radio-primary mt-0.5" checked>
+          <div class="flex-1">
+            <div class="font-medium">Complete Protection</div>
+            <div class="text-sm text-base-content/60 mt-0.5">Files are only accessible when device is unlocked. Most secure option.</div>
+          </div>
+          <span class="badge badge-success badge-sm">Most Secure</span>
+        </label>
+
+        <label class="flex items-start gap-3 p-4 rounded-xl border border-base-200 hover:bg-base-200/50 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <input type="radio" name="data_protection_level" value="PROTECTED_UNLESS_OPEN" class="radio radio-primary mt-0.5">
+          <div class="flex-1">
+            <div class="font-medium">Protected Unless Open</div>
+            <div class="text-sm text-base-content/60 mt-0.5">Files can remain open after device locks, but new files can't be created.</div>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-3 p-4 rounded-xl border border-base-200 hover:bg-base-200/50 cursor-pointer transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <input type="radio" name="data_protection_level" value="PROTECTED_UNTIL_FIRST_USER_AUTH" class="radio radio-primary mt-0.5">
+          <div class="flex-1">
+            <div class="font-medium">Protected Until First User Authentication</div>
+            <div class="text-sm text-base-content/60 mt-0.5">Files are accessible after first unlock until device restart. Good for background apps.</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="modal-action pt-4 border-t border-base-200">
+        <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#switch" data-modal-target-value="configure-data-protection-modal" data-modal-open-value="add-capability-modal">Back</button>
+        <button type="submit" class="btn btn-primary gap-1.5">
+          <i class="fa-solid fa-plus"></i>
+          Enable Data Protection
+        </button>
+      </div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

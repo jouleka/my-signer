@@ -1,0 +1,214 @@
+<% content_for(:title) { "Privacy Policy" } %>
+<% content_for(:description) { "How MySigner collects, uses, stores, and protects personal data related to the service." } %>
+
+<section class="space-y-6">
+  <%= render "shared/page_header",
+             title: "Privacy Policy",
+             description: "This page explains what data #{legal_business_name} collects, how it is used, and the choices available to you.",
+             gradient: "from-emerald-500/10 via-base-100 to-teal-500/10",
+             badge_icon: "fa-solid fa-shield-halved",
+             badge_text: "Privacy",
+             actions: (capture do %>
+    <span class="badge badge-outline">Last updated <%= legal_last_updated_label(:privacy) %></span>
+    <%= link_to terms_of_service_path, class: "btn btn-sm btn-outline gap-2" do %>
+      <i class="fa-solid fa-scale-balanced"></i>
+      Terms
+    <% end %>
+    <%= link_to refund_policy_path, class: "btn btn-sm btn-outline gap-2" do %>
+      <i class="fa-solid fa-receipt"></i>
+      Refunds
+    <% end %>
+  <% end) %>
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="space-y-4">
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">1. Information We Collect</h2>
+        <ul class="list-disc space-y-2 pl-5 text-sm text-base-content/75">
+          <li><strong>Account information</strong> — your name, email address, password (stored as a one-way bcrypt hash), and organization details. If you sign in with a third-party provider (Google, GitHub, Apple, or SAML SSO via your employer's identity provider), we receive the provider's user identifier and the basic profile fields the provider returns (typically name and email).</li>
+          <li><strong>Service data you upload or generate</strong> — project metadata, screenshots, store-listing copy, release notes, and similar app configuration.</li>
+          <li><strong>Cryptographic signing material and store credentials</strong> — App Store Connect API private keys (`.p8`), Android keystore files (`.jks` / `.keystore`) and their passwords, Google Play service-account JSON, Apple Search Ads private keys, and SAML SSO IdP certificates. These are encrypted at rest as described in Section 7 and are used only to perform the operations you request (signing, uploading, syncing, authenticating).</li>
+          <li><strong>Billing and purchase metadata</strong> required to confirm subscriptions, invoices, refunds, and support requests. We do not store full payment-card data — see Section 4.</li>
+          <li><strong>Technical information</strong> — IP address, browser type, device details, request logs, and security events used to operate and protect the service.</li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">2. How We Use Information</h2>
+        <ul class="list-disc space-y-2 pl-5 text-sm text-base-content/75">
+          <li>To provide, secure, maintain, and improve MySigner.</li>
+          <li>To authenticate users, manage organizations, and enforce plan limits.</li>
+          <li>To respond to support requests, billing questions, fraud investigations, and service incidents.</li>
+          <li>To comply with legal obligations, enforce our terms, and protect the service from abuse.</li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">3. AI-Assisted Features</h2>
+        <p class="text-sm text-base-content/75">
+          MySigner offers optional AI-assisted features (translation and rewriting of store-listing copy and release notes). When you use these features,
+          the relevant input you submit is transmitted to a <strong>third-party AI service provider</strong> acting as a sub-processor, which processes the content under its API data-usage terms (the provider does not train its
+          models on data submitted via the API). We do not send credentials, signing keys, or personal data unrelated to the requested operation. AI features
+          are opt-in per action — they only run when you explicitly invoke them from the dashboard.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">4. Billing and Payment Processing</h2>
+        <p class="text-sm text-base-content/75">
+          Paid plans are processed through <strong><a href="https://www.paddle.com" target="_blank" rel="noopener" class="link link-primary">Paddle.com</a></strong>, acting as merchant of record. Paddle handles payment-card data, tax calculation, invoicing, and refund workflows for those
+          transactions; we never see or store full payment-card numbers. We receive subscription, transaction, and customer-identifier metadata from Paddle as needed to provision access and provide support.
+          The merchant name shown on your card or bank statement will be Paddle's, not "MySigner".
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">5. Cookies and Local Storage</h2>
+        <p class="text-sm text-base-content/75">
+          We use only essential cookies and similar storage technologies — to keep you signed in, protect sessions, remember interface preferences such as theme selection, and support core
+          application functionality. We do not set third-party advertising or analytics cookies. We may store limited diagnostic information needed to secure and operate the service.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">6. Sub-Processors</h2>
+        <p class="text-sm text-base-content/75">
+          We rely on the following categories of third-party service providers (sub-processors) to operate the service. Each has access only to the data needed to perform its function and is bound by appropriate contractual safeguards.
+        </p>
+        <div class="overflow-x-auto rounded-xl border border-base-200">
+          <table class="table table-zebra table-sm">
+            <thead>
+              <tr>
+                <th class="text-xs uppercase tracking-wide text-base-content/60">Category</th>
+                <th class="text-xs uppercase tracking-wide text-base-content/60">Purpose</th>
+                <th class="text-xs uppercase tracking-wide text-base-content/60">Region</th>
+              </tr>
+            </thead>
+            <tbody class="text-sm text-base-content/75">
+              <tr>
+                <td>Cloud infrastructure provider</td>
+                <td>Application and database hosting</td>
+                <td>United States</td>
+              </tr>
+              <tr>
+                <td>Object storage provider</td>
+                <td>Storage of screenshot exports (when enabled)</td>
+                <td>EU / US (configurable)</td>
+              </tr>
+              <tr>
+                <td>Paddle.com (merchant of record)</td>
+                <td>Subscription billing, invoicing, tax, refunds</td>
+                <td>UK / EU / US</td>
+              </tr>
+              <tr>
+                <td>Transactional email provider</td>
+                <td>Account, security, and billing notifications</td>
+                <td>EU / US</td>
+              </tr>
+              <tr>
+                <td>AI service provider</td>
+                <td>Optional translation and rewriting features (opt-in per action)</td>
+                <td>United States</td>
+              </tr>
+              <tr>
+                <td>Third-party identity providers</td>
+                <td>Sign-in via Google, GitHub, Apple, or your employer's SAML IdP (only if you choose to use one)</td>
+                <td>Provider-managed</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-sm text-base-content/75">
+          Application servers and our primary database are hosted with a cloud-infrastructure provider in the United States. International data transfers (for example, where you access the service from the EU/UK) are conducted under appropriate safeguards such as the European Commission's Standard Contractual Clauses, where required by applicable law. We will update this page when we add or replace a category of sub-processor or change hosting region.
+        </p>
+        <p class="text-sm text-base-content/75">
+          Business customers operating under a data-processing agreement (DPA) can request the current list of named sub-processors by emailing
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">7. Security</h2>
+        <p class="text-sm text-base-content/75">
+          Sensitive credentials you upload — including App Store Connect API private keys, Android keystore files and their passwords, Google Play service-account JSON, Apple Search Ads private keys, and SAML SSO IdP certificates — are encrypted at rest using strong industry-standard encryption.
+          API tokens used by the CLI and by integrations are stored as one-way hashes — we can verify a token, but we cannot read it back. Application traffic is served over HTTPS.
+        </p>
+        <p class="text-sm text-base-content/75">
+          No method of transmission or storage is completely secure. We will notify affected users without undue delay if we become aware of a security incident affecting your data, in line with applicable law.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">8. Data Retention and Deletion</h2>
+        <p class="text-sm text-base-content/75">
+          We retain account and service data for as long as your account exists. Cancelling a paid subscription does not delete your account — you remain on the Free plan and can re-subscribe any time without losing your data.
+        </p>
+        <p class="text-sm text-base-content/75">
+          You can delete your account at any time from your account settings, or by emailing
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>.
+          When you confirm deletion, your account is <strong>immediately deactivated</strong> — you can no longer sign in, and any API tokens issued to you stop working. We then send you a personal restoration link by email. If you change your mind within <strong>90 days</strong>, you can use that link to reactivate your account exactly as it was. After 90 days, your account and all associated personal data — including organizations you own, store credentials, signing keys, screenshots, release notes, and related records — are <strong>permanently deleted</strong> from our production systems and cannot be recovered.
+        </p>
+        <p class="text-sm text-base-content/75">
+          If you own organizations that other members belong to, those members are <strong>notified by email at the start of the 90-day grace window</strong> so they can export anything they need before the organization is deleted. The grace window applies to the whole organization, not just to your individual data; any active, trialing, paused, or pending Paddle subscription tied to your account is cancelled shortly after you confirm deletion, so you are not charged during the grace window.
+        </p>
+        <p class="text-sm text-base-content/75">
+          Some records (such as billing and invoice records, and fraud-prevention logs) may be retained longer where required by law or to resolve disputes.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">9. Your Rights</h2>
+        <p class="text-sm text-base-content/75">
+          Depending on your location, you may have rights to access, correct, delete, port, or restrict processing of your personal data, or to object to certain processing activities, including
+          rights granted under the EU/UK GDPR, the California Consumer Privacy Act (CCPA), and similar laws. To exercise any of these rights, contact us at
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>.
+          We will respond within the timeframe required by applicable law (typically 30 days). You may also have the right to lodge a complaint with a supervisory authority in your country of residence.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">10. Children</h2>
+        <p class="text-sm text-base-content/75">
+          MySigner is a developer tool intended for use by adults and businesses. It is not directed to children under the age of 16, and we do not knowingly collect personal data from them.
+          If you believe a child has provided us with personal data, please contact us so we can remove it.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">11. Changes to This Policy</h2>
+        <p class="text-sm text-base-content/75">
+          We may update this Privacy Policy from time to time. Material changes will be communicated by updating the "Last updated" date above and, for changes that materially affect your rights,
+          by an in-app notice or email to the address on file. Your continued use of the service after the effective date of an update constitutes acceptance of the revised policy.
+        </p>
+      </div>
+    </div>
+
+    <aside class="space-y-4">
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-3">
+        <div class="text-xs uppercase tracking-[0.2em] text-base-content/50">Contact</div>
+        <p class="text-sm text-base-content/75">
+          Privacy requests and support:
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-3">
+        <div class="text-xs uppercase tracking-[0.2em] text-base-content/50">Related Pages</div>
+        <div class="flex flex-col gap-2">
+          <%= link_to pricing_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-tags"></i>
+            Pricing
+          <% end %>
+          <%= link_to terms_of_service_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-scale-balanced"></i>
+            Terms of Service
+          <% end %>
+          <%= link_to refund_policy_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-receipt"></i>
+            Refund Policy
+          <% end %>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>

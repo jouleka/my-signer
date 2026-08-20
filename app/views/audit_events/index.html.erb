@@ -1,0 +1,166 @@
+<%= breadcrumbs([
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "Audit Log" }
+]) %>
+
+<section class="flex flex-col gap-5">
+  <%# Header %>
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-[1.375rem] font-extrabold leading-tight tracking-[-0.02em] text-base-content/95">
+        <i class="fa-solid fa-shield-halved text-primary/50 mr-1"></i>
+        Audit Log
+      </h1>
+      <p class="text-xs text-base-content/40 mt-1">Sensitive actions performed across your organization</p>
+    </div>
+    <%= link_to organization_audit_events_path(@organization, format: :csv,
+          actor_id: params[:actor_id], action_filter: params[:action_filter],
+          from: params[:from], to: params[:to]),
+        class: btn_ghost_sm_classes do %>
+      <i class="fa-solid fa-download"></i> Export CSV
+    <% end %>
+  </div>
+
+  <%# Filters %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_classes %>">
+      <div class="<%= card_icon_classes %>"><i class="fa-solid fa-filter"></i></div>
+      <span class="<%= card_title_classes %>">Filters</span>
+    </div>
+    <div class="<%= card_body_classes %>">
+      <%= form_with url: organization_audit_events_path(@organization), method: :get, local: true, class: "flex flex-wrap gap-3 items-end" do |f| %>
+        <div class="flex flex-col gap-1">
+          <label for="actor_id" class="<%= label_form_classes %>">Actor</label>
+          <%= select_tag :actor_id,
+                options_from_collection_for_select(
+                  @organization.users.order(:email), :id, :email, params[:actor_id]
+                ),
+                include_blank: "All actors",
+                class: "select select-bordered select-sm w-56" %>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label for="action_filter" class="<%= label_form_classes %>">Action</label>
+          <%= select_tag :action_filter,
+                options_for_select(
+                  AuditEvent::ACTIONS.map { |a| [a.humanize, a] },
+                  params[:action_filter]
+                ),
+                include_blank: "All actions",
+                class: "select select-bordered select-sm w-60" %>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label for="from" class="<%= label_form_classes %>">From</label>
+          <%= date_field_tag :from, params[:from], class: "input input-bordered input-sm" %>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label for="to" class="<%= label_form_classes %>">To</label>
+          <%= date_field_tag :to, params[:to], class: "input input-bordered input-sm" %>
+        </div>
+        <%= f.submit "Apply", class: btn_primary_sm_classes %>
+        <%= link_to "Clear", organization_audit_events_path(@organization), class: btn_ghost_sm_classes %>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Events table %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_split_classes %>">
+      <div class="flex items-center gap-2">
+        <div class="<%= card_icon_classes %>"><i class="fa-solid fa-list-check"></i></div>
+        <span class="<%= card_title_classes %>">Events</span>
+        <span class="<%= count_badge_classes %>"><%= @events.total_count %></span>
+      </div>
+    </div>
+    <% if @events.any? %>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-base-content/[0.06]">
+              <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">Time</th>
+              <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">Actor</th>
+              <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">Action</th>
+              <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">Resource</th>
+              <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">Details</th>
+              <th class="<%= label_uppercase_classes %> px-5 py-3 text-left">IP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @events.each do |event| %>
+              <tr class="border-b border-base-content/[0.04] hover:bg-base-content/[0.015] transition-colors">
+                <td class="px-5 py-3 whitespace-nowrap">
+                  <span class="<%= meta_text_classes %>" title="<%= event.created_at.iso8601 %>">
+                    <%= l(event.created_at, format: :short) %>
+                  </span>
+                </td>
+                <td class="px-5 py-3">
+                  <span class="text-sm font-medium text-base-content/80"><%= event.actor_display %></span>
+                </td>
+                <td class="px-5 py-3">
+                  <span class="<%= muted_badge_classes %>"><%= event.human_action %></span>
+                </td>
+                <td class="px-5 py-3">
+                  <% if event.resource_type.present? %>
+                    <span class="<%= meta_text_classes %>"><%= event.resource_type %> #<%= event.resource_id %></span>
+                  <% else %>
+                    <span class="<%= meta_text_classes %>">—</span>
+                  <% end %>
+                </td>
+                <td class="px-5 py-3 max-w-xs">
+                  <% if event.metadata.any? %>
+                    <details class="cursor-pointer">
+                      <summary class="<%= meta_text_classes %> list-none hover:text-base-content/60">
+                        <i class="fa-solid fa-chevron-right text-[0.5rem] mr-1"></i>View details
+                      </summary>
+                      <pre class="text-[0.625rem] text-base-content/50 mt-1 whitespace-pre-wrap break-all"><%= JSON.pretty_generate(event.metadata) %></pre>
+                    </details>
+                  <% else %>
+                    <span class="<%= meta_text_classes %>">—</span>
+                  <% end %>
+                </td>
+                <td class="px-5 py-3">
+                  <span class="<%= meta_text_classes %> font-mono"><%= event.ip_address || "—" %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <%# Pagination %>
+      <div class="flex items-center justify-between px-5 py-3 border-t border-base-content/[0.04]">
+        <span class="<%= meta_text_classes %>">
+          Showing <%= @events.offset_value + 1 %>–<%= [@events.offset_value + @events.length, @events.total_count].min %> of <%= @events.total_count %>
+        </span>
+        <div class="flex items-center gap-1">
+          <% if @events.prev_page %>
+            <%= link_to organization_audit_events_path(@organization, page: @events.prev_page,
+                  actor_id: params[:actor_id], action_filter: params[:action_filter],
+                  from: params[:from], to: params[:to]),
+                class: btn_ghost_xs_classes do %>
+              <i class="fa-solid fa-chevron-left"></i> Prev
+            <% end %>
+          <% end %>
+          <% if @events.next_page %>
+            <%= link_to organization_audit_events_path(@organization, page: @events.next_page,
+                  actor_id: params[:actor_id], action_filter: params[:action_filter],
+                  from: params[:from], to: params[:to]),
+                class: btn_ghost_xs_classes do %>
+              Next <i class="fa-solid fa-chevron-right"></i>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <div class="<%= card_body_classes %>">
+        <div class="<%= empty_state_classes %>">
+          <div class="<%= empty_state_icon_classes %>">
+            <i class="fa-solid fa-shield-halved text-xl"></i>
+          </div>
+          <p class="<%= empty_state_title_classes %>">No audit events yet</p>
+          <p class="<%= empty_state_text_classes %>">
+            Sensitive actions across your organization will appear here as they happen.
+          </p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</section>

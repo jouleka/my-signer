@@ -1,0 +1,209 @@
+<%= render "shared/ios_breadcrumbs", organization: @organization, active_tab: :bundle_ids %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "Register Bundle ID",
+             description: "Create a new app identifier in App Store Connect.",
+             gradient: "from-purple-500/10 via-base-100 to-indigo-500/10",
+             badge_icon: "fa-solid fa-plus",
+             badge_text: "New",
+             actions: (capture do %>
+      <%= link_to organization_apple_bundle_ids_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back to List</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+             <% end) %>
+
+  <div class="grid lg:grid-cols-3 gap-4 sm:gap-6">
+    <%# Main Form Card %>
+    <div class="lg:col-span-2 min-w-0 overflow-hidden">
+      <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+        <div class="card-body p-4 sm:p-6 md:p-8 min-w-0">
+          <%= form_with url: organization_apple_bundle_ids_path(@organization), method: :post, scope: :bundle_id, class: "space-y-6 sm:space-y-8 min-w-0" do |f| %>
+            <%# Step 1: Identifier %>
+            <div class="space-y-4">
+              <div class="flex items-center gap-3 mb-2 sm:mb-4">
+                <div class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary text-primary-content font-bold text-xs sm:text-sm shrink-0">1</div>
+                <h2 class="text-base sm:text-lg font-bold">App Identifier</h2>
+              </div>
+
+              <div class="form-control w-full min-w-0">
+                <label class="label px-0">
+                  <span class="label-text font-medium flex items-center gap-2">
+                    <i class="fa-solid fa-fingerprint text-xs text-base-content/50"></i>
+                    Bundle ID Identifier
+                  </span>
+                  <span class="label-text-alt badge badge-ghost badge-xs shrink-0">Required</span>
+                </label>
+                <%= f.text_field :identifier,
+                                 class: "input input-bordered w-full font-mono focus:input-primary",
+                                 required: true,
+                                 placeholder: "com.example.myapp",
+                                 pattern: "^[a-zA-Z][a-zA-Z0-9\\-\\.]+$" %>
+                <p class="text-xs text-base-content/50 mt-1.5 break-words">
+                  Use reverse-domain notation (e.g., com.company.appname). Cannot be changed after creation.
+                </p>
+              </div>
+            </div>
+
+            <div class="divider my-0"></div>
+
+            <%# Step 2: Details %>
+            <div class="space-y-4">
+              <div class="flex items-center gap-3 mb-2 sm:mb-4">
+                <div class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary text-primary-content font-bold text-xs sm:text-sm shrink-0">2</div>
+                <h2 class="text-base sm:text-lg font-bold">App Details</h2>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-4 sm:gap-6">
+                <div class="form-control w-full min-w-0">
+                  <label class="label px-0">
+                    <span class="label-text font-medium flex items-center gap-2">
+                      <i class="fa-solid fa-tag text-xs text-base-content/50"></i>
+                      Name
+                    </span>
+                    <span class="label-text-alt badge badge-ghost badge-xs shrink-0">Required</span>
+                  </label>
+                  <%= f.text_field :name,
+                                   class: "input input-bordered w-full focus:input-primary",
+                                   required: true,
+                                   placeholder: "My App" %>
+                  <p class="text-xs text-base-content/50 mt-1.5">A friendly name to identify this bundle ID</p>
+                </div>
+
+                <div class="form-control w-full min-w-0">
+                  <label class="label px-0">
+                    <span class="label-text font-medium flex items-center gap-2">
+                      <i class="fa-solid fa-mobile-screen text-xs text-base-content/50"></i>
+                      Platform
+                    </span>
+                    <span class="label-text-alt badge badge-ghost badge-xs shrink-0">Required</span>
+                  </label>
+                  <%= render "shared/custom_select",
+                             name: "apple_bundle_id[platform]",
+                             options: [["iOS (iPhone, iPad)", "IOS"], ["macOS", "MAC_OS"], ["Universal (iOS + macOS)", "UNIVERSAL"]],
+                             size: "md" %>
+                  <p class="text-xs text-base-content/50 mt-1.5">The platform(s) this app will support</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider my-0"></div>
+
+            <%# Submit Section %>
+            <div class="flex flex-col gap-3 pt-4 sm:pt-6 border-t border-base-200">
+              <div class="alert bg-base-200 border-none overflow-hidden">
+                <i class="fa-solid fa-circle-info text-base-content/50 shrink-0"></i>
+                <div class="min-w-0">
+                  <div class="font-medium text-sm">Before you continue</div>
+                  <div class="text-xs text-base-content/60 break-words">
+                    Make sure you have an active App Store Connect credential configured.
+                    The bundle ID will be registered using your active credential.
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
+                <%= link_to organization_apple_bundle_ids_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md flex-1 sm:flex-initial" do %>
+                  Cancel
+                <% end %>
+                <%= f.submit "Register Bundle ID", class: "btn btn-primary btn-sm sm:btn-md gap-2 flex-1 sm:flex-initial" %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Sidebar %>
+    <div class="space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+      <%# Naming Guide Card %>
+      <div class="card bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/20 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-sm sm:text-base">
+            <i class="fa-solid fa-lightbulb text-warning shrink-0"></i>
+            Naming Guide
+          </h3>
+          <div class="space-y-3 mt-3 text-sm">
+            <div class="flex items-start gap-2.5">
+              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-check text-success text-xs"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="font-medium text-sm">Good Examples</p>
+                <div class="mt-1 space-y-1">
+                  <code class="text-xs bg-base-200 px-1.5 py-0.5 rounded block break-all">com.company.myapp</code>
+                  <code class="text-xs bg-base-200 px-1.5 py-0.5 rounded block break-all">com.company.myapp.dev</code>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-error/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-xmark text-error text-xs"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="font-medium text-sm">Avoid</p>
+                <div class="mt-1 space-y-1">
+                  <code class="text-xs bg-base-200 px-1.5 py-0.5 rounded block break-all">MyApp</code>
+                  <code class="text-xs bg-base-200 px-1.5 py-0.5 rounded block break-all">com.example.*</code>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Platform Info Card %>
+      <div class="card bg-base-100 border border-base-200 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-mobile-screen text-info shrink-0"></i>
+            Platforms
+          </h3>
+          <ul class="space-y-2.5 mt-3 text-xs sm:text-sm">
+            <li class="flex items-start gap-2">
+              <i class="fa-brands fa-apple text-base-content/50 mt-0.5 shrink-0"></i>
+              <div class="min-w-0">
+                <span class="font-medium">iOS</span>
+                <span class="text-base-content/60"> &mdash; iPhone & iPad apps</span>
+              </div>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-laptop text-base-content/50 mt-0.5 shrink-0"></i>
+              <div class="min-w-0">
+                <span class="font-medium">macOS</span>
+                <span class="text-base-content/60"> &mdash; Mac apps</span>
+              </div>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-layer-group text-base-content/50 mt-0.5 shrink-0"></i>
+              <div class="min-w-0">
+                <span class="font-medium">Universal</span>
+                <span class="text-base-content/60"> &mdash; iOS + macOS (Catalyst)</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <%# Need Help Card %>
+      <div class="card bg-base-200/50 border border-base-200 overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-circle-question text-info shrink-0"></i>
+            Need Help?
+          </h3>
+          <p class="text-xs text-base-content/60 mt-2 break-words">
+            Bundle IDs uniquely identify your app across all Apple services. Once created, they cannot be renamed.
+          </p>
+          <a href="https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm gap-2 mt-3 w-full text-xs">
+            <i class="fa-brands fa-apple"></i>
+            Apple Docs
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

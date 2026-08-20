@@ -1,0 +1,19 @@
+<%# Table of Contents %>
+<nav class="xl:sticky xl:top-6" data-controller="toc" data-toc-offset-value="80">
+  <h4 class="text-xs font-semibold uppercase tracking-wide text-base-content/60 mb-3 hidden xl:block">
+    On this page
+  </h4>
+  <ul class="space-y-2 text-sm border-l border-base-200">
+    <% toc.each do |item| %>
+      <li class="<%= toc_level_class(item[:level]) %>">
+        <a href="#<%= item[:id] %>"
+           class="block pl-4 py-1 border-l-2 -ml-px text-base-content/70 hover:text-base-content hover:border-base-300 transition-colors border-transparent"
+           data-toc-target="link"
+           data-toc-id="<%= item[:id] %>"
+           data-action="click->toc#scrollToHeading click->docs-mobile#closeToc">
+          <%= item[:text] %>
+        </a>
+      </li>
+    <% end %>
+  </ul>
+</nav>

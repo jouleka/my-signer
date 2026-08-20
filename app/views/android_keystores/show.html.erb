@@ -1,0 +1,327 @@
+<%= render "shared/android_breadcrumbs", organization: @organization, active_tab: :keystores %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%# Page Header with Gradient %>
+  <div class="rounded-2xl sm:rounded-3xl border border-base-200 bg-gradient-to-br from-amber-500/10 via-base-100 to-orange-500/10 p-4 sm:p-6 md:p-8 shadow-xl overflow-hidden">
+    <div class="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <div class="flex items-start gap-3 sm:gap-4 min-w-0">
+        <div class="w-11 h-11 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shrink-0">
+          <i class="fa-solid fa-key text-base sm:text-2xl text-white"></i>
+        </div>
+        <div class="space-y-1.5 sm:space-y-2 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="badge badge-outline badge-sm sm:badge-lg gap-1.5 sm:gap-2">
+              <i class="fa-solid fa-key text-xs sm:text-sm"></i>
+              Keystore
+            </span>
+            <%= render partial: "android_keystores/status_badge", locals: { keystore: @keystore } %>
+          </div>
+          <h1 class="text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight break-words"><%= @keystore.name %></h1>
+          <div class="flex items-center gap-2 flex-wrap min-w-0">
+            <code class="text-xs sm:text-sm bg-base-200 px-2 sm:px-3 py-1 rounded-lg flex items-center gap-2 truncate max-w-[calc(100vw-8rem)]">
+              <i class="fa-solid fa-at text-base-content/50 shrink-0"></i>
+              <%= @keystore.key_alias %>
+            </code>
+            <button type="button" class="btn btn-ghost btn-xs gap-1 shrink-0"
+                    data-controller="copy"
+                    data-action="click->copy#copy"
+                    data-copy-text-value="<%= @keystore.key_alias %>">
+              <i class="fa-solid fa-copy"></i>
+              Copy
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <%# Stats %>
+      <div class="stats stats-horizontal bg-base-100 border border-base-200 shadow w-full sm:w-auto overflow-x-auto">
+        <div class="stat py-2 px-3 sm:py-3 sm:px-4">
+          <div class="stat-title text-xs">Expiry</div>
+          <div class="stat-value text-base sm:text-lg">
+            <% if @keystore.expires_at %>
+              <%= distance_of_time_in_words_to_now(@keystore.expires_at) %>
+            <% else %>
+              <span class="text-base-content/50">Unknown</span>
+            <% end %>
+          </div>
+          <div class="stat-desc"><%= render partial: "android_keystores/expiry_badge", locals: { keystore: @keystore } %></div>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-4">
+          <div class="stat-title text-xs">File Size</div>
+          <div class="stat-value text-base sm:text-lg"><%= number_to_human_size(@keystore.keystore_file&.bytesize || 0) %></div>
+          <div class="stat-desc">.jks / .keystore</div>
+        </div>
+      </div>
+    </div>
+
+    <%# Action Buttons %>
+    <div class="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
+      <%= link_to organization_android_keystores_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">All Keystores</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+      <%= link_to download_organization_android_keystore_path(@organization, @keystore), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-download"></i>
+        Download
+      <% end %>
+      <% unless @keystore.active? %>
+        <%= link_to activate_organization_android_keystore_path(@organization, @keystore),
+            method: :post,
+            data: { turbo_method: :post },
+            class: "btn btn-ghost btn-sm sm:btn-md gap-2 text-success" do %>
+          <i class="fa-solid fa-bolt"></i>
+          <span class="hidden sm:inline">Set Active</span>
+          <span class="sm:hidden">Activate</span>
+        <% end %>
+      <% end %>
+      <% modal_id = dom_id(@keystore, :delete_modal) %>
+      <button type="button" class="btn btn-ghost btn-sm sm:btn-md gap-2 text-error" data-controller="modal" data-action="click->modal#open" data-modal-target-value="<%= modal_id %>">
+        <i class="fa-solid fa-trash"></i>
+        Delete
+      </button>
+    </div>
+  </div>
+
+  <div class="grid lg:grid-cols-3 gap-4 sm:gap-6">
+    <%# Main Content %>
+    <div class="lg:col-span-2 space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+      <%# Keystore Details Card %>
+      <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+        <div class="card-body p-4 sm:p-6 min-w-0">
+          <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 mb-3 sm:mb-4">
+            <i class="fa-solid fa-circle-info text-primary"></i>
+            Keystore Details
+          </h2>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <%# Assigned App %>
+            <div class="space-y-2 min-w-0">
+              <label class="text-xs uppercase font-bold text-base-content/50 tracking-wider flex items-center gap-2">
+                <i class="fa-brands fa-android text-[10px]"></i>
+                Assigned App
+              </label>
+              <%= form_with model: [@organization, @keystore], method: :patch, class: "mt-1" do |f| %>
+                <%= render "shared/custom_select",
+                           name: "android_keystore[android_app_id]",
+                           options: [["Organization-wide (all apps)", ""]] + @android_apps.map { |a| [a.package_name, a.id.to_s] },
+                           selected: @keystore.android_app_id.to_s,
+                           auto_submit: true %>
+                <noscript>
+                  <%= f.submit "Update", class: "btn btn-sm btn-primary mt-2" %>
+                </noscript>
+              <% end %>
+              <p class="text-xs text-base-content/50">Change which app uses this keystore</p>
+            </div>
+
+            <%# Key Alias %>
+            <div class="space-y-2 min-w-0">
+              <label class="text-xs uppercase font-bold text-base-content/50 tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-at text-[10px]"></i>
+                Key Alias
+              </label>
+              <div class="flex items-center gap-2 min-w-0">
+                <code class="font-mono bg-base-200 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm flex-1 min-w-0 truncate"><%= @keystore.key_alias %></code>
+                <button type="button" class="btn btn-ghost btn-sm btn-square shrink-0"
+                        data-controller="copy"
+                        data-action="click->copy#copy"
+                        data-copy-text-value="<%= @keystore.key_alias %>">
+                  <i class="fa-solid fa-copy"></i>
+                </button>
+              </div>
+              <p class="text-xs text-base-content/50">The entry name inside the keystore file</p>
+            </div>
+
+            <%# Status %>
+            <div class="space-y-2">
+              <label class="text-xs uppercase font-bold text-base-content/50 tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-toggle-on text-[10px]"></i>
+                Status
+              </label>
+              <div class="flex items-center gap-2 flex-wrap">
+                <%= render partial: "android_keystores/status_badge", locals: { keystore: @keystore } %>
+                <% if @keystore.active? %>
+                  <span class="text-xs text-base-content/50">Default for builds</span>
+                <% end %>
+              </div>
+            </div>
+
+            <%# Expiration %>
+            <div class="space-y-2">
+              <label class="text-xs uppercase font-bold text-base-content/50 tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-calendar text-[10px]"></i>
+                Expiration
+              </label>
+              <div class="flex items-center gap-2 flex-wrap">
+                <%= render partial: "android_keystores/expiry_badge", locals: { keystore: @keystore } %>
+              </div>
+              <% if @keystore.expires_at %>
+                <p class="text-xs text-base-content/50"><%= @keystore.expires_at.strftime("%B %d, %Y") %></p>
+              <% end %>
+            </div>
+
+            <%# Created %>
+            <div class="space-y-2">
+              <label class="text-xs uppercase font-bold text-base-content/50 tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-clock text-[10px]"></i>
+                Created
+              </label>
+              <div class="text-sm">
+                <%= time_ago_in_words(@keystore.created_at) %> ago
+              </div>
+              <p class="text-xs text-base-content/50"><%= @keystore.created_at.strftime("%B %d, %Y at %H:%M") %></p>
+            </div>
+
+            <%# File Size %>
+            <div class="space-y-2">
+              <label class="text-xs uppercase font-bold text-base-content/50 tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-file text-[10px]"></i>
+                File Size
+              </label>
+              <div class="text-sm font-medium">
+                <%= number_to_human_size(@keystore.keystore_file&.bytesize || 0) %>
+              </div>
+              <p class="text-xs text-base-content/50">Encrypted keystore file</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Danger Zone %>
+      <div class="card bg-base-100 border border-error/30 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-6 min-w-0">
+          <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 text-error mb-3 sm:mb-4">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Danger Zone
+          </h2>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-error/5 border border-error/20">
+            <div class="min-w-0">
+              <p class="font-medium text-sm">Delete this keystore</p>
+              <p class="text-xs sm:text-sm text-base-content/60 break-words">Once deleted, this keystore cannot be recovered.</p>
+            </div>
+            <button type="button" class="btn btn-error btn-outline btn-sm sm:btn-md gap-2 shrink-0 w-full sm:w-auto" data-controller="modal" data-action="click->modal#open" data-modal-target-value="<%= modal_id %>">
+              <i class="fa-solid fa-trash"></i>
+              Delete Keystore
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Sidebar %>
+    <div class="space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+      <%# Security Check Card %>
+      <div class="card bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-success/20 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-success text-sm sm:text-base">
+            <i class="fa-solid fa-shield-halved shrink-0"></i>
+            Security Status
+          </h3>
+          <ul class="text-xs sm:text-sm space-y-2.5 sm:space-y-3 mt-3">
+            <li class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-success/20 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-check text-success text-[10px] sm:text-xs"></i>
+              </div>
+              <span class="text-base-content/80">Encrypted at rest (AES-256)</span>
+            </li>
+            <li class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-success/20 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-check text-success text-[10px] sm:text-xs"></i>
+              </div>
+              <span class="text-base-content/80">Password validated</span>
+            </li>
+            <li class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-success/20 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-check text-success text-[10px] sm:text-xs"></i>
+              </div>
+              <span class="text-base-content/80">Alias verified</span>
+            </li>
+            <li class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-success/20 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-check text-success text-[10px] sm:text-xs"></i>
+              </div>
+              <span class="text-base-content/80">Ready for signing</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <%# Quick Actions Card %>
+      <div class="card bg-base-100 border border-base-200 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-sm sm:text-base">
+            <i class="fa-solid fa-bolt text-warning shrink-0"></i>
+            Quick Actions
+          </h3>
+          <div class="space-y-1.5 sm:space-y-2 mt-3">
+            <%= link_to download_organization_android_keystore_path(@organization, @keystore), class: "btn btn-ghost btn-sm w-full justify-start gap-2" do %>
+              <i class="fa-solid fa-download text-base-content/50"></i>
+              Download Keystore
+            <% end %>
+            <% unless @keystore.active? %>
+              <%= link_to activate_organization_android_keystore_path(@organization, @keystore),
+                  method: :post,
+                  data: { turbo_method: :post },
+                  class: "btn btn-ghost btn-sm w-full justify-start gap-2" do %>
+                <i class="fa-solid fa-bolt text-base-content/50"></i>
+                Set as Active
+              <% end %>
+            <% end %>
+            <%= link_to new_organization_android_keystore_path(@organization), class: "btn btn-ghost btn-sm w-full justify-start gap-2" do %>
+              <i class="fa-solid fa-plus text-base-content/50"></i>
+              Upload New Keystore
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%# Help Card %>
+      <div class="card bg-base-200/50 border border-base-200 overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-circle-question text-info shrink-0"></i>
+            Need to Rotate?
+          </h3>
+          <p class="text-xs text-base-content/60 mt-2 break-words">
+            If you need to rotate this signing key, update it on Google Play Console first before uploading a new keystore here.
+          </p>
+          <a href="https://support.google.com/googleplay/android-developer/answer/9842756" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm gap-2 mt-3 w-full text-xs">
+            <i class="fa-solid fa-key"></i>
+            Key Rotation Guide
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%# Delete Modal %>
+<dialog id="<%= modal_id %>" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box">
+    <div class="flex items-start gap-3 sm:gap-4">
+      <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-error/10 flex items-center justify-center shrink-0">
+        <i class="fa-solid fa-trash text-error sm:text-lg"></i>
+      </div>
+      <div class="space-y-2 min-w-0">
+        <h3 class="text-base sm:text-lg font-bold">Delete keystore?</h3>
+        <p class="text-sm text-base-content/70 break-words">
+          Are you sure you want to delete <span class="font-semibold"><%= @keystore.name %></span>?
+          This action cannot be undone and may affect your ability to sign apps.
+        </p>
+      </div>
+    </div>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn btn-ghost btn-sm sm:btn-md">Cancel</button>
+      </form>
+      <%= button_to organization_android_keystore_path(@organization, @keystore), method: :delete, class: "btn btn-error btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-trash"></i>
+        Delete
+      <% end %>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

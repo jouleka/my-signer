@@ -1,0 +1,195 @@
+<%= render "shared/android_breadcrumbs", organization: @organization, active_tab: :apps %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "Add Android App",
+             description: "Manually add an Android app by package name. Metadata will be synced from Google Play.",
+             gradient: "from-emerald-500/15 via-base-100 to-lime-500/10",
+             badge_icon: "fa-brands fa-android",
+             badge_text: "New App",
+             actions: (capture do %>
+      <%= link_to organization_android_apps_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back to Apps</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+             <% end) %>
+
+  <div class="grid lg:grid-cols-3 gap-4 sm:gap-6">
+    <%# Main Form Card %>
+    <div class="lg:col-span-2 min-w-0 overflow-hidden">
+      <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+        <div class="card-body p-4 sm:p-6 md:p-8 min-w-0">
+          <%= form_with model: [@organization, @app], local: true, html: { class: "space-y-5 sm:space-y-6 min-w-0" } do |f| %>
+            <%# Error Messages %>
+            <% if @app.errors.any? %>
+              <div class="alert alert-error shadow-lg text-sm">
+                <i class="fa-solid fa-circle-exclamation shrink-0"></i>
+                <div class="min-w-0">
+                  <h3 class="font-bold">Validation Failed</h3>
+                  <ul class="text-sm mt-1 space-y-0.5">
+                    <% @app.errors.full_messages.each do |msg| %>
+                      <li>• <%= msg %></li>
+                    <% end %>
+                  </ul>
+                </div>
+              </div>
+            <% end %>
+
+            <%# Package Name %>
+            <div class="form-control w-full min-w-0">
+              <label class="label px-0">
+                <span class="label-text font-medium flex items-center gap-2">
+                  <i class="fa-solid fa-cube text-xs text-base-content/50"></i>
+                  Package Name
+                </span>
+                <span class="label-text-alt badge badge-ghost badge-xs shrink-0">Required</span>
+              </label>
+              <%= f.text_field :package_name,
+                  class: "input input-bordered w-full focus:input-primary font-mono text-sm",
+                  placeholder: "com.example.myapp",
+                  required: true,
+                  autocomplete: "off",
+                  pattern: "^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+$" %>
+              <p class="text-base-content/50 text-xs mt-1.5 break-words" style="overflow-wrap: anywhere;">
+                The unique identifier for your app (e.g. <code class="bg-base-200 px-1 rounded text-[11px]">com.company.appname</code>)
+              </p>
+            </div>
+
+            <%# Display Name %>
+            <div class="form-control w-full min-w-0">
+              <label class="label px-0">
+                <span class="label-text font-medium flex items-center gap-2">
+                  <i class="fa-solid fa-tag text-xs text-base-content/50"></i>
+                  Display Name
+                </span>
+                <span class="label-text-alt badge badge-outline badge-xs shrink-0">Optional</span>
+              </label>
+              <%= f.text_field :name,
+                  class: "input input-bordered w-full focus:input-primary",
+                  placeholder: "My Awesome App" %>
+              <p class="text-base-content/50 text-xs mt-1.5 break-words" style="overflow-wrap: anywhere;">
+                A friendly name for this app. Will be updated when synced from Google Play.
+              </p>
+            </div>
+
+            <%# Submit Section %>
+            <div class="pt-4 sm:pt-6 border-t border-base-200">
+              <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <p class="text-xs text-base-content/50 flex items-center gap-2 justify-center sm:justify-start">
+                  <i class="fa-solid fa-sync text-info text-xs shrink-0"></i>
+                  <span>Sync will fetch metadata from Google Play</span>
+                </p>
+                <div class="flex items-center gap-2 sm:gap-3">
+                  <%= link_to "Cancel", organization_android_apps_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md flex-1 sm:flex-initial" %>
+                  <%= f.submit "Add App", class: "btn btn-primary btn-sm sm:btn-md gap-2 px-4 sm:px-6 flex-1 sm:flex-initial" %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Sidebar %>
+    <div class="space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+      <%# Why Add Manually? %>
+      <div class="card bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-warning/20 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-warning text-sm sm:text-base">
+            <i class="fa-solid fa-circle-question shrink-0"></i>
+            Why add manually?
+          </h3>
+          <p class="text-xs sm:text-sm text-base-content/70 mt-2 break-words">
+            Google Play API doesn't support automatic app discovery. Apps only appear if the service account has <strong>explicit per-app grants</strong> in Google Play Console.
+          </p>
+          <p class="text-xs sm:text-sm text-base-content/70 mt-2 break-words">
+            Adding an app manually lets you start managing it immediately, and metadata will sync once credentials have access.
+          </p>
+          <% dev_id = @organization.google_play_credentials.active.first&.developer_account_id %>
+          <% if dev_id.present? %>
+            <a href="https://play.google.com/console/developers/<%= dev_id %>/users-and-permissions"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="btn btn-ghost btn-sm gap-2 mt-3 w-full text-xs">
+              <i class="fa-solid fa-user-shield"></i>
+              Users & Permissions
+              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            </a>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Finding Package Name %>
+      <div class="card bg-base-100 border border-base-200 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 mb-3 text-sm sm:text-base">
+            <i class="fa-solid fa-magnifying-glass text-info shrink-0"></i>
+            Where to find your package name
+          </h3>
+
+          <div role="tablist" class="tabs tabs-boxed bg-base-200/50 p-1 min-w-0">
+            <input type="radio" name="pkg_tabs" role="tab" class="tab text-[11px] sm:text-xs !px-2 sm:!px-3" aria-label="Native" checked />
+            <div role="tabpanel" class="tab-content pt-3 sm:pt-4 min-w-0 overflow-hidden">
+              <p class="text-[11px] sm:text-xs text-base-content/60 mb-2 break-words" style="overflow-wrap: anywhere;">
+                In <code class="bg-base-300 px-1 py-0.5 rounded text-[10px] sm:text-[11px]">android/app/build.gradle</code>:
+              </p>
+              <div class="bg-base-300 rounded-lg overflow-x-auto">
+                <pre class="px-3 py-2.5 text-[10px] sm:text-[11px] leading-relaxed"><code>android {
+  defaultConfig {
+    <span class="text-success">applicationId</span> "<span class="text-warning">com.example.app</span>"
+  }
+}</code></pre>
+              </div>
+            </div>
+
+            <input type="radio" name="pkg_tabs" role="tab" class="tab text-[11px] sm:text-xs !px-2 sm:!px-3" aria-label="Expo" />
+            <div role="tabpanel" class="tab-content pt-3 sm:pt-4 min-w-0 overflow-hidden">
+              <p class="text-[11px] sm:text-xs text-base-content/60 mb-2">
+                In your project's <code class="bg-base-300 px-1 py-0.5 rounded text-[10px] sm:text-[11px]">app.json</code>:
+              </p>
+              <div class="bg-base-300 rounded-lg overflow-x-auto">
+                <pre class="px-3 py-2.5 text-[10px] sm:text-[11px] leading-relaxed"><code>{
+  "expo": {
+    "android": {
+      "<span class="text-success">package</span>": "<span class="text-warning">com.example.app</span>"
+    }
+  }
+}</code></pre>
+              </div>
+            </div>
+
+            <input type="radio" name="pkg_tabs" role="tab" class="tab text-[11px] sm:text-xs !px-2 sm:!px-3" aria-label="Play Store" />
+            <div role="tabpanel" class="tab-content pt-3 sm:pt-4 min-w-0 overflow-hidden">
+              <p class="text-[11px] sm:text-xs text-base-content/60 mb-2">
+                Find the <code class="bg-base-300 px-1 py-0.5 rounded text-[10px] sm:text-[11px]">id</code> param in your store URL:
+              </p>
+              <div class="bg-base-300 rounded-lg p-2.5 sm:p-3 text-[10px] sm:text-[11px] font-mono overflow-x-auto break-all">
+                <span class="text-base-content/50">play.google.com/store/apps/details?id=</span><span class="text-warning font-semibold">com.example.app</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# What Happens Next %>
+      <div class="card bg-base-200/50 border border-base-200 overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-arrow-right text-success shrink-0"></i>
+            What happens next?
+          </h3>
+          <ol class="text-xs text-base-content/70 mt-3 space-y-2 list-decimal list-inside">
+            <li>App is added with the package name</li>
+            <li>Run a <strong>sync</strong> to fetch metadata from Google Play</li>
+            <li>Upload builds and manage releases</li>
+          </ol>
+          <div class="divider my-2 text-xs text-base-content/40">Note</div>
+          <p class="text-xs text-base-content/50 break-words">
+            If sync fails to fetch metadata, ensure your service account has access to this app in Google Play Console.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

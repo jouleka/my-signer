@@ -1,0 +1,32 @@
+<% @preheader = "Your #{@resource_type.to_s.downcase} \"#{@resource_name}\" expires in #{@days_remaining} days." %>
+
+<%= ms_eyebrow(40, "Credentials · Expiring soon") %>
+
+<%= ms_display_num(@days_remaining, "days remaining") %>
+
+<%= ms_headline("Expiring <em style=\"font-style:italic; color:#f0c073;\" class=\"ms-callout-warning-text\">soon.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_meta_row("Resource", "<span class=\"ms-ink\" style=\"color:#f4ede0;\">#{ERB::Util.h(@resource_name)}</span>".html_safe) %>
+<%= ms_meta_row("Type", "<span class=\"ms-mute\" style=\"color:#cdc4b6; font-style:italic;\">#{ERB::Util.h(@resource_type)}</span>".html_safe) %>
+<%= ms_meta_row("Expires", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{@resource.expires_at.strftime('%B %-d, %Y')}</span>".html_safe) %>
+
+<%= ms_callout(
+  "Renew or replace this resource before the expiration date to avoid interrupted builds and signing failures. Apple lets you issue replacement certificates immediately from the developer portal.",
+  variant: :warning,
+  accent_label: "Renew before expiry"
+) %>
+
+<% url = case @resource
+         when AppleCertificate
+           organization_apple_certificates_url(@resource.organization)
+         when AppleProvisioningProfile
+           organization_apple_provisioning_profiles_url(@resource.organization)
+         else
+           polymorphic_url([@resource.organization, @resource])
+         end %>
+
+<%= ms_cta("Review now", url, variant: :primary, margin_top: 4, margin_bottom: 22) %>
+
+<%= ms_fine_print("Expiration reminders are sent at multiple intervals leading up to expiry so a single missed email won't catch you out.") %>

@@ -1,0 +1,24 @@
+<%# Invite-member form. Used inline on the organization show page and inside
+    the Invite modal. Requires locals: organization, invite_member_gate,
+    can_manage_members. %>
+<%= form_with url: organization_organization_invitations_path(organization),
+              scope: :organization_invitation,
+              class: "space-y-3",
+              data: {
+                controller: "upgrade-gate",
+                action: "submit->upgrade-gate#intercept",
+                upgrade_gate_blocked_value: invite_member_gate[:blocked],
+                upgrade_gate_prompt_value: json_escape(invite_member_gate[:prompt].to_json),
+                upgrade_gate_close_nearest_dialog_value: invite_member_gate[:closeNearestDialog]
+              } do |f| %>
+  <div class="form-control">
+    <label class="label py-1"><span class="label-text text-xs">Email</span></label>
+    <%= f.email_field :email, class: "input input-bordered input-sm w-full", placeholder: "colleague@company.com" %>
+  </div>
+  <div class="form-control">
+    <label class="label py-1"><span class="label-text text-xs">Role</span></label>
+    <% available_roles = can_manage_members ? Membership.roles.keys : Membership.roles.keys - ["admin"] %>
+    <%= render "shared/custom_select", name: "organization_invitation[role]", options: available_roles %>
+  </div>
+  <%= f.submit "Send Invite", class: "btn btn-primary btn-sm w-full" %>
+<% end %>

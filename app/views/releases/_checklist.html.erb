@@ -1,0 +1,124 @@
+<%# Release checklist widget %>
+<% checklist = local_assigns[:checklist] %>
+<% app = local_assigns[:app] %>
+<% return unless checklist %>
+<% read_only = local_assigns.fetch(:read_only, @organization&.entitlements&.release_checklist_read_only?) %>
+<% release_id = app.is_a?(AppleApp) ? "apple_app_#{app.id}" : "android_app_#{app.id}" %>
+<% interactive_items = (checklist.items || []) + (checklist.custom_items || []) %>
+<% auto_items = checklist.respond_to?(:auto_detected_items) ? Array(checklist.auto_detected_items) : [] %>
+<% all_items = checklist.respond_to?(:all_items_merged) ? Array(checklist.all_items_merged) : (interactive_items + auto_items) %>
+<% total_count = all_items.size %>
+<% checked_count = all_items.count { |i| i["checked"] == true } %>
+<% complete = checklist.completion_percentage == 100 %>
+
+<div id="release-checklist" class="<%= card_container_classes %>" data-controller="release-checklist"
+     data-release-checklist-total-value="<%= total_count %>">
+
+  <div class="<%= card_header_split_classes %>">
+    <div class="flex items-center gap-2.5">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-solid fa-clipboard-check"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Pre-Submission Checklist</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <% if checklist.ready_for_submission? %>
+        <span class="badge badge-sm badge-success gap-1">
+          <i class="fa-solid fa-check text-[0.5rem]"></i> Ready
+        </span>
+      <% end %>
+      <span class="inline-flex items-center text-[0.625rem] font-semibold tabular-nums px-[0.4rem] py-[0.1rem] rounded bg-base-content/[0.04] text-base-content/30" data-release-checklist-target="progressText">
+        <%= checklist.completion_percentage %>%
+      </span>
+    </div>
+  </div>
+
+  <%# Progress bar %>
+  <div class="flex items-center gap-3 px-5 py-3 border-b border-base-content/[0.06]">
+    <div class="flex-1 h-1.5 rounded-[3px] bg-base-content/[0.06] overflow-hidden">
+      <div class="h-full rounded-[3px] transition-[width,background] duration-300 <%= complete ? 'bg-[oklch(0.72_0.19_142.5/0.7)]' : 'bg-primary/60' %>"
+           data-release-checklist-target="progressBar"
+           style="width: <%= checklist.completion_percentage %>%"></div>
+    </div>
+    <span class="<%= meta_text_classes %>" data-release-checklist-target="progressText">
+      <%= checked_count %>/<%= total_count %>
+    </span>
+    <% if auto_items.any? %>
+      <span class="<%= meta_text_classes %>">
+        &middot; <%= auto_items.size %> issue<%= auto_items.size == 1 ? "" : "s" %> auto-detected
+      </span>
+    <% end %>
+  </div>
+
+  <%# Checklist items (default + custom) %>
+  <div class="flex flex-col">
+    <% interactive_items.each do |item| %>
+      <%= render "releases/checklist_item", item: item, checklist: checklist, app: app, release_id: release_id, read_only: read_only %>
+    <% end %>
+  </div>
+
+  <%# Auto-detected issues (read-only) %>
+  <% if auto_items.any? %>
+    <div class="px-5 py-4 border-t border-base-content/[0.06] bg-base-300">
+      <div class="flex items-center gap-2 mb-3">
+        <i class="fa-solid fa-robot text-base-content/40"></i>
+        <span class="<%= label_uppercase_classes %>">
+          Auto-detected (<%= auto_items.size %>)
+        </span>
+      </div>
+      <% auto_items.each do |item| %>
+        <%= render "releases/checklist_item",
+              item: item,
+              checklist: checklist,
+              app: app,
+              release_id: release_id,
+              auto_detected: true,
+              read_only: read_only %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Add custom item form %>
+  <% if checklist.persisted? %>
+    <div class="p-5 border-t border-base-content/5">
+      <% if read_only %>
+        <div class="flex items-center gap-2">
+          <span class="<%= hint_text_classes %>">Custom checklist items</span>
+          <%= pro_badge_html %>
+        </div>
+      <% else %>
+        <form action="<%= add_custom_item_organization_release_release_checklist_path(@organization, release_id, checklist) %>"
+              method="post"
+              class="flex gap-2 items-center">
+          <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
+          <input type="text" name="label" placeholder="Add a custom checklist item..." class="<%= input_field_classes %> flex-1" required>
+          <label class="flex items-center gap-2 text-xs whitespace-nowrap">
+            <input type="checkbox" name="required" value="1" class="checkbox checkbox-xs checkbox-primary">
+            Required
+          </label>
+          <button type="submit" class="<%= btn_primary_sm_classes %>">
+            <i class="fa-solid fa-plus"></i> Add
+          </button>
+        </form>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Ready for submission gate %>
+  <% if checklist.ready_for_submission? %>
+    <div data-release-checklist-target="submitGate"
+         class="p-5 border-t border-base-content/5">
+      <div class="flex items-center gap-2 text-sm text-success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span class="font-semibold">All required items complete. Ready for submission.</span>
+      </div>
+    </div>
+  <% else %>
+    <div data-release-checklist-target="submitGate" class="hidden p-5 border-t border-base-content/5">
+      <div class="flex items-center gap-2 text-sm text-success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span class="font-semibold">All required items complete. Ready for submission.</span>
+      </div>
+    </div>
+  <% end %>
+</div>

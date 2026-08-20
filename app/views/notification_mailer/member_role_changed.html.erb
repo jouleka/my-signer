@@ -1,0 +1,39 @@
+<% @preheader = "Role updated in #{@organization.name}: #{@target_name} is now #{@new_role}." %>
+
+<%= ms_eyebrow(33, "Team · Role updated") %>
+<%= ms_headline("Role <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">updated.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_meta_row("Member", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-weight:400;\">#{ERB::Util.h(@target_name)}</span>".html_safe) %>
+<%= ms_meta_row("Organization", ms_meta_pill(@organization.name)) %>
+<%= ms_meta_row("Changed by", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{ERB::Util.h(@actor_name)}</span>".html_safe) %>
+
+<%# FROM → TO transition card %>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="ms-callout-info" style="background-color:#13161f; border:1px solid #2a3450; border-radius:4px; margin:18px 0 28px 0;">
+  <tr>
+    <td style="padding:20px 24px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td valign="middle" align="left" style="vertical-align:middle;">
+            <span class="ms-faint" style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:#8a8378;">Was</span>
+            <br>
+            <span class="ms-mute" style="font-family:'Instrument Serif', Georgia, serif; font-size:22px; line-height:1.2; color:#a8c0f5; font-style:italic;"><%= @old_role.to_s.titleize %></span>
+          </td>
+          <td valign="middle" align="center" width="50" class="ms-callout-info-text" style="width:50px; vertical-align:middle; text-align:center; font-family:'JetBrains Mono', monospace; font-size:20px; color:#a8c0f5;">
+            &rarr;
+          </td>
+          <td valign="middle" align="right" style="vertical-align:middle;">
+            <span class="ms-faint" style="font-family:'JetBrains Mono', ui-monospace, monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:#8a8378;">Now</span>
+            <br>
+            <span class="ms-callout-info-text" style="font-family:'Instrument Serif', Georgia, serif; font-size:22px; line-height:1.2; color:#c1d3ff; font-style:italic; font-weight:400;"><%= @new_role.to_s.titleize %></span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<%= ms_cta("View organization", organization_url(@organization), variant: :primary, margin_top: 4, margin_bottom: 22) %>
+
+<%= ms_fine_print("Role changes are recorded in the organization's audit log alongside the actor and timestamp.") %>

@@ -1,0 +1,45 @@
+<% @preheader = "Three days left on your Pro trial. Pricing inside — $12 monthly, or $8/mo annual." %>
+
+<%= ms_eyebrow(21, "Trial · Day XI of XIV") %>
+
+<%= ms_display_num(3, "days left") %>
+
+<%= ms_headline("Three days, <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">then Free.</em>", size: 40) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name.presence || @user.email)},") %>
+
+<%= ms_callout(
+  "Your Pro trial ends on <strong style=\"color:inherit;\">#{@trial_ends_at.strftime('%B %-d, %Y')}</strong>. Upgrade now to keep your Pro features without interruption.",
+  variant: :warning,
+  accent_label: "Three days"
+) %>
+
+<%# Pricing card %>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="ms-callout-neutral" style="background-color:#1a1612; border:1px solid #2c2820; border-radius:4px; margin:0 0 28px 0;">
+  <tr>
+    <td style="padding:24px 26px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td valign="bottom" align="left" style="vertical-align:bottom;">
+            <span class="ms-faint" style="font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:#8a8378;">Monthly</span>
+            <br>
+            <span class="ms-ink" style="font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:36px; line-height:1; color:#f4ede0;">$12<span class="ms-mute" style="font-style:italic; font-size:18px; color:#a8a094;">/mo</span></span>
+          </td>
+          <td valign="bottom" align="right" style="vertical-align:bottom;">
+            <span class="ms-faint" style="font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:#8a8378;">Annual</span>
+            <br>
+            <span class="ms-primary" style="font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:36px; line-height:1; color:#c8a8f5; font-style:italic;">$8<span class="ms-mute" style="font-size:18px; color:#a8a094; font-style:italic;">/mo</span></span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<%= ms_body("Five to six times cheaper than alternative ASO tools. No surprise charges, no lock-in, cancel any time.") %>
+
+<%= ms_cta("Upgrade to Pro", pricing_url, variant: :primary, margin_top: 8, margin_bottom: 24) %>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 18) %>
+
+<%= ms_fine_print("Not ready? No problem &mdash; your data stays safe when you move to Free; you just lose Pro features until you upgrade.") %>

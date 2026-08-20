@@ -1,0 +1,98 @@
+<%# Connect Apple Search Ads credentials. Security note: never pre-fill
+    :private_key_pem on re-render (value: ""), and set autocomplete/spellcheck
+    off so browsers don't cache or flag the PEM. %>
+
+<%= breadcrumbs([
+  { label: "Keywords & ASO", path: organization_keywords_path(@organization) },
+  { label: "Connect Apple Search Ads" }
+]) %>
+
+<section class="max-w-xl mx-auto">
+  <%= form_with model: @credential,
+                url: organization_apple_ads_credential_path(@organization),
+                method: :post do |f| %>
+
+    <div class="<%= card_container_classes %> mb-6">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>">
+          <i class="fa-brands fa-apple"></i>
+        </div>
+        <span class="<%= card_title_classes %>">Connect Apple Search Ads</span>
+      </div>
+
+      <div class="<%= card_body_classes %> space-y-5">
+
+        <p class="text-sm text-base-content/65 leading-relaxed">
+          Unlock keyword popularity data and Apple's recommendations.
+          Create an API key in
+          <a target="_blank" rel="noopener"
+             href="https://app-ads.apple.com/cm/app/settings/api"
+             class="text-primary/85 hover:text-primary underline underline-offset-2">Apple Ads settings</a>,
+          then paste the four values below.
+          <a target="_blank" rel="noopener"
+             href="https://developer.apple.com/documentation/apple_ads/implementing-oauth-for-the-apple-search-ads-api"
+             class="text-base-content/45 hover:text-base-content/75 ml-1">Full guide &rarr;</a>
+        </p>
+
+        <%# Shared error/warning target (turbo_stream replaces this on failure
+            so form state is preserved even on the standalone page). %>
+        <%= render "apple_ads_credentials/credential_errors", credential: @credential %>
+
+        <div>
+          <%= f.label :client_id, "Client ID", class: label_form_classes %>
+          <%= f.text_field :client_id,
+                           class: "mt-1 #{input_field_classes} font-mono text-xs",
+                           placeholder: "SEARCHADS.00000000-0000-0000-0000-000000000000",
+                           autocomplete: "off",
+                           spellcheck: "false",
+                           required: true %>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <%= f.label :team_id, "Team ID (Org ID)", class: label_form_classes %>
+            <%= f.text_field :team_id,
+                             class: "mt-1 #{input_field_classes} font-mono text-xs",
+                             placeholder: "1234567890",
+                             autocomplete: "off",
+                             spellcheck: "false",
+                             required: true %>
+          </div>
+
+          <div>
+            <%= f.label :key_id, "Key ID", class: label_form_classes %>
+            <%= f.text_field :key_id,
+                             class: "mt-1 #{input_field_classes} font-mono text-xs",
+                             placeholder: "ABCDEF1234",
+                             autocomplete: "off",
+                             spellcheck: "false",
+                             required: true %>
+          </div>
+        </div>
+
+        <div>
+          <%= f.label :private_key_pem, "Private Key (PEM)", class: label_form_classes %>
+          <%# SECURITY: always re-render with value="" so the PEM never
+              round-trips through HTML on validation/verification failure. %>
+          <%= f.text_area :private_key_pem,
+                          value: "",
+                          rows: 8,
+                          class: "mt-1 #{input_field_classes} font-mono text-[0.7rem] resize-y",
+                          placeholder: "Paste the contents of your .pem key file",
+                          autocomplete: "off",
+                          spellcheck: "false",
+                          required: true %>
+          <p class="<%= hint_text_classes %> mt-1.5">ECC P-256 (ES256). Encrypted at rest.</p>
+        </div>
+      </div>
+
+      <div class="border-t border-base-content/[0.06] px-5 py-3 flex items-center justify-between">
+        <%= link_to organization_keywords_path(@organization),
+                    class: "text-sm text-base-content/50 hover:text-base-content/85 inline-flex items-center gap-1.5 transition-colors" do %>
+          <i class="fa-solid fa-arrow-left text-xs"></i> Cancel
+        <% end %>
+        <%= f.submit "Connect & verify", class: btn_primary_classes %>
+      </div>
+    </div>
+  <% end %>
+</section>

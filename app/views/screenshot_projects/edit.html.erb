@@ -1,0 +1,100 @@
+<% content_for :head do %>
+  <meta name="turbo-cache-control" content="no-cache">
+<% end %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "Edit Project Settings",
+             description: "Update the settings for \"#{@project.name}\".",
+             gradient: "from-violet-500/10 via-base-100 to-fuchsia-500/10",
+             badge_icon: "fa-solid fa-gear",
+             badge_text: "Settings",
+             actions: (capture do %>
+      <%= link_to editor_organization_screenshot_project_path(@organization, @project), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back to Editor</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+             <% end) %>
+
+  <div class="grid lg:grid-cols-3 gap-4 sm:gap-6">
+    <div class="lg:col-span-2 min-w-0 overflow-hidden">
+      <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+        <div class="card-body p-4 sm:p-6 md:p-8 min-w-0">
+          <%= render "form", project: @project %>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+      <div class="card bg-base-100 border border-base-200 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-sm sm:text-base">
+            <i class="fa-solid fa-circle-info text-info shrink-0"></i>
+            Project Info
+          </h3>
+          <div class="space-y-2 mt-2 text-sm">
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60 text-xs">Scenes</span>
+              <span class="font-medium text-xs"><%= @project.scenes_count %></span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60 text-xs">Created</span>
+              <span class="font-medium text-xs"><%= @project.created_at.strftime("%b %d, %Y") %></span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-base-content/60 text-xs">Updated</span>
+              <span class="font-medium text-xs"><%= time_ago_in_words(@project.updated_at) %> ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card bg-error/5 border border-error/20 overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-error text-sm sm:text-base">
+            <i class="fa-solid fa-triangle-exclamation shrink-0"></i>
+            Danger Zone
+          </h3>
+          <p class="text-xs text-base-content/60 mt-2">
+            Deleting this project will permanently remove all scenes and settings.
+          </p>
+          <% modal_id = "delete_project_edit_#{@project.id}" %>
+          <button type="button" class="btn btn-error btn-sm gap-2 mt-3 w-full" data-controller="modal" data-action="click->modal#open" data-modal-target-value="<%= modal_id %>">
+            <i class="fa-solid fa-trash"></i>
+            Delete Project
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="delete_project_edit_<%= @project.id %>" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-trash text-error text-lg"></i>
+        </div>
+        <div class="space-y-2">
+          <h3 class="text-lg font-bold">Delete project?</h3>
+          <p class="text-sm text-base-content/70">
+            Are you sure you want to delete <span class="font-semibold"><%= @project.name %></span> and all its scenes?
+            This action cannot be undone.
+          </p>
+        </div>
+      </div>
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn btn-ghost">Cancel</button>
+        </form>
+        <%= button_to organization_screenshot_project_path(@organization, @project), method: :delete, class: "btn btn-error gap-2" do %>
+          <i class="fa-solid fa-trash"></i>
+          Delete
+        <% end %>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+</section>

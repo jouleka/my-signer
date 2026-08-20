@@ -1,0 +1,126 @@
+<%# app/views/pricing/_trust_strip.html.erb
+    Consolidated "why MySigner + fine print" section.
+    IMPORTANT: every claim here is backed by either the legal pages
+    (app/views/legal/*.html.erb) or verifiable code behavior. If you add a
+    new claim that isn't already in the ToS / Privacy / Refund policy, you
+    MUST update those pages first. Do not add specific time windows,
+    retention periods, or refund terms that aren't in the legal pages —
+    false comparative or commitment claims carry real legal risk.
+%>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16 border-t border-base-content/[0.06]">
+  <header class="mb-8 sm:mb-10 text-center">
+    <h2 class="text-xl sm:text-2xl font-bold text-base-content/90 mb-2">Why MySigner, and what you're signing up for</h2>
+    <p class="text-sm text-base-content/55 max-w-2xl mx-auto">No bait, no lock-in, no surprise invoices. Every claim below is verifiable in our legal pages or the product itself.</p>
+  </header>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+
+    <%# Column 1 — What you get (the value prop, concrete) %>
+    <div class="rounded-[0.875rem] border border-base-content/[0.08] bg-base-content/[0.02] p-5 sm:p-6 flex flex-col gap-4 min-w-0">
+      <div class="flex items-center gap-2.5">
+        <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+          <i class="fa-solid fa-layer-group text-primary text-[0.8rem]" aria-hidden="true"></i>
+        </span>
+        <h3 class="text-[0.9375rem] font-bold text-base-content/90">Replace 3&ndash;4 tools</h3>
+      </div>
+      <ul class="flex flex-col gap-3 text-[0.8125rem] leading-relaxed text-base-content/70 list-none">
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">Screenshot studio, store-listing sync, keyword tracking, review monitoring, and release management</span> &mdash; in one subscription, not five.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">CLI on every plan</span> &mdash; Free tier included, not paywalled behind Pro.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">Built for indie devs and agencies</span> &mdash; SSO, audit log, and RBAC at Team tier without the enterprise price tag.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">Public prices, no sales calls.</span> Upgrade or downgrade yourself from this page.</span>
+        </li>
+      </ul>
+    </div>
+
+    <%# Column 2 — Trial & billing (what it actually costs you to try us) %>
+    <div class="rounded-[0.875rem] border border-base-content/[0.08] bg-base-content/[0.02] p-5 sm:p-6 flex flex-col gap-4 min-w-0">
+      <div class="flex items-center gap-2.5">
+        <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+          <i class="fa-solid fa-credit-card text-primary text-[0.8rem]" aria-hidden="true"></i>
+        </span>
+        <h3 class="text-[0.9375rem] font-bold text-base-content/90">Trial &amp; billing</h3>
+      </div>
+      <ul class="flex flex-col gap-3 text-[0.8125rem] leading-relaxed text-base-content/70 list-none">
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">14-day Pro trial, no card required.</span> Drops to Free automatically if you don't subscribe.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">Cancel anytime</span> &mdash; access continues until the end of the current billing period.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">Billing preview before every change.</span> You see exactly what you'll be charged before you confirm.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">No overage charges.</span> We cap limits, we don't auto-bill for them.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span>Refunds and cancellation handled per <%= link_to "our refund policy", refund_policy_path, class: "underline decoration-base-content/20 hover:decoration-base-content/60 underline-offset-2" %>.</span>
+        </li>
+      </ul>
+    </div>
+
+    <%# Column 3 — Security & compliance (the "should I trust you with my keys?" column) %>
+    <div class="rounded-[0.875rem] border border-base-content/[0.08] bg-base-content/[0.02] p-5 sm:p-6 flex flex-col gap-4 min-w-0">
+      <div class="flex items-center gap-2.5">
+        <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+          <i class="fa-solid fa-shield-halved text-primary text-[0.8rem]" aria-hidden="true"></i>
+        </span>
+        <h3 class="text-[0.9375rem] font-bold text-base-content/90">Security &amp; compliance</h3>
+      </div>
+      <ul class="flex flex-col gap-3 text-[0.8125rem] leading-relaxed text-base-content/70 list-none">
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">Paddle is merchant of record.</span> They handle SOC 2, GDPR, VAT, and sales tax in the regions they support.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">Credentials encrypted at rest.</span> App Store Connect private keys, Android keystores (and their passwords), Google Play service-account JSON, Apple Search Ads keys, and SAML SSO certificates are encrypted in our database using strong industry-standard encryption. API tokens are stored as one-way hashes &mdash; we can verify them, never read them back.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">Team tier:</span> SAML 2.0 SSO, audit log with 365-day retention, role-based access control.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span><span class="font-semibold text-base-content/85">You own your content.</span> We only host and process it to operate the service &mdash; details in <%= link_to "the terms", terms_of_service_path, class: "underline decoration-base-content/20 hover:decoration-base-content/60 underline-offset-2" %>.</span>
+        </li>
+        <li class="flex items-start gap-2.5">
+          <i class="fa-solid fa-check text-primary text-[0.65rem] mt-1 shrink-0" aria-hidden="true"></i>
+          <span>Data rights and deletion requests handled per <%= link_to "our privacy policy", privacy_policy_path, class: "underline decoration-base-content/20 hover:decoration-base-content/60 underline-offset-2" %>.</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <%# Bottom verification row — legal pages with the CORRECT routes %>
+  <div class="mt-10 pt-6 border-t border-base-content/[0.04] flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-base-content/45">
+    <%= link_to "Terms of Service", terms_of_service_path, class: "hover:text-base-content/70 transition-colors" %>
+    <span class="text-base-content/15" aria-hidden="true">&middot;</span>
+    <%= link_to "Privacy policy", privacy_policy_path, class: "hover:text-base-content/70 transition-colors" %>
+    <span class="text-base-content/15" aria-hidden="true">&middot;</span>
+    <%= link_to "Refund policy", refund_policy_path, class: "hover:text-base-content/70 transition-colors" %>
+    <span class="text-base-content/15" aria-hidden="true">&middot;</span>
+    <a href="https://www.paddle.com/legal/buyer-terms" target="_blank" rel="noopener" class="hover:text-base-content/70 transition-colors inline-flex items-center gap-1">
+      Paddle buyer terms <i class="fa-solid fa-arrow-up-right-from-square text-[0.55rem]" aria-hidden="true"></i>
+    </a>
+    <span class="text-base-content/15" aria-hidden="true">&middot;</span>
+    <span>Prices in USD</span>
+  </div>
+</section>

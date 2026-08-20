@@ -1,0 +1,40 @@
+<div class="space-y-3 mb-6">
+  <%# Mobile breadcrumb: compact back link + current page %>
+  <div class="breadcrumbs text-sm text-base-content/70 hidden sm:block">
+    <ul>
+      <% items.each_with_index do |item, idx| %>
+        <% last = idx == items.length - 1 %>
+        <li>
+          <% if item[:path] && !last %>
+            <%= link_to item[:label], item[:path], class: "link link-hover" %>
+          <% else %>
+            <span class="<%= last ? 'font-semibold text-base-content' : '' %>"><%= item[:label] %></span>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+  <div class="sm:hidden">
+    <% back_item = items.select { |i| i[:path] }.last %>
+    <% if back_item %>
+      <%= link_to back_item[:path], class: "inline-flex items-center gap-1.5 text-sm text-base-content/60 hover:text-base-content transition-colors" do %>
+        <i class="fa-solid fa-chevron-left text-[10px]"></i>
+        <%= back_item[:label] %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <% if tabs.present? %>
+    <div role="tablist" class="tabs tabs-boxed tabs-sm w-full sm:w-auto overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+      <% tabs.each do |tab| %>
+        <% classes = ["tab", "whitespace-nowrap", ("tab-active" if tab[:active]), ("font-medium" if tab[:active])].compact.join(" ") %>
+        <% if tab[:active] %>
+          <span role="tab" aria-selected="true" class="<%= classes %>"><%= tab[:label] %></span>
+        <% else %>
+          <%= link_to tab[:label], tab[:path], role: "tab", aria_selected: "false", class: classes %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+

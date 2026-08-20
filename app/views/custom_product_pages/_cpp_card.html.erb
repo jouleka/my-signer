@@ -1,0 +1,36 @@
+<%# Card row for a single CPP on the index page %>
+<%= link_to organization_custom_product_page_path(@organization, cpp),
+    class: "flex items-center justify-between px-5 py-3.5 hover:bg-base-content/[0.02] transition-colors" do %>
+  <div class="flex items-center gap-3 min-w-0">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-semibold text-base-content/80 truncate"><%= cpp.name %></span>
+        <% version = cpp.latest_version %>
+        <% if version %>
+          <span class="<%= cpp_state_badge_classes(version.state) %>">
+            <%= version.published? ? "Published" : "Draft" %>
+          </span>
+        <% end %>
+        <% unless cpp.visible? %>
+          <span class="<%= muted_badge_classes %>">Hidden</span>
+        <% end %>
+      </div>
+      <% if cpp.performance_available? %>
+        <div class="flex items-center gap-3 mt-1">
+          <span class="<%= meta_text_classes %>">
+            <i class="fa-solid fa-eye text-[0.5rem]"></i>
+            <%= number_with_delimiter(cpp.performance_impressions) %> impressions
+          </span>
+          <span class="<%= meta_text_classes %>">
+            <i class="fa-solid fa-download text-[0.5rem]"></i>
+            <%= number_with_delimiter(cpp.performance_downloads) %> downloads
+          </span>
+          <span class="<%= meta_text_classes %>">
+            <%= number_to_percentage(cpp.performance_conversion_rate * 100, precision: 1) %> CVR
+          </span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  <i class="fa-solid fa-chevron-right text-[0.5rem] text-base-content/25 shrink-0"></i>
+<% end %>

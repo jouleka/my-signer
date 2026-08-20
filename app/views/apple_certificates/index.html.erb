@@ -1,0 +1,319 @@
+<%= render "shared/ios_breadcrumbs", organization: @organization, active_tab: :certificates %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "Apple Certificates",
+             description: "Track distribution and development certificates, monitor expirations, and keep your build pipeline unblocked.",
+             gradient: "from-pink-500/10 via-base-100 to-rose-500/10",
+             badge_icon: "fa-solid fa-certificate",
+             badge_text: "Signing Identities",
+             stats: (capture do %>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Total</div>
+          <div class="stat-value text-xl sm:text-2xl"><%= @total_certificates %></div>
+          <div class="stat-desc">certificates</div>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Expiring</div>
+          <div class="stat-value text-xl sm:text-2xl text-warning"><%= @expiring_certificates %></div>
+          <div class="stat-desc">within 30 days</div>
+        </div>
+        <% if @q_type.present? || @q_platform.present? || @q_query.present? %>
+          <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+            <div class="stat-title text-xs">Filtered</div>
+            <div class="stat-value text-xl sm:text-2xl text-accent"><%= @certificates.size %></div>
+            <div class="stat-desc">showing</div>
+          </div>
+        <% end %>
+             <% end),
+             actions: (capture do %>
+      <%= link_to organization_apple_apps_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back to Apps</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+      <%= link_to organization_apple_certificates_path(@organization, format: :csv, type: @q_type, platform: @q_platform, q: @q_query), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-file-csv"></i>
+        <span class="hidden sm:inline">Export CSV</span>
+        <span class="sm:hidden">CSV</span>
+      <% end %>
+             <% end) %>
+
+  <%# Certificates Card %>
+  <%= render "shared/content_card",
+             filter_class: "lg:flex-row lg:items-end",
+             filter: (capture do %>
+    <%= form_with url: organization_apple_certificates_path(@organization), method: :get, local: true, class: "flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1 min-w-0 flex-wrap" do %>
+      <div class="form-control flex-1 min-w-0 sm:max-w-[160px]">
+        <label class="label py-1">
+          <span class="label-text text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-tag text-[10px] text-base-content/50"></i>
+            Type
+          </span>
+        </label>
+        <%= render "shared/custom_select", name: "type", options: [["All types", ""]] + @types.map { |t| [t, t] }, selected: @q_type.to_s %>
+      </div>
+      <div class="form-control flex-1 min-w-0 sm:max-w-[160px]">
+        <label class="label py-1">
+          <span class="label-text text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-mobile-screen text-[10px] text-base-content/50"></i>
+            Platform
+          </span>
+        </label>
+        <%= render "shared/custom_select", name: "platform", options: [["All platforms", ""]] + @platforms.map { |p| [p, p] }, selected: @q_platform.to_s %>
+      </div>
+      <div class="form-control flex-1 min-w-0 sm:max-w-xs">
+        <label class="label py-1">
+          <span class="label-text text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-magnifying-glass text-[10px] text-base-content/50"></i>
+            Search
+          </span>
+        </label>
+        <input type="text" name="q" value="<%= @q_query %>" placeholder="Name or serial..." class="input input-bordered input-sm w-full" autocomplete="off">
+      </div>
+      <div class="flex items-end gap-2">
+        <button class="btn btn-primary btn-sm gap-2" type="submit">
+          <i class="fa-solid fa-filter"></i>
+          Apply
+        </button>
+        <% if @q_type.present? || @q_platform.present? || @q_query.present? %>
+          <%= link_to organization_apple_certificates_path(@organization), class: "btn btn-ghost btn-sm gap-2" do %>
+            <i class="fa-solid fa-xmark"></i>
+            Clear
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+             <% end) do %>
+
+    <% if @certificates.any? %>
+        <%# Desktop Table %>
+        <div class="hidden lg:block">
+          <div class="overflow-x-auto rounded-2xl border border-base-200">
+            <table class="table">
+              <thead>
+                <tr class="bg-base-200/50 text-xs uppercase text-base-content/60 font-bold tracking-wider">
+                  <th>Certificate</th>
+                  <th>Team</th>
+                  <th>Type</th>
+                  <th>Platform</th>
+                  <th>Serial</th>
+                  <th>Expiry</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @certificates.each do |c| %>
+                  <%
+                    expires_at = c.expires_at
+                    days = expires_at.present? ? (expires_at.to_date - Date.current).to_i : nil
+                    expiry_info = if days.nil?
+                      { badge: "badge-ghost", icon: nil, text: "Unknown" }
+                    elsif days <= 0
+                      { badge: "badge-error", icon: "fa-circle-exclamation", text: "Expired" }
+                    elsif days <= 30
+                      { badge: "badge-warning", icon: "fa-triangle-exclamation", text: expires_at.strftime("%b %d, %Y") }
+                    elsif days <= 90
+                      { badge: "badge-info", icon: "fa-clock", text: expires_at.strftime("%b %d, %Y") }
+                    else
+                      { badge: "badge-success", icon: "fa-check", text: expires_at.strftime("%b %d, %Y") }
+                    end
+                  %>
+                  <tr class="hover:bg-base-200/30 transition-colors">
+                    <td>
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500/20 to-rose-500/20 flex items-center justify-center">
+                          <i class="fa-solid fa-certificate text-pink-600"></i>
+                        </div>
+                        <div>
+                          <div class="font-semibold"><%= c.name %></div>
+                          <% if c.team_id.present? && @team_names[c.team_id].present? %>
+                            <div class="text-xs text-base-content/50"><%= @team_names[c.team_id] %></div>
+                          <% end %>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <% if c.team_id.present? %>
+                        <code class="text-xs bg-base-200 px-2 py-0.5 rounded"><%= c.team_id %></code>
+                      <% else %>
+                        <span class="text-base-content/30">&mdash;</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <span class="badge badge-ghost badge-sm"><%= c.certificate_type %></span>
+                    </td>
+                    <td>
+                      <% if c.platform.present? %>
+                        <span class="badge badge-outline badge-sm gap-1.5">
+                          <% if c.platform == "IOS" %>
+                            <i class="fa-solid fa-mobile-screen text-[10px]"></i>
+                          <% elsif c.platform == "MAC_OS" %>
+                            <i class="fa-solid fa-laptop text-[10px]"></i>
+                          <% else %>
+                            <i class="fa-solid fa-tv text-[10px]"></i>
+                          <% end %>
+                          <%= c.platform %>
+                        </span>
+                      <% else %>
+                        <span class="text-base-content/30">&mdash;</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <div class="flex items-center gap-2">
+                        <code class="text-xs bg-base-200 px-2 py-0.5 rounded"><%= c.serial_number.truncate(12) %></code>
+                        <button type="button" class="btn btn-ghost btn-xs btn-square"
+                                data-controller="copy"
+                                data-action="click->copy#copy"
+                                data-copy-text-value="<%= c.serial_number %>">
+                          <i class="fa-solid fa-copy text-base-content/50"></i>
+                        </button>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge <%= expiry_info[:badge] %> gap-1.5 whitespace-nowrap">
+                        <% if expiry_info[:icon] %>
+                          <i class="fa-solid <%= expiry_info[:icon] %> text-[10px]"></i>
+                        <% end %>
+                        <%= expiry_info[:text] %>
+                      </span>
+                    </td>
+                    <td class="text-right">
+                      <div class="flex items-center justify-end gap-1">
+                        <%= link_to organization_apple_certificate_path(@organization, c), class: "btn btn-ghost btn-xs gap-1.5" do %>
+                          <i class="fa-solid fa-eye"></i>
+                          View
+                        <% end %>
+                        <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                                data-controller="raw-json"
+                                data-action="click->raw-json#show"
+                                data-raw-json-content-value="<%= c.raw_json %>"
+                                data-raw-json-title-value="Certificate: <%= c.name %>">
+                          <i class="fa-solid fa-code"></i>
+                          JSON
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <%# Mobile Cards %>
+        <div class="lg:hidden space-y-3">
+          <% @certificates.each do |c| %>
+            <%
+              expires_at = c.expires_at
+              days = expires_at.present? ? (expires_at.to_date - Date.current).to_i : nil
+              expiry_info = if days.nil?
+                { badge: "badge-ghost", icon: nil, text: "Unknown", border: "border-base-200" }
+              elsif days <= 0
+                { badge: "badge-error", icon: "fa-circle-exclamation", text: "Expired", border: "border-error/50 bg-error/5" }
+              elsif days <= 30
+                { badge: "badge-warning", icon: "fa-triangle-exclamation", text: expires_at.strftime("%b %d"), border: "border-warning/50 bg-warning/5" }
+              elsif days <= 90
+                { badge: "badge-info", icon: "fa-clock", text: expires_at.strftime("%b %d, %Y"), border: "border-base-200" }
+              else
+                { badge: "badge-success", icon: "fa-check", text: expires_at.strftime("%b %d, %Y"), border: "border-base-200" }
+              end
+            %>
+            <div class="card border <%= expiry_info[:border] %> shadow-sm overflow-hidden">
+              <div class="card-body p-3 sm:p-4 space-y-3 min-w-0">
+                <div class="flex items-start gap-3">
+                  <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-pink-500/20 to-rose-500/20 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-certificate text-pink-600 sm:text-lg"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-sm sm:text-base truncate"><%= c.name %></div>
+                    <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span class="badge badge-ghost badge-xs"><%= c.certificate_type %></span>
+                      <% if c.platform.present? %>
+                        <span class="badge badge-outline badge-xs"><%= c.platform %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                  <span class="badge <%= expiry_info[:badge] %> badge-sm gap-1 shrink-0">
+                    <% if expiry_info[:icon] %>
+                      <i class="fa-solid <%= expiry_info[:icon] %> text-[8px]"></i>
+                    <% end %>
+                    <%= expiry_info[:text] %>
+                  </span>
+                </div>
+
+                <div class="grid gap-2 text-sm bg-base-200/50 rounded-xl p-2 sm:p-3">
+                  <% if c.team_id.present? %>
+                    <div class="flex justify-between items-center">
+                      <span class="text-base-content/60 text-xs">Team</span>
+                      <code class="text-xs"><%= c.team_id %></code>
+                    </div>
+                  <% end %>
+                  <div class="flex justify-between items-center">
+                    <span class="text-base-content/60 text-xs">Serial</span>
+                    <code class="text-xs truncate max-w-[50%]"><%= c.serial_number.truncate(16) %></code>
+                  </div>
+                  <% if expires_at.present? %>
+                    <div class="flex justify-between items-center">
+                      <span class="text-base-content/60 text-xs">Expires</span>
+                      <span class="text-xs font-medium"><%= expires_at.strftime("%B %d, %Y") %></span>
+                    </div>
+                  <% end %>
+                </div>
+
+                <div class="flex flex-wrap gap-1.5 sm:gap-2">
+                  <%= link_to organization_apple_certificate_path(@organization, c), class: "btn btn-primary btn-xs gap-1.5" do %>
+                    <i class="fa-solid fa-eye"></i>
+                    View
+                  <% end %>
+                  <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                          data-controller="copy"
+                          data-action="click->copy#copy"
+                          data-copy-text-value="<%= c.serial_number %>">
+                    <i class="fa-solid fa-copy"></i>
+                    Copy
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                          data-controller="raw-json"
+                          data-action="click->raw-json#show"
+                          data-raw-json-content-value="<%= c.raw_json %>"
+                          data-raw-json-title-value="Certificate: <%= c.name %>">
+                    <i class="fa-solid fa-code"></i>
+                    JSON
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <%# Empty State %>
+        <div class="flex flex-col items-center justify-center py-10 sm:py-16 text-center px-2">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-pink-500/20 to-rose-500/20 flex items-center justify-center mb-4">
+            <i class="fa-solid fa-certificate text-2xl sm:text-3xl text-pink-500/50"></i>
+          </div>
+          <h3 class="text-lg sm:text-xl font-bold">No Certificates Found</h3>
+          <p class="text-base-content/60 max-w-sm mt-2 mb-6 text-sm break-words">
+            <% if @q_type.present? || @q_platform.present? || @q_query.present? %>
+              No certificates match the current filters. Try adjusting your search criteria.
+            <% else %>
+              Sync your App Store Connect data to import your signing certificates.
+            <% end %>
+          </p>
+          <div class="flex flex-wrap gap-2 sm:gap-3">
+            <% if @q_type.present? || @q_platform.present? || @q_query.present? %>
+              <%= link_to organization_apple_certificates_path(@organization), class: "btn btn-primary btn-sm sm:btn-md gap-2" do %>
+                <i class="fa-solid fa-xmark"></i>
+                Clear Filters
+              <% end %>
+            <% end %>
+            <%= link_to organization_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+              <i class="fa-solid fa-sync"></i>
+              <span class="hidden sm:inline">Sync Organization</span>
+              <span class="sm:hidden">Sync</span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+  <% end %>
+</section>

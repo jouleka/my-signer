@@ -1,0 +1,68 @@
+<%
+  # Rendered once in application layout. Shows when user hits a plan limit.
+  # Populated via flash[:upgrade_prompt] or the mysigner:upgrade-prompt JS event.
+%>
+<div data-controller="upgrade-prompt"
+     data-upgrade-prompt-initial-payload-value="<%= json_escape(upgrade_prompt_flash.to_json) %>"
+     data-upgrade-prompt-pricing-path-value="<%= pricing_path %>">
+  <div id="upgrade-prompt-callout"
+       class="fixed inset-0 z-[70] hidden"
+       data-upgrade-prompt-target="panel"
+       aria-live="polite">
+    <%# Backdrop %>
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-action="click->upgrade-prompt#close"></div>
+
+    <%# Modal %>
+    <div class="relative flex min-h-full items-end justify-center p-0 sm:items-center sm:p-6">
+      <article class="w-full max-w-md overflow-hidden border border-base-200 bg-base-100 shadow-2xl sm:rounded-2xl">
+        <%# Header %>
+        <div class="flex items-center justify-between border-b border-base-200 px-5 py-3.5">
+          <div class="flex items-center gap-2">
+            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+              <i class="fa-solid fa-arrow-up text-xs text-primary"></i>
+            </div>
+            <span class="text-sm font-semibold" data-upgrade-prompt-target="title">Upgrade required</span>
+          </div>
+          <button type="button"
+                  class="btn btn-sm btn-circle btn-ghost -mr-1"
+                  data-action="click->upgrade-prompt#close"
+                  aria-label="Dismiss">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+
+        <div class="px-5 py-4 space-y-3">
+          <%# Limit explanation %>
+          <div class="rounded-xl bg-base-200/50 px-4 py-3">
+            <p class="text-sm text-base-content/80" data-upgrade-prompt-target="message">
+              Your current plan has reached this feature's limit.
+            </p>
+            <p class="mt-1 text-xs text-base-content/50" data-upgrade-prompt-target="suggestion">
+              Upgrade to continue.
+            </p>
+          </div>
+
+          <%# Upgrade path badge %>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-outline badge-sm" data-upgrade-prompt-target="eyebrow">Upgrade available</span>
+          </div>
+        </div>
+
+        <%# Actions %>
+        <div class="flex flex-col gap-2 border-t border-base-200 px-5 py-4 sm:flex-row-reverse">
+          <a href="<%= pricing_path %>#plans-grid"
+             class="btn btn-primary flex-1 gap-2"
+             data-upgrade-prompt-target="cta">
+            <span data-upgrade-prompt-target="ctaLabel">See plans</span>
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </a>
+          <button type="button"
+                  class="btn btn-ghost flex-1"
+                  data-action="click->upgrade-prompt#close">
+            Not now
+          </button>
+        </div>
+      </article>
+    </div>
+  </div>
+</div>

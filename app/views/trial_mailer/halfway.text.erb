@@ -1,0 +1,23 @@
+You're halfway through your Pro trial
+
+Hi <%= @user.name.presence || @user.email %>,
+
+Your free Pro trial ends in 7 days on <%= @trial_ends_at.strftime("%B %d, %Y") %>.
+After that, your account moves to the Free plan and you'll lose access to Pro features.
+
+What you'll keep using on Free:
+- The full CLI — signing, builds, uploads to TestFlight and Play Store
+- Basic keyword tracking (5 per app)
+- Review monitoring on 1 app
+- 5 AI translations and 3 AI rewrites per month
+
+What you'll lose without Pro:
+- Store uploads
+- Up to 50 tracked keywords per app
+- Response templates
+- Custom product pages
+- Analytics history beyond 7 days
+
+Upgrade to keep everything: <%= pricing_url %>
+
+No credit card was required to start your trial. Upgrading takes 30 seconds.

@@ -1,0 +1,12 @@
+web: bin/rails server
+css: bin/rails tailwindcss:watch[always]
+# Solid Queue worker. Production uses the same adapter (see
+# config/environments/production.rb), and config/application.rb defaults
+# DEV_QUEUE_ADAPTER to solid_queue, so this is the actual queue backend
+# in dev too. Was previously `bundle exec sidekiq -q default -q mailers
+# -q apple_polling`, which started a Sidekiq process that ActiveJob
+# never routed any jobs to (because the adapter was :async). That
+# mismatch is why long-running jobs like Aso::KeywordRankCheckJob kept
+# stranding mid-run -- jobs were running in Puma threads and dying on
+# every dev-mode reload.
+worker: bin/jobs

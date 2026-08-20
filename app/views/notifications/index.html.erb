@@ -1,0 +1,38 @@
+<div class="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 min-w-0 w-full overflow-hidden">
+  <div class="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+    <div class="flex flex-col gap-1 min-w-0">
+      <h2 class="text-xl sm:text-2xl font-bold text-base-content">Notifications</h2>
+      <p class="text-xs sm:text-sm text-base-content/60">Stay updated with your resources and alerts</p>
+    </div>
+
+    <% if current_user.notifications.unread.any? %>
+      <%= button_to mark_all_as_read_notifications_path, class: "btn btn-xs sm:btn-sm btn-ghost gap-1.5 sm:gap-2 shrink-0" do %>
+        <i class="fa-solid fa-check-double text-xs"></i>
+        <span class="hidden sm:inline">Mark all as read</span>
+        <span class="sm:hidden">Read all</span>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm border border-base-200 overflow-hidden">
+    <div class="card-body p-0">
+      <ul role="list" class="divide-y divide-base-200">
+        <% if @notifications.any? %>
+          <%= render @notifications %>
+        <% else %>
+          <li class="px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center text-center">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-base-200 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+              <i class="fa-regular fa-bell text-xl sm:text-2xl text-base-content/30"></i>
+            </div>
+            <h3 class="font-medium text-base-content text-sm sm:text-base">All caught up!</h3>
+            <p class="text-xs sm:text-sm text-base-content/60 mt-1">You have no new notifications at the moment.</p>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mt-4 sm:mt-6 flex justify-center">
+    <%= paginate @notifications %>
+  </div>
+</div>

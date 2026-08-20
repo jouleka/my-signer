@@ -1,0 +1,1289 @@
+openapi: 3.0.3
+info:
+  title: My Signer API
+  description: |
+    RESTful API for managing iOS code signing resources (certificates, devices, provisioning profiles).
+    
+    **One CLI command from code to TestFlight. No provisioning hell, no manual certificate wrangling.**
+    
+    ## Authentication
+    All API endpoints require Bearer token authentication. Create an API token via the web dashboard:
+    1. Navigate to your organization settings
+    2. Create a new API token with appropriate scopes (read, write, admin)
+    3. Use the token in the `Authorization` header: `Bearer YOUR_TOKEN`
+    
+    ## Scopes
+    - **read**: Read access to all resources
+    - **write**: Read + create/update/delete resources
+    - **admin**: Full access including organization management
+    
+    ## Rate Limiting
+    - **100 requests per minute per token** (authenticated requests)
+    - **20 requests per minute per IP** (unauthenticated requests)
+    - Rate limit headers included in responses:
+      - `RateLimit-Limit`: Total requests allowed in window
+      - `RateLimit-Remaining`: Requests remaining in current window
+      - `RateLimit-Reset`: Unix timestamp when limit resets
+    - HTTP 429 returned when limit exceeded
+    
+  version: 1.0.0
+  contact:
+    name: My Signer Support
+    url: https://mysigner.dev/landing#contact
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://mysigner.dev
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Status
+    description: API health check
+  - name: Organizations
+    description: Organization management and status
+  - name: Sync
+    description: App Store Connect synchronization
+  - name: Devices
+    description: iOS/macOS device management
+  - name: Profiles
+    description: Provisioning profile management
+  - name: Certificates
+    description: Code signing certificate management
+  - name: Bundle IDs
+    description: App bundle identifier management
+  - name: Smart Operations
+    description: Intelligent helper endpoints
+
+paths:
+  /api/v1/status:
+    get:
+      summary: API Health Check
+      description: Returns API status and current user information
+      tags:
+        - Status
+      responses:
+        '200':
+          description: API is operational
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: API is running
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      email:
+                        type: string
+                        example: user@example.com
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/organizations:
+    get:
+      summary: List Organizations
+      description: Returns all organizations the authenticated user has access to
+      tags:
+        - Organizations
+      responses:
+        '200':
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organizations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrganizationSummary'
+                  total:
+                    type: integer
+                    example: 3
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/organizations/{id}:
+    get:
+      summary: Get Organization Details
+      description: Returns detailed information about a specific organization
+      tags:
+        - Organizations
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      responses:
+        '200':
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/organizations/{id}/status:
+    get:
+      summary: Organization Status
+      description: Returns organization health check with resource counts
+      tags:
+        - Organizations
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      responses:
+        '200':
+          description: Organization status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    example: ok
+                  stats:
+                    $ref: '#/components/schemas/OrganizationStats'
+                  sync:
+                    $ref: '#/components/schemas/SyncInfo'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/organizations/{id}/sync_app_store_connect:
+    post:
+      summary: Trigger Sync
+      description: Enqueues a background job to sync with App Store Connect
+      tags:
+        - Sync
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      responses:
+        '202':
+          description: Sync enqueued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Sync enqueued successfully
+                  organization_id:
+                    type: integer
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/organizations/{id}/sync/status:
+    get:
+      summary: Check Sync Status
+      description: Returns current sync status and last sync result
+      tags:
+        - Sync
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      responses:
+        '200':
+          description: Sync status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organization_id:
+                    type: integer
+                  sync:
+                    type: object
+                    properties:
+                      running:
+                        type: boolean
+                        example: false
+                      last_synced_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      last_sync_status:
+                        type: string
+                        example: ok
+                      last_sync_error:
+                        type: string
+                        nullable: true
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/organizations/{id}/validate:
+    post:
+      summary: Validate Signing Resources
+      description: |
+        Validates if a project can be signed with current resources.
+        Checks if bundle ID, certificate, and provisioning profile exist and are valid.
+      tags:
+        - Smart Operations
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bundle_id
+                - type
+              properties:
+                bundle_id:
+                  type: string
+                  description: Bundle identifier (e.g., com.example.app)
+                  example: com.example.app
+                type:
+                  type: string
+                  description: Profile type (development, appstore, adhoc, inhouse)
+                  enum:
+                    - development
+                    - dev
+                    - appstore
+                    - store
+                    - app-store
+                    - adhoc
+                    - ad-hoc
+                    - inhouse
+                    - enterprise
+                  example: development
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/organizations/{id}/devices:
+    get:
+      summary: List Devices
+      description: Returns paginated list of registered devices
+      tags:
+        - Devices
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [IOS, MAC_OS, TV_OS]
+          description: Filter by platform
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ENABLED, DISABLED]
+          description: Filter by status
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search by name or UDID
+      responses:
+        '200':
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      summary: Register Device
+      description: Registers a new iOS/macOS device with App Store Connect
+      tags:
+        - Devices
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - udid
+                - platform
+              properties:
+                name:
+                  type: string
+                  example: John's iPhone
+                udid:
+                  type: string
+                  example: 00008030-001A1B2C3D4E567F
+                platform:
+                  type: string
+                  enum: [IOS, MAC_OS, TV_OS]
+                  example: IOS
+      responses:
+        '201':
+          description: Device registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Device registered successfully
+                  device:
+                    $ref: '#/components/schemas/Device'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Device already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: device_exists
+                  message:
+                    type: string
+                  device:
+                    $ref: '#/components/schemas/Device'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/organizations/{id}/devices/{device_id}:
+    get:
+      summary: Get Device Details
+      description: Returns detailed information about a specific device
+      tags:
+        - Devices
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/deviceId'
+      responses:
+        '200':
+          description: Device details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update Device
+      description: Updates device name
+      tags:
+        - Devices
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/deviceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: John's New iPhone
+      responses:
+        '200':
+          description: Device updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Device updated successfully
+                  device:
+                    $ref: '#/components/schemas/Device'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/organizations/{id}/profiles:
+    get:
+      summary: List Provisioning Profiles
+      description: Returns paginated list of provisioning profiles
+      tags:
+        - Profiles
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [IOS_APP_DEVELOPMENT, IOS_APP_STORE, IOS_APP_ADHOC, IOS_APP_INHOUSE]
+          description: Filter by profile type
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, INVALID]
+          description: Filter by state
+        - name: bundle_id
+          in: query
+          schema:
+            type: string
+          description: Filter by bundle identifier
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search by name or UUID
+      responses:
+        '200':
+          description: List of profiles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profiles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Profile'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      summary: Create Provisioning Profile
+      description: Creates a new provisioning profile with App Store Connect
+      tags:
+        - Profiles
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - profile_type
+                - bundle_id_id
+                - certificate_ids
+              properties:
+                name:
+                  type: string
+                  example: My Development Profile
+                profile_type:
+                  type: string
+                  enum: [IOS_APP_DEVELOPMENT, IOS_APP_STORE, IOS_APP_ADHOC, IOS_APP_INHOUSE]
+                  example: IOS_APP_DEVELOPMENT
+                bundle_id_id:
+                  type: string
+                  description: Apple remote ID of bundle identifier
+                certificate_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of Apple remote IDs of certificates
+                device_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of Apple remote IDs of devices (required for development/adhoc)
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  profile:
+                    $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/organizations/{id}/profiles/match:
+    get:
+      summary: Find Matching Profile
+      description: |
+        Finds the best matching provisioning profile for a bundle ID and type.
+        Returns the profile expiring furthest in the future.
+      tags:
+        - Smart Operations
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - name: bundle_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Bundle identifier
+          example: com.example.app
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Profile type (development, appstore, adhoc, inhouse)
+          example: development
+      responses:
+        '200':
+          description: Matching profile found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    $ref: '#/components/schemas/Profile'
+                  message:
+                    type: string
+                    example: Found matching profile
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No matching profile found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: no_match
+                  message:
+                    type: string
+                  suggestion:
+                    type: string
+
+  /api/v1/organizations/{id}/profiles/{profile_id}:
+    get:
+      summary: Get Profile Details
+      description: Returns detailed information about a specific provisioning profile
+      tags:
+        - Profiles
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/profileId'
+      responses:
+        '200':
+          description: Profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete Profile
+      description: Deletes provisioning profile from App Store Connect and local database
+      tags:
+        - Profiles
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/profileId'
+      responses:
+        '200':
+          description: Profile deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Profile deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/organizations/{id}/profiles/{profile_id}/download:
+    get:
+      summary: Download Profile
+      description: Downloads the .mobileprovision file
+      tags:
+        - Profiles
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/profileId'
+      responses:
+        '200':
+          description: Profile file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/organizations/{id}/certificates:
+    get:
+      summary: List Certificates
+      description: Returns paginated list of code signing certificates
+      tags:
+        - Certificates
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [IOS_DEVELOPMENT, IOS_DISTRIBUTION, MAC_APP_DEVELOPMENT, MAC_APP_DISTRIBUTION]
+          description: Filter by certificate type
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [IOS, MAC_OS]
+          description: Filter by platform
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, EXPIRED]
+          description: Filter by status
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search by name or serial number
+      responses:
+        '200':
+          description: List of certificates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Certificate'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/organizations/{id}/certificates/{cert_id}:
+    get:
+      summary: Get Certificate Details
+      description: Returns detailed information about a specific certificate
+      tags:
+        - Certificates
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/certId'
+      responses:
+        '200':
+          description: Certificate details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/organizations/{id}/certificates/{cert_id}/download:
+    get:
+      summary: Download Certificate
+      description: Downloads the .cer certificate file
+      tags:
+        - Certificates
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/certId'
+      responses:
+        '200':
+          description: Certificate file
+          content:
+            application/x-x509-ca-cert:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/organizations/{id}/bundle_ids:
+    get:
+      summary: List Bundle IDs
+      description: Returns paginated list of app bundle identifiers
+      tags:
+        - Bundle IDs
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/perPage'
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [IOS, MAC_OS]
+          description: Filter by platform
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search by identifier or name
+      responses:
+        '200':
+          description: List of bundle IDs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bundle_ids:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BundleId'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/organizations/{id}/bundle_ids/{bundle_id}:
+    get:
+      summary: Get Bundle ID Details
+      description: Returns detailed information about a specific bundle identifier
+      tags:
+        - Bundle IDs
+      parameters:
+        - $ref: '#/components/parameters/organizationId'
+        - $ref: '#/components/parameters/bundleIdParam'
+      responses:
+        '200':
+          description: Bundle ID details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BundleId'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: API token created via web dashboard
+
+  parameters:
+    organizationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Organization ID
+      example: 1
+
+    deviceId:
+      name: device_id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Device ID
+      example: 42
+
+    profileId:
+      name: profile_id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Profile ID
+      example: 42
+
+    certId:
+      name: cert_id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Certificate ID
+      example: 42
+
+    bundleIdParam:
+      name: bundle_id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Bundle ID
+      example: 42
+
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number for pagination
+
+    perPage:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+      description: Number of items per page
+
+  schemas:
+    OrganizationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: My Organization
+        member_count:
+          type: integer
+          example: 5
+        role:
+          type: string
+          enum: [owner, admin, developer, viewer]
+          example: owner
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        member_count:
+          type: integer
+        role:
+          type: string
+          enum: [owner, admin, developer, viewer]
+        stats:
+          $ref: '#/components/schemas/OrganizationStats'
+        sync:
+          $ref: '#/components/schemas/SyncInfo'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OrganizationStats:
+      type: object
+      properties:
+        certificates_count:
+          type: integer
+          example: 5
+        devices_count:
+          type: integer
+          example: 12
+        profiles_count:
+          type: integer
+          example: 8
+        invalid_profiles_count:
+          type: integer
+          example: 2
+        bundle_ids_count:
+          type: integer
+          example: 3
+
+    SyncInfo:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        last_synced_at:
+          type: string
+          format: date-time
+          nullable: true
+        has_credentials:
+          type: boolean
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: integer
+        remote_id:
+          type: string
+          description: Apple's remote ID
+          example: 32S3NAP3Y7
+        name:
+          type: string
+          example: John's iPhone
+        udid:
+          type: string
+          example: 00008110-0016488A0A53801E
+        platform:
+          type: string
+          enum: [IOS, MAC_OS, TV_OS]
+        device_class:
+          type: string
+          example: IPHONE
+        status:
+          type: string
+          enum: [ENABLED, DISABLED, PROCESSING]
+        added_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+        remote_id:
+          type: string
+          description: Apple's remote ID
+        name:
+          type: string
+          example: iOS Development Profile
+        uuid:
+          type: string
+          example: 12345678-1234-1234-1234-123456789012
+        profile_type:
+          type: string
+          enum: [IOS_APP_DEVELOPMENT, IOS_APP_STORE, IOS_APP_ADHOC, IOS_APP_INHOUSE]
+        state:
+          type: string
+          enum: [ACTIVE, INVALID]
+        platform:
+          type: string
+          enum: [IOS, MAC_OS]
+        bundle_id_identifier:
+          type: string
+          example: com.example.app
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Certificate:
+      type: object
+      properties:
+        id:
+          type: integer
+        remote_id:
+          type: string
+          description: Apple's remote ID
+        name:
+          type: string
+          example: iOS Development Certificate
+        certificate_type:
+          type: string
+          enum: [IOS_DEVELOPMENT, IOS_DISTRIBUTION, MAC_APP_DEVELOPMENT, MAC_APP_DISTRIBUTION]
+        serial_number:
+          type: string
+          example: 1A2B3C4D5E6F
+        platform:
+          type: string
+          enum: [IOS, MAC_OS]
+        status:
+          type: string
+          enum: [ACTIVE, EXPIRED]
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BundleId:
+      type: object
+      properties:
+        id:
+          type: integer
+        remote_id:
+          type: string
+          description: Apple's remote ID
+        identifier:
+          type: string
+          example: com.example.myapp
+        name:
+          type: string
+          example: My App
+        platform:
+          type: string
+          enum: [IOS, MAC_OS]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ValidationResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: Whether all checks passed
+          example: false
+        message:
+          type: string
+        bundle_id:
+          type: string
+        type:
+          type: string
+        checks:
+          type: object
+          properties:
+            bundle_id:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pass, fail]
+                message:
+                  type: string
+            certificate:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pass, fail]
+                message:
+                  type: string
+                type:
+                  type: string
+            profile:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pass, fail]
+                message:
+                  type: string
+                profile_id:
+                  type: integer
+                  nullable: true
+                profile_name:
+                  type: string
+                  nullable: true
+        suggestions:
+          type: array
+          items:
+            type: string
+          description: Actionable suggestions when validation fails
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 50
+        total:
+          type: integer
+          example: 150
+        total_pages:
+          type: integer
+          example: 3
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: invalid_token
+        message:
+          type: string
+          example: Invalid or missing API token
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: unauthorized
+            message: Invalid or missing API token
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: forbidden
+            message: Token requires 'write' or 'admin' scope
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: not_found
+            message: Organization not found
+
+    UnprocessableEntity:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: invalid_parameters
+            message: Validation failed
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      headers:
+        RateLimit-Limit:
+          schema:
+            type: integer
+          description: Total requests allowed in window
+        RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Requests remaining (always 0 when rate limited)
+        RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: rate_limit_exceeded
+              message:
+                type: string
+                example: Rate limit exceeded. Try again in 42 seconds.
+              retry_after:
+                type: integer
+                description: Unix timestamp when you can retry
+          example:
+            error: rate_limit_exceeded
+            message: Rate limit exceeded. Try again in 42 seconds.
+            retry_after: 1696089600
+

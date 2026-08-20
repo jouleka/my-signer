@@ -1,0 +1,194 @@
+<%# Editorial resend confirmation — same visual system as the rest of
+    the auth shell. Right rail shows an SVG flight path of the email
+    leaving the SMTP relay (mysigner.dev) and landing in the user's
+    inbox, plus a "Why we confirm" 2x2 grid explaining what real-email
+    coverage actually buys (release pings, expiry alerts, recovery,
+    support replies). %>
+
+<div class="auth-shell grid lg:grid-cols-2 h-screen w-full overflow-hidden">
+
+  <%# ── Left: editorial form ─────────────────────────────────────── %>
+  <div class="relative flex flex-col h-full overflow-y-auto bg-base-100">
+    <%# Top chrome — Back to Home %>
+    <div class="absolute top-5 left-5 sm:top-6 sm:left-8 z-20">
+      <%= link_to unauthenticated_root_path,
+            class: "inline-flex items-center gap-2 text-xs text-base-content/60 hover:text-base-content transition-colors" do %>
+        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+        <span>Back to Home</span>
+      <% end %>
+    </div>
+
+    <%# Both columns center vertically — content blocks are roughly
+        the same height so the wordmark and the right rail's section
+        marker land on similar y-positions while leaving balanced
+        breathing room top + bottom. %>
+    <div class="flex flex-col min-h-full px-6 sm:px-12 lg:px-14 xl:px-20 pt-20 lg:pt-12 pb-12">
+      <div class="w-full max-w-[440px] mx-auto my-auto">
+
+        <%# Wordmark — official MySigner logo + Instrument Serif wordmark %>
+        <div class="mb-8">
+          <div class="flex items-center gap-2.5 mb-6">
+            <img src="/icon.svg" alt="" class="h-7 w-7" aria-hidden="true">
+            <span class="font-display text-[26px] tracking-tight">MySigner</span>
+          </div>
+          <%# Editorial section marker %>
+          <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em]" style="color: color-mix(in oklab, var(--color-base-content) 55%, transparent);">
+            <span class="secnum text-[14px] normal-case tracking-normal">№ 01</span>
+            <span class="editorial-rule w-10"></span>
+            <span>Resend confirmation</span>
+          </div>
+        </div>
+
+        <%# Headline + lede %>
+        <h1 class="font-display leading-[0.96] tracking-tight" style="font-size: clamp(48px, 5.5vw, 64px);">
+          Didn't get the <span class="italic" style="color: var(--color-primary);">email?</span>
+        </h1>
+        <p class="mt-4 text-[14.5px] leading-relaxed text-mute max-w-[420px]">
+          It happens. Tell us the address you signed up with and we'll send a fresh confirmation link.
+        </p>
+
+        <%= render "devise/shared/error_messages", resource: resource %>
+
+        <%= form_for(resource, as: resource_name, url: confirmation_path(resource_name),
+              html: { method: :post, class: "mt-8 space-y-0",
+                      data: { controller: "form-validator" } }) do |f| %>
+
+          <%# Email %>
+          <div class="form-control mb-4">
+            <div class="label-row">
+              <span class="lbl"><%= t('.email_label') %></span>
+            </div>
+            <%= f.label :email, class: "input input-bordered field #{'input-error' if resource.errors[:email].any?}" do %>
+              <i class="fa-solid fa-envelope lead"></i>
+              <%= f.email_field :email, autofocus: true, autocomplete: "email", required: true,
+                    value: (resource.pending_reconfirmation? ? resource.unconfirmed_email : resource.email),
+                    placeholder: "you@studio.com",
+                    data: { action: "input->form-validator#validate blur->form-validator#validate", field: "email" } %>
+            <% end %>
+            <div class="validator-error text-error text-[11px] mt-1.5 hidden items-center gap-1.5">
+              <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+              <span></span>
+            </div>
+            <div class="validator-hint hint">If you signed up with Apple or Google with a verified email, no confirmation is needed.</div>
+          </div>
+
+          <button type="submit" class="btn-primary-ms mt-2">
+            <i class="fa-solid fa-paper-plane text-[11px]"></i>
+            <%= t('.submit') %>
+          </button>
+        <% end %>
+
+        <%# Foot links %>
+        <div class="mt-6 text-[12.5px] text-mute space-y-1.5">
+          <div>
+            Email already confirmed?
+            <%= link_to "Sign in", new_user_session_path, class: "alink" %>
+          </div>
+          <div>
+            Wrong address?
+            <%= link_to "Update it during sign up", new_user_registration_path, class: "alink" %>
+          </div>
+          <% if devise_mapping.recoverable? %>
+            <div>
+              Need to reset your password instead?
+              <%= link_to "Send reset", new_user_password_path, class: "alink" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── Right: editorial right rail (hidden under lg) ────────────── %>
+  <div class="editorial-right hidden lg:block h-full overflow-hidden relative">
+    <div class="absolute inset-0 grain p-12 flex flex-col justify-center">
+      <%# Editorial header %>
+      <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em] text-mute">
+        <span class="secnum text-[14px] normal-case tracking-normal">№ 02</span>
+        <span class="editorial-rule w-10"></span>
+        <span>Email check</span>
+      </div>
+
+      <h2 class="mt-6 font-display leading-[0.96] tracking-tight" style="font-size: 56px;">
+        Just one<br>
+        <span class="italic" style="color: var(--color-primary);">tap from real.</span>
+      </h2>
+
+      <%# SMTP -> inbox flight diagram. Dashed path animates via the
+          .dash keyframe in application.css. %>
+      <div class="mt-10 rounded-[var(--radius-box)] border border-soft p-6"
+           style="background: var(--color-base-100);">
+        <svg viewBox="0 0 480 180" class="w-full h-44" aria-hidden="true">
+          <defs>
+            <linearGradient id="confirm-flight-gradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--color-primary)"></stop>
+              <stop offset="100%" stop-color="var(--color-accent)"></stop>
+            </linearGradient>
+          </defs>
+          <%# Server box %>
+          <g transform="translate(20,60)">
+            <rect width="100" height="60" rx="8" fill="none" stroke="url(#confirm-flight-gradient)" stroke-width="1.2"></rect>
+            <text x="50" y="36" text-anchor="middle" fill="currentColor" font-size="11" font-family="JetBrains Mono">mysigner.dev</text>
+            <text x="50" y="78" text-anchor="middle" fill="currentColor" font-size="9" opacity="0.45">SMTP &middot; Mailtrap</text>
+          </g>
+          <%# Inbox box %>
+          <g transform="translate(360,60)">
+            <rect width="100" height="60" rx="8" fill="none" stroke="url(#confirm-flight-gradient)" stroke-width="1.2"></rect>
+            <text x="50" y="34" text-anchor="middle" fill="currentColor" font-size="11" font-family="JetBrains Mono">your inbox</text>
+            <text x="50" y="50" text-anchor="middle" fill="currentColor" font-size="9" opacity="0.45">~/Mail</text>
+            <text x="50" y="78" text-anchor="middle" fill="currentColor" font-size="9" opacity="0.45">delivers in &lt; 30s</text>
+          </g>
+          <%# Dashed flight path %>
+          <path class="dash" d="M 130 90 C 200 30, 300 30, 360 90" fill="none" stroke="url(#confirm-flight-gradient)" stroke-width="1.4"></path>
+          <%# Envelope dot %>
+          <g transform="translate(245,55)">
+            <rect x="-12" y="-8" width="24" height="16" rx="2" fill="var(--color-base-200)" stroke="var(--color-primary)" stroke-width="1.2"></rect>
+            <path d="M -12 -8 L 0 2 L 12 -8" fill="none" stroke="var(--color-primary)" stroke-width="1.2"></path>
+          </g>
+        </svg>
+        <div class="mt-2 text-[12px] text-mute text-center">A confirmation link arrives in seconds. Click it once and you're in.</div>
+      </div>
+
+      <%# Why we confirm — 2x2 grid of reasons %>
+      <div class="mt-3 rounded-[var(--radius-box)] border border-soft p-5"
+           style="background: var(--color-base-100);">
+        <div class="text-[10.5px] uppercase tracking-[0.18em] text-faint mb-3">Why we confirm</div>
+        <div class="grid grid-cols-2 gap-3 text-[12px]">
+          <div class="flex items-start gap-2.5">
+            <i class="fa-solid fa-rocket text-[12px] mt-1" style="color: var(--color-primary);"></i>
+            <div>
+              <div class="font-medium">Release notifications</div>
+              <div class="text-mute">App Store / Play status pings need a real address.</div>
+            </div>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <i class="fa-solid fa-bell text-[12px] mt-1" style="color: var(--color-primary);"></i>
+            <div>
+              <div class="font-medium">Expiry alerts</div>
+              <div class="text-mute">Profile / cert reminders 30d ahead.</div>
+            </div>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <i class="fa-solid fa-shield-halved text-[12px] mt-1" style="color: var(--color-primary);"></i>
+            <div>
+              <div class="font-medium">Account recovery</div>
+              <div class="text-mute">Reset links go to this inbox.</div>
+            </div>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <i class="fa-solid fa-comment-dots text-[12px] mt-1" style="color: var(--color-primary);"></i>
+            <div>
+              <div class="font-medium">Replies, not bots</div>
+              <div class="text-mute">Support responds from <span class="kbd-mono">support@mysigner.dev</span>.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 text-[11px] text-faint">
+        <i class="fa-solid fa-circle-info mr-1"></i>
+        Didn't receive it? Check spam, or try again in a moment.
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,48 @@
+<% @preheader = @upgraded ? "Welcome to #{@to_tier} — your new limits are live." : "Plan moved to #{@to_tier}. Here's what changes." %>
+
+<%= ms_eyebrow(13, @upgraded ? "Plan · Upgraded" : "Plan · Changed") %>
+
+<% if @upgraded %>
+  <%= ms_headline("Welcome to <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">#{ERB::Util.h(@to_tier)}.</em>", size: 44) %>
+<% else %>
+  <%= ms_headline("Plan moved to <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">#{ERB::Util.h(@to_tier)}.</em>", size: 42) %>
+<% end %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name.presence || @user.email)},") %>
+
+<%# Editorial FROM → TO transition card %>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="ms-callout-neutral" style="background-color:#1a1612; border:1px solid #2c2820; border-radius:4px; margin:0 0 28px 0;">
+  <tr>
+    <td style="padding:22px 24px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td valign="middle" align="left" style="vertical-align:middle;">
+            <span class="ms-faint" style="font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:#8a8378;">From</span>
+            <br>
+            <span class="ms-mute" style="font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:24px; line-height:1.2; color:#a8a094; font-style:italic;"><%= @from_tier %></span>
+          </td>
+          <td valign="middle" align="center" width="60" class="ms-primary" style="width:60px; vertical-align:middle; text-align:center; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:22px; color:#c8a8f5;">
+            &rarr;
+          </td>
+          <td valign="middle" align="right" style="vertical-align:middle;">
+            <span class="ms-faint" style="font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:#8a8378;">Now on</span>
+            <br>
+            <span class="ms-ink" style="font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:24px; line-height:1.2; color:#f4ede0; font-style:italic; font-weight:400;"><%= @to_tier %></span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<% if @upgraded %>
+  <%= ms_body("Your new limits are live right away. Jump back into the dashboard to explore what's unlocked &mdash; we hope you'll find more than you expected.") %>
+<% else %>
+  <%= ms_body("You'll keep access at the previous tier until the end of the current billing period, after which the adjusted limits apply.") %>
+<% end %>
+
+<%= ms_cta("Open the dashboard", authenticated_root_url, variant: :primary, margin_top: 12, margin_bottom: 24) %>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 18) %>
+
+<%= ms_fine_print("Manage notification preferences any time at #{ms_link(settings_url(tab: 'notifications'), settings_url(tab: 'notifications'))}.") %>

@@ -1,0 +1,75 @@
+<%# Translation status display — shows which locales already have translations,
+    and an action button to fan-out the current text to other locales. %>
+<% note = local_assigns[:release_note] || @release_note %>
+<% return unless note %>
+<% translations = (note.translations.is_a?(Hash) ? note.translations : {}) %>
+<% remaining = @entitlements.ai_translations_remaining(@organization) %>
+
+<div class="<%= card_container_classes %> mt-4">
+  <div class="<%= card_header_split_classes %>">
+    <div class="flex items-center gap-2.5">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-solid fa-language"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Translations</span>
+    </div>
+    <%= render "releases/translate_button", release_note: note %>
+  </div>
+  <div class="<%= card_body_classes %>">
+    <% if translations.any? %>
+      <%# Expandable per-locale rows. Collapsed: locale badge + preview + char
+          count. Expanded: full translated text in a monospace block so line
+          breaks and structure (NEW/IMPROVED/FIXED headings, bullets) are
+          visible as they will appear on the store. %>
+      <div class="flex flex-col gap-2">
+        <% translations.each do |locale, text| %>
+          <% text_str = text.to_s %>
+          <% over_limit = text_str.length > note.char_limit %>
+          <details class="group rounded-[var(--radius-field)] border border-base-content/[0.06] open:border-base-content/[0.12] open:bg-base-content/[0.015] transition-colors">
+            <summary class="cursor-pointer list-none flex items-center gap-3 px-3.5 py-2.5 select-none">
+              <span class="<%= locale_badge_classes %>"><%= locale %></span>
+              <span class="text-xs text-base-content/55 truncate flex-1">
+                <%= text_str.truncate(120) %>
+              </span>
+              <span class="text-[0.625rem] tabular-nums <%= over_limit ? 'text-error' : 'text-base-content/35' %> shrink-0">
+                <%= text_str.length %>/<%= note.char_limit %>
+              </span>
+              <i class="fa-solid fa-chevron-right text-[0.625rem] text-base-content/30 transition-transform group-open:rotate-90 shrink-0"></i>
+            </summary>
+            <div class="px-3.5 pb-3.5 pt-0">
+              <div class="rounded-[var(--radius-field)] border border-base-content/[0.04] bg-base-content/[0.02] px-4 py-3">
+                <pre class="font-mono text-xs whitespace-pre-wrap break-words text-base-content/85 leading-relaxed m-0"><%= text_str %></pre>
+              </div>
+              <div class="mt-2 flex items-center justify-between text-[0.625rem]">
+                <% if over_limit %>
+                  <span class="inline-flex items-center gap-1 text-error">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Exceeds limit by <%= text_str.length - note.char_limit %> characters — will be truncated on the store.
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center gap-1 text-base-content/40">
+                    <i class="fa-solid fa-check"></i>
+                    Within <%= note.ios? ? "App Store" : "Google Play" %> limit
+                  </span>
+                <% end %>
+                <span class="text-base-content/30 tabular-nums">
+                  <%= text_str.length %> / <%= note.char_limit %> chars
+                </span>
+              </div>
+            </div>
+          </details>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="<%= empty_inline_classes %>">
+        <i class="fa-solid fa-language"></i>
+        No translations yet.
+        <% if @entitlements.max_ai_translations_per_month > 0 %>
+          Click "Translate to all locales" to fan out automatically.
+        <% else %>
+          Upgrade to a paid plan to enable AI translations.
+        <% end %>
+      </p>
+    <% end %>
+  </div>
+</div>

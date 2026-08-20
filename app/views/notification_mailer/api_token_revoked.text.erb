@@ -1,0 +1,13 @@
+API Token Revoked
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+<%= @revoker_name %> revoked the API token "<%= @token_name %>" in "<%= @organization.name %>".
+
+Any integration using this token will lose access immediately. If this wasn't expected, please review the API tokens for your organization.
+
+Review tokens: <%= organization_api_tokens_url(@organization) %>
+
+Thanks,
+My Signer Team

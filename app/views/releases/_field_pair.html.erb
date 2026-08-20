@@ -1,0 +1,58 @@
+<%# Paired field row: reference (left, read-only) + editable (right).
+    Both sides render with IDENTICAL structure — same label, same input or
+    textarea shape, same char badge placement, same progress bar. The only
+    difference is the left is `readonly` + dimmed so it's clearly a reference,
+    not an editable field. This symmetry means rows always match in height
+    regardless of content length.
+    Locals: f, field, label, base_listing, listing, type (:input/:textarea), rows, hint %>
+<% type      = local_assigns[:type] || :input %>
+<% rows      = local_assigns[:rows] || 3 %>
+<% limit     = base_listing.char_limit_for(field) %>
+<% base_val  = base_listing.send(field) %>
+<% base_len  = base_val.to_s.length %>
+<% over_base = limit && base_len > limit %>
+
+<div class="grid grid-cols-2 gap-6 items-start py-2 max-lg:grid-cols-1 max-lg:gap-3">
+  <%# ── Reference column (read-only mirror of the edit side) ── %>
+  <div class="min-w-0">
+    <div class="flex items-center justify-between mb-1.5">
+      <label class="<%= label_form_classes %> flex items-center gap-1.5">
+        <i class="fa-solid fa-eye text-[0.625rem] text-base-content/35"></i>
+        <span><%= label %></span>
+      </label>
+      <% if limit %>
+        <span class="<%= char_badge_classes(base_len, limit) %>">
+          <%= base_len %>/<%= limit %>
+        </span>
+      <% end %>
+    </div>
+
+    <% if type == :textarea %>
+      <textarea readonly tabindex="-1"
+                rows="<%= rows %>"
+                class="<%= textarea_field_classes %> opacity-70 cursor-default select-text resize-none <%= over_base ? input_error_extra_classes : '' %>"
+                aria-label="<%= label %> (reference, read-only)"><%= base_val %></textarea>
+    <% else %>
+      <input type="text" readonly tabindex="-1"
+             value="<%= base_val %>"
+             class="<%= input_field_classes %> opacity-70 cursor-default <%= over_base ? input_error_extra_classes : '' %>"
+             aria-label="<%= label %> (reference, read-only)" />
+    <% end %>
+
+    <% if limit %>
+      <% pct = (base_len.to_f / limit * 100).clamp(0, 100) %>
+      <div class="<%= progress_track_classes %> mt-2">
+        <div class="<%= progress_fill_classes(base_len, limit) %>" style="width: <%= [pct, 100].min %>%"></div>
+      </div>
+    <% end %>
+  </div>
+
+  <%# ── Editing column — same structure, editable. ── %>
+  <div class="min-w-0">
+    <%= render "releases/form_field",
+        f: f, field: field, label: label, listing: listing,
+        type: type,
+        rows: rows,
+        hint: local_assigns[:hint] %>
+  </div>
+</div>

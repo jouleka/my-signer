@@ -1,0 +1,133 @@
+<%# Apple Search Ads keyword recommendations. Rendered inside the
+    Suggestions tab beneath the autocomplete card. Four render states:
+
+      1. Free tier            → upsell link pointing at the pricing page.
+      2. Pro+ no credential   → CTA to connect Apple Search Ads.
+      3. Pro+ + credential    → populated list with popularity + bid + Track.
+      4. Pro+ + credential +
+         empty recommendation → muted "no data yet" hint.
+
+    Relies on @organization, @entitlements, @app, and @apple_ads_recommendations
+    (all set by KeywordsController#show / #load_suggestions_data). %>
+<% has_credential = @organization.apple_ads_credential&.last_successful? %>
+<% is_pro_plus = @entitlements.apple_ads_integration_enabled? %>
+
+<div id="apple-ads-recommendations" class="<%= card_container_classes %> mt-6">
+  <div class="<%= card_header_classes %>">
+    <div class="<%= card_icon_classes %>">
+      <i class="fa-brands fa-apple"></i>
+    </div>
+    <span class="<%= card_title_classes %>">Apple's recommendations for this app</span>
+  </div>
+
+  <div class="<%= card_body_classes %>">
+    <p class="text-xs text-base-content/55 leading-relaxed mb-4">
+      Apple's keyword-recommendations API surfaces terms algorithmically chosen for your app's metadata and category.
+      Popularity is a 5&ndash;100 score direct from Apple, shown as a 5-dot indicator.
+    </p>
+
+    <% if !is_pro_plus %>
+      <%# Free-tier upsell — muted, non-intrusive. Mirrors tone of the
+          connection banner so the two sections feel cohesive. %>
+      <div class="<%= sn_neutral_classes %>">
+        <div class="flex items-center gap-2.5 p-1">
+          <div class="<%= sn_icon_neutral_classes %>">
+            <i class="fa-solid fa-lock text-[0.55rem]"></i>
+          </div>
+          <p class="text-xs text-base-content/55 flex-1">
+            Apple's recommendations are available on
+            <strong class="text-base-content/75">Pro</strong> and above.
+            <%= link_to "See plans \u2192", pricing_path, class: "text-primary/80 hover:text-primary underline ml-0.5" %>
+          </p>
+        </div>
+      </div>
+    <% elsif !has_credential %>
+      <div class="<%= sn_info_classes %>">
+        <div class="flex items-start gap-2.5 p-1">
+          <div class="<%= sn_icon_info_classes %>">
+            <i class="fa-brands fa-apple text-[0.65rem]"></i>
+          </div>
+          <p class="text-xs text-base-content/80 leading-relaxed flex-1">
+            <strong class="text-base-content/90">Connect Apple Search Ads</strong>
+            to see Apple's keyword recommendations for this app.
+            <%= link_to "Connect now \u2192", new_organization_apple_ads_credential_path(@organization),
+                        class: "text-primary/80 hover:text-primary underline ml-0.5" %>
+          </p>
+        </div>
+      </div>
+    <% elsif @apple_ads_recommendations.empty? %>
+      <p class="text-xs text-base-content/40 italic">
+        No recommendations yet. Apple's API needs some time after connection plus sufficient impression
+        data before it returns terms &mdash; data refreshes daily.
+      </p>
+    <% else %>
+      <% rec_keywords = @apple_ads_recommendations.map(&:keyword) %>
+      <% tracked_set = @app.tracked_keywords.where(keyword: rec_keywords).pluck(:keyword).to_set %>
+      <% default_country = default_country_for_app(@app) %>
+
+      <ul class="flex flex-col gap-1.5 list-none">
+        <% @apple_ads_recommendations.each do |rec| %>
+          <% already_in_keywords = @store_listing&.includes_keyword?(rec.keyword) %>
+          <% already_tracked = tracked_set.include?(rec.keyword) %>
+
+          <li class="<%= scratchpad_row_classes %> <%= "opacity-55" if already_in_keywords %>">
+            <span class="flex-1 text-sm <%= already_in_keywords ? "line-through text-base-content/55" : "text-base-content/85" %>">
+              <%= rec.keyword %>
+            </span>
+
+            <%= popularity_dots(rec.search_popularity) %>
+
+            <% if rec.bid_amount_micros %>
+              <span class="text-[0.65rem] text-base-content/40 font-mono tabular-nums whitespace-nowrap">
+                ~$<%= ("%.2f" % (rec.bid_amount_micros / 1_000_000.0)) %> bid
+              </span>
+            <% end %>
+
+            <% if already_in_keywords %>
+              <span class="text-[0.65rem] text-success/70 font-medium whitespace-nowrap">
+                <i class="fa-solid fa-check"></i> In keywords
+              </span>
+            <% else %>
+              <button type="button"
+                      class="<%= btn_ghost_xs_classes %>"
+                      data-action="click->keyword-editor#stageFromScratchpad"
+                      data-keyword="<%= rec.keyword %>">
+                + Stage
+              </button>
+
+              <%= button_to organization_apple_app_saved_keyword_ideas_path(@organization, @app),
+                            params: { saved_keyword_idea: { keyword: rec.keyword } },
+                            method: :post,
+                            form: { class: "inline", data: { turbo: true } },
+                            class: btn_ghost_xs_classes do %>
+                <i class="fa-regular fa-bookmark"></i>
+              <% end %>
+            <% end %>
+
+            <% if already_tracked %>
+              <span class="text-[0.65rem] text-success/70 font-medium whitespace-nowrap">
+                <i class="fa-solid fa-check"></i> Tracked
+              </span>
+            <% else %>
+              <%= button_to organization_apple_app_tracked_keywords_path(@organization, @app),
+                            params: { tracked_keyword: { keyword: rec.keyword, countries: [ default_country ] } },
+                            method: :post,
+                            form: { class: "inline" },
+                            class: btn_ghost_xs_classes,
+                            data: { turbo: false } do %>
+                Track
+              <% end %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+
+      <% last_updated = @apple_ads_recommendations.maximum(:search_popularity_updated_at) %>
+      <% if last_updated %>
+        <p class="text-xs text-base-content/30 italic mt-4">
+          Updated <%= time_ago_in_words(last_updated) %> ago.
+        </p>
+      <% end %>
+    <% end %>
+  </div>
+</div>

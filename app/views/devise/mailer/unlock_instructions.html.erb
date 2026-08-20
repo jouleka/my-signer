@@ -1,0 +1,18 @@
+<% @preheader = "Your MySigner account is locked. Use the link inside to unlock it." %>
+
+<%= ms_eyebrow(5, "Security · Account locked") %>
+<%= ms_headline("Unlock <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">your account.</em>") %>
+
+<%= ms_lead("We've temporarily locked your MySigner account after a string of unsuccessful sign-in attempts.") %>
+
+<%= ms_meta_row("Account", ms_meta_pill(@resource.email)) %>
+
+<%= ms_cta("Unlock my account", unlock_url(@resource, unlock_token: @token), variant: :primary, margin_top: 24, margin_bottom: 22) %>
+
+<%= ms_callout(
+  "If you weren't trying to sign in, change your password right after unlocking. Better still, turn on two-factor in <em>Settings → Security</em> while you're there.",
+  variant: :warning,
+  accent_label: "Wasn't you?"
+) %>
+
+<%= ms_fine_print("Locks lift automatically after a cooling-off period if you don't use the link &mdash; nothing's lost either way.") %>

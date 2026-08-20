@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 534 854" fill="none">
+  <defs>
+    <linearGradient id="tabEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C7C80"/>
+      <stop offset="25%" stop-color="#636366"/>
+      <stop offset="50%" stop-color="#545458"/>
+      <stop offset="75%" stop-color="#636366"/>
+      <stop offset="100%" stop-color="#7C7C80"/>
+    </linearGradient>
+    <linearGradient id="tabSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6E6E73"/>
+      <stop offset="15%" stop-color="#58585C"/>
+      <stop offset="50%" stop-color="#48484C"/>
+      <stop offset="85%" stop-color="#58585C"/>
+      <stop offset="100%" stop-color="#6E6E73"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Frame -->
+  <rect x="0" y="0" width="534" height="854" rx="20" ry="20" fill="url(#tabSide)"/>
+  <rect x="0" y="0" width="534" height="854" rx="20" ry="20" fill="url(#tabEdge)" opacity="0.4"/>
+  <rect x="2" y="2" width="530" height="850" rx="18" ry="18" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="0.5"/>
+
+  <!-- Front glass -->
+  <rect x="6" y="6" width="522" height="842" rx="16" ry="16" fill="#0A0A0C"/>
+
+  <!-- Screen -->
+  <rect x="24" y="24" width="486" height="806" rx="10" ry="10" fill="#000"/>
+
+  <!-- Front camera -->
+  <circle cx="267" cy="12" r="3" fill="#1C1C1E"/>
+  <circle cx="267" cy="12" r="1.5" fill="#0C0C0E"/>
+</svg>

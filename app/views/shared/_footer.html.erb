@@ -1,0 +1,157 @@
+<footer class="bg-base-200 border-t border-base-300 text-base-content">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 lg:px-8">
+    <!-- Main footer content -->
+    <div class="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-5">
+      <!-- Brand Section -->
+      <div class="space-y-4">
+        <div class="flex items-center gap-3">
+          <img src="/icon.svg" alt="My Signer" class="h-8 w-8" />
+          <span class="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">MySigner</span>
+        </div>
+        <p class="text-sm opacity-70 max-w-xs">
+          Ship iOS &amp; Android apps from your terminal. CLI-first, developer-friendly.
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="badge badge-primary badge-outline badge-sm gap-1">
+            <i class="fa-solid fa-terminal text-xs"></i>
+            CLI-first
+          </div>
+          <div class="badge badge-ghost badge-sm">
+            <i class="fa-brands fa-apple mr-1"></i>
+            <i class="fa-brands fa-android"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Links -->
+      <div class="space-y-4">
+        <h6 class="footer-title text-sm font-semibold opacity-90">Product</h6>
+        <div class="flex flex-col gap-2">
+          <%= link_to docs_path, class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-book w-4"></i>
+              Documentation
+            </span>
+          <% end %>
+          <%= link_to pricing_path, class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-tags w-4"></i>
+              Pricing
+            </span>
+          <% end %>
+          <%= link_to "/#contact", class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-envelope w-4"></i>
+              Contact Us
+            </span>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Resources Links -->
+      <div class="space-y-4">
+        <h6 class="footer-title text-sm font-semibold opacity-90">Resources</h6>
+        <div class="flex flex-col gap-2">
+          <%= link_to category_docs_path(category: "quickstart"), class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-bolt w-4"></i>
+              Quickstart
+            </span>
+          <% end %>
+          <%= link_to category_docs_path(category: "commands"), class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-terminal w-4"></i>
+              CLI Commands
+            </span>
+          <% end %>
+          <%= link_to category_docs_path(category: "guides"), class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-route w-4"></i>
+              Guides
+            </span>
+          <% end %>
+          <%= link_to category_docs_path(category: "blog"), class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-pen-nib w-4"></i>
+              Articles
+            </span>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Compare Links (SEO-targeted comparison pages) -->
+      <div class="space-y-4">
+        <h6 class="footer-title text-sm font-semibold opacity-90">Compare</h6>
+        <div class="flex flex-col gap-2">
+          <%= link_to page_docs_path(category: "compare", slug: "fastlane"), class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-scale-balanced w-4"></i>
+              vs Fastlane
+            </span>
+          <% end %>
+          <%= link_to page_docs_path(category: "compare", slug: "sensor-tower"), class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-scale-balanced w-4"></i>
+              vs Sensor Tower
+            </span>
+          <% end %>
+          <%= link_to page_docs_path(category: "compare", slug: "appfollow"), class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-scale-balanced w-4"></i>
+              vs AppFollow
+            </span>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Legal Links -->
+      <div class="space-y-4">
+        <h6 class="footer-title text-sm font-semibold opacity-90">Legal</h6>
+        <div class="flex flex-col gap-2">
+          <%= link_to privacy_policy_path, class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              Privacy Policy
+            </span>
+          <% end %>
+          <%= link_to terms_of_service_path, class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              Terms of Service
+            </span>
+          <% end %>
+          <%= link_to refund_policy_path, class: "link link-hover text-sm opacity-70 hover:opacity-100 transition-opacity" do %>
+            <span class="flex items-center gap-2">
+              Refund Policy
+            </span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom border and copyright -->
+    <div class="border-t border-base-300 mt-10 pt-6">
+      <div class="flex flex-col items-center justify-between gap-4 text-xs sm:flex-row">
+        <p class="opacity-60">© <%= Date.current.year %> MySigner. All rights reserved.</p>
+        <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wide text-base-content/70">Theme</span>
+            <label for="theme-toggle-footer" class="swap swap-rotate flex items-center gap-2 rounded-full border-2 border-base-content/40 bg-base-100/60 px-3 py-1 cursor-pointer transition-all hover:border-base-content/60">
+              <input id="theme-toggle-footer" name="theme-toggle-footer" type="checkbox" class="theme-controller" data-controller="theme-toggle" data-action="change->theme-toggle#toggle" />
+              <span class="swap-off flex items-center gap-2">
+                <i class="fa-solid fa-sun text-warning"></i>
+                <span>Light</span>
+              </span>
+              <span class="swap-on flex items-center gap-2">
+                <i class="fa-solid fa-moon text-info"></i>
+                <span>Dark</span>
+              </span>
+            </label>
+          </div>
+          <%= link_to new_user_registration_path, class: "btn btn-primary btn-xs gap-1" do %>
+            Get Started
+            <i class="fa-solid fa-arrow-right"></i>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>

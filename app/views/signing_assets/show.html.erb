@@ -1,0 +1,192 @@
+<%= breadcrumbs([{ label: "Signing & Assets" }]) %>
+
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold">Signing & Assets</h1>
+    <p class="text-base-content/60 mt-1">Manage all your code signing certificates, provisioning profiles, and keystores in one place.</p>
+  </div>
+
+  <%# Platform tabs %>
+  <div class="space-y-6" data-controller="tabs" data-tabs-active-class="tab-active">
+    <div role="tablist" class="tabs tabs-bordered">
+      <a role="tab" class="tab tab-active" data-tabs-target="tab" data-action="click->tabs#switch" data-index="0">
+        <i class="fa-brands fa-apple mr-2" aria-hidden="true"></i> iOS
+      </a>
+      <a role="tab" class="tab" data-tabs-target="tab" data-action="click->tabs#switch" data-index="1">
+        <i class="fa-brands fa-android mr-2" aria-hidden="true"></i> Android
+      </a>
+    </div>
+
+  <%# iOS Panel %>
+  <div data-tabs-target="panel">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <%= link_to organization_apple_apps_path(@organization), class: "card bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-md transition-all group" do %>
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-rocket text-primary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold group-hover:text-primary transition-colors">Apps</h3>
+            <p class="text-xs text-base-content/50">App Store Connect</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/60">View and manage your iOS apps synced from App Store Connect.</p>
+        <div class="mt-3">
+          <span class="badge badge-ghost"><%= @apple_apps_count %> apps</span>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to organization_testflight_beta_groups_path(@organization), class: "card bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-md transition-all group" do %>
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-paper-plane text-primary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold group-hover:text-primary transition-colors">TestFlight</h3>
+            <p class="text-xs text-base-content/50">Beta testing</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/60">Manage TestFlight beta groups and testers.</p>
+        <div class="mt-3">
+          <span class="badge badge-ghost"><%= @beta_groups_count %> groups</span>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to organization_apple_certificates_path(@organization), class: "card bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-md transition-all group" do %>
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-certificate text-primary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold group-hover:text-primary transition-colors">Certificates</h3>
+            <p class="text-xs text-base-content/50">Code signing</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/60">View iOS code signing certificates for development and distribution.</p>
+        <div class="mt-3">
+          <span class="badge badge-ghost"><%= @certificates_count %> certificates</span>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to organization_apple_devices_path(@organization), class: "card bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-md transition-all group" do %>
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-mobile-screen-button text-primary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold group-hover:text-primary transition-colors">Devices</h3>
+            <p class="text-xs text-base-content/50">Registered devices</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/60">Register and manage iOS devices for development testing.</p>
+        <div class="mt-3">
+          <span class="badge badge-ghost"><%= @devices_count %> devices</span>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to organization_apple_provisioning_profiles_path(@organization), class: "card bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-md transition-all group" do %>
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-id-badge text-primary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold group-hover:text-primary transition-colors">Profiles</h3>
+            <p class="text-xs text-base-content/50">Provisioning profiles</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/60">Manage iOS provisioning profiles for app signing.</p>
+        <div class="mt-3">
+          <span class="badge badge-ghost"><%= @profiles_count %> profiles</span>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to organization_apple_bundle_ids_path(@organization), class: "card bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-md transition-all group" do %>
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-fingerprint text-primary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold group-hover:text-primary transition-colors">Bundle IDs</h3>
+            <p class="text-xs text-base-content/50">App identifiers</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/60">Manage app identifiers and capabilities.</p>
+        <div class="mt-3">
+          <span class="badge badge-ghost"><%= @bundle_ids_count %> bundle IDs</span>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  </div>
+
+  <%# Android Panel %>
+  <div data-tabs-target="panel" class="hidden">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <%= link_to organization_android_apps_path(@organization), class: "card bg-base-100 border border-base-200 hover:border-secondary/50 hover:shadow-md transition-all group" do %>
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+            <i class="fa-solid fa-robot text-secondary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold group-hover:text-secondary transition-colors">Apps</h3>
+            <p class="text-xs text-base-content/50">Google Play Console</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/60">View and manage your Android apps synced from Google Play Console.</p>
+        <div class="mt-3">
+          <span class="badge badge-ghost"><%= @android_apps_count %> apps</span>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to organization_android_tracks_path(@organization), class: "card bg-base-100 border border-base-200 hover:border-secondary/50 hover:shadow-md transition-all group" do %>
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+            <i class="fa-solid fa-arrows-turn-to-dots text-secondary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold group-hover:text-secondary transition-colors">Tracks</h3>
+            <p class="text-xs text-base-content/50">Release tracks</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/60">Manage Google Play release tracks (internal, alpha, beta, production).</p>
+        <div class="mt-3">
+          <span class="badge badge-ghost"><%= @tracks_count %> tracks</span>
+        </div>
+      </div>
+    <% end %>
+
+    <%= link_to organization_android_keystores_path(@organization), class: "card bg-base-100 border border-base-200 hover:border-secondary/50 hover:shadow-md transition-all group" do %>
+      <div class="card-body p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+            <i class="fa-solid fa-file-shield text-secondary" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold group-hover:text-secondary transition-colors">Keystores</h3>
+            <p class="text-xs text-base-content/50">App signing</p>
+          </div>
+        </div>
+        <p class="text-sm text-base-content/60">Manage Android keystores for APK and AAB signing.</p>
+        <div class="mt-3">
+          <span class="badge badge-ghost"><%= @keystores_count %> keystores</span>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  </div>
+  </div>
+</div>

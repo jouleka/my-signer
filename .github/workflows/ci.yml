@@ -1,0 +1,217 @@
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  scan_ruby:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Scan for common Rails security vulnerabilities using static analysis
+        run: bin/brakeman --no-pager
+
+      - name: Audit Ruby dependencies
+        run: bundle exec bundle-audit check --update
+
+  scan_js:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Scan for security vulnerabilities in JavaScript dependencies
+        run: bin/importmap audit
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Lint code for consistent style
+        run: bin/rubocop -f github
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: --health-cmd "pg_isready -U postgres" --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y build-essential git libyaml-dev pkg-config google-chrome-stable
+
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Run RSpec tests
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/my_signer_test
+        run: bin/rails db:test:prepare && bundle exec rspec
+
+      - name: Run Minitest suite (account-deletion / soft-delete coverage)
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/my_signer_test
+        run: bin/rails db:test:prepare && bundle exec rails test
+
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    needs: [scan_ruby, scan_js, lint, test]
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Set up SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$SSH_KNOWN_HOSTS"
+          test -n "$SSH_PRIVATE_KEY"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy with Kamal
+        env:
+          # All values come from GitHub Secrets via the `secrets.*` map (no
+          # untrusted input interpolated into `run:` shells). Each is wired
+          # below to a per-secret file under .kamal/secrets.d/ so .kamal/secrets
+          # can read them via $(cat ...) — matching the convention used locally
+          # since commit 0ee1e9b.
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
+          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${{ secrets.ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY }}
+          ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${{ secrets.ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY }}
+          ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${{ secrets.ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT }}
+          PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
+          PADDLE_CLIENT_SIDE_TOKEN: ${{ secrets.PADDLE_CLIENT_SIDE_TOKEN }}
+          PADDLE_WEBHOOK_SECRET: ${{ secrets.PADDLE_WEBHOOK_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          MYSIGNER_KMS_KEY_ARN: ${{ secrets.MYSIGNER_KMS_KEY_ARN }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          KAMAL_IMAGE: ${{ vars.KAMAL_IMAGE }}
+          KAMAL_REGISTRY_USERNAME: ${{ vars.KAMAL_REGISTRY_USERNAME }}
+        run: |
+          # Write production key file so .kamal/secrets fallback works.
+          # All shell variables are sourced from the env: block above
+          # (GitHub Secrets) and quoted in expansion — no command injection.
+          mkdir -p config/credentials
+          echo -n "$RAILS_MASTER_KEY" > config/credentials/production.key
+          # OpenAI key — .kamal/secrets references config/credentials/openai.key
+          echo -n "$OPENAI_API_KEY" > config/credentials/openai.key
+
+          # Write per-secret files that .kamal/secrets reads via $(cat ...).
+          # printf '%s' (no trailing newline) so cat outputs the exact value.
+          mkdir -p .kamal/secrets.d
+          # KAMAL_REGISTRY_PASSWORD IS the docker hub token; the same value
+          # is what .kamal/secrets.d/dockerhub_pat must hold locally too.
+          printf '%s' "$KAMAL_REGISTRY_PASSWORD"                      > .kamal/secrets.d/dockerhub_pat
+          printf '%s' "$POSTGRES_PASSWORD"                            > .kamal/secrets.d/postgres_password
+          printf '%s' "$ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"         > .kamal/secrets.d/active_record_encryption_primary_key
+          printf '%s' "$ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"   > .kamal/secrets.d/active_record_encryption_deterministic_key
+          printf '%s' "$ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT" > .kamal/secrets.d/active_record_encryption_key_derivation_salt
+          printf '%s' "$PADDLE_API_KEY"                               > .kamal/secrets.d/paddle_api_key
+          printf '%s' "$PADDLE_CLIENT_SIDE_TOKEN"                     > .kamal/secrets.d/paddle_client_side_token
+          printf '%s' "$PADDLE_WEBHOOK_SECRET"                        > .kamal/secrets.d/paddle_webhook_secret
+          printf '%s' "$AWS_ACCESS_KEY_ID"                            > .kamal/secrets.d/aws_access_key_id
+          printf '%s' "$AWS_SECRET_ACCESS_KEY"                        > .kamal/secrets.d/aws_secret_access_key
+          printf '%s' "$AWS_REGION"                                   > .kamal/secrets.d/aws_region
+          printf '%s' "$MYSIGNER_KMS_KEY_ARN"                         > .kamal/secrets.d/kms_key_arn
+          chmod 600 .kamal/secrets.d/*
+
+          # Fail loud if any expected file is empty — surfaces a missing
+          # GitHub Secret BEFORE Kamal tries to deploy with blanks (which
+          # was the root cause of the broken-deploy log).
+          for f in .kamal/secrets.d/*; do
+            if [ ! -s "$f" ]; then
+              echo "ERROR: $f is empty — set the corresponding GitHub Secret"
+              exit 1
+            fi
+          done
+          echo "All .kamal/secrets.d/ files present and non-empty"
+
+          max_attempts=3
+          attempt=1
+
+          while true; do
+            echo "Starting Kamal deploy (attempt ${attempt}/${max_attempts})"
+            set +e
+            bin/kamal deploy
+            status=$?
+            set -e
+
+            if [ "${status}" -eq 0 ]; then
+              echo "Kamal deploy succeeded on attempt ${attempt}"
+              break
+            fi
+
+            if [ "${attempt}" -ge "${max_attempts}" ]; then
+              echo "Kamal deploy failed after ${attempt} attempts (last exit: ${status})"
+              exit "${status}"
+            fi
+
+            sleep_seconds=$((attempt * 20))
+            echo "Kamal deploy failed (exit ${status}); retrying in ${sleep_seconds}s..."
+            attempt=$((attempt + 1))
+            sleep "${sleep_seconds}"
+          done

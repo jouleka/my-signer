@@ -1,0 +1,106 @@
+<%
+  app_name = @apple_app&.name.presence || @bundle_id.name.presence || @bundle_id.identifier
+  back_path = @apple_app ? organization_apple_app_path(@organization, @apple_app) : organization_apple_apps_path(@organization)
+  items = [
+    { label: "Organizations", path: organizations_path },
+    { label: @organization.name, path: organization_path(@organization) },
+    { label: "iOS" },
+    { label: "Apps", path: organization_apple_apps_path(@organization) },
+    @apple_app ? { label: app_name, path: organization_apple_app_path(@organization, @apple_app) } : nil,
+    { label: "CLI Defaults" }
+  ].compact
+%>
+<%= breadcrumbs(items) %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "CLI Defaults",
+             description: raw("Configure <code class='bg-base-200 px-1 rounded text-xs'>mysigner ship appstore</code> defaults for <strong>#{h(app_name)}</strong>"),
+             gradient: "from-blue-500/10 via-base-100 to-violet-500/10",
+             badge_icon: "fa-solid fa-terminal",
+             badge_text: "CLI only",
+             actions: (capture do %>
+    <%= link_to back_path, class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+      <i class="fa-solid fa-arrow-left"></i>
+      <span class="hidden sm:inline">Back</span>
+      <span class="sm:hidden">Back</span>
+    <% end %>
+             <% end) %>
+
+  <div class="grid lg:grid-cols-12 gap-4 sm:gap-6">
+    <%# Main Form %>
+    <div class="lg:col-span-8 min-w-0 overflow-hidden">
+      <%= render "form",
+          app_store_release: @app_store_release,
+          url: organization_app_store_releases_path(@organization),
+          method: :post,
+          submit_label: "Save Defaults" %>
+    </div>
+
+    <%# Sidebar %>
+    <div class="lg:col-span-4 space-y-4 sm:space-y-5">
+      <%# App Info Card %>
+      <div class="card bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 overflow-hidden">
+        <div class="card-body p-4 sm:p-5">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white shadow-lg shrink-0">
+              <i class="fa-brands fa-apple sm:text-xl"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-bold text-sm sm:text-base truncate"><%= @bundle_id.name || "Unnamed App" %></h3>
+              <code class="text-xs text-base-content/60 block truncate"><%= @bundle_id.identifier %></code>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 mt-3 text-xs sm:text-sm text-base-content/70">
+            <i class="fa-solid fa-mobile-screen text-base-content/40"></i>
+            <span><%= @bundle_id.platform %></span>
+          </div>
+        </div>
+      </div>
+
+      <%# Quick Tips %>
+      <div class="card bg-base-100 border border-base-200 overflow-hidden">
+        <div class="card-body p-4 sm:p-5">
+          <h3 class="font-bold flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-lightbulb text-warning"></i>
+            Quick Tips
+          </h3>
+          <ul class="space-y-2 sm:space-y-3 mt-3 text-xs sm:text-sm">
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-check text-success text-xs mt-1 shrink-0"></i>
+              <span class="text-base-content/70">Use phased release for major updates</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-check text-success text-xs mt-1 shrink-0"></i>
+              <span class="text-base-content/70">Set min build number to prevent old submissions</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-check text-success text-xs mt-1 shrink-0"></i>
+              <span class="text-base-content/70">Manage content & URLs in Store Listings</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <%# CLI Usage %>
+      <div class="card bg-base-100 border border-base-200 overflow-hidden">
+        <div class="card-body p-4 sm:p-5">
+          <h3 class="font-bold flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-terminal text-primary"></i>
+            CLI Usage
+          </h3>
+          <div class="mt-3 space-y-2">
+            <div class="bg-base-200/70 rounded-lg p-2.5 sm:p-3 overflow-hidden">
+              <code class="text-xs text-primary break-all">mysigner ship appstore</code>
+              <p class="text-xs text-base-content/60 mt-1">Build, upload & submit using these defaults</p>
+            </div>
+            <div class="bg-base-200/70 rounded-lg p-2.5 sm:p-3 overflow-hidden">
+              <code class="text-xs text-primary break-all">mysigner submit</code>
+              <p class="text-xs text-base-content/60 mt-1">Submit existing build for review</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

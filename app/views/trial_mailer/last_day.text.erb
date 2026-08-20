@@ -1,0 +1,17 @@
+Today is your last day of Pro
+
+Hi <%= @user.name.presence || @user.email %>,
+
+Your Pro trial ends today (<%= @trial_ends_at.strftime("%B %d, %Y") %>).
+Tomorrow your account reverts to Free. All your work stays — but you'll lose
+the ability to use Pro features until you upgrade.
+
+Keep your store uploads, up to 50 tracked keywords per app,
+response templates, custom product pages, and 90 days of analytics history.
+
+Upgrade now: <%= pricing_url %>  ($12/month)
+
+The CLI stays free for everyone — signing, builds, TestFlight, and Play Store
+uploads keep working on Free.
+
+You can upgrade later if you change your mind. Thanks for trying MySigner.

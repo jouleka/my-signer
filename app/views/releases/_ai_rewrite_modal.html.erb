@@ -1,0 +1,88 @@
+<%# AI rewrite modal — pastes raw commit text or fetches it from a Git host. %>
+<% note = local_assigns[:release_note] || @release_note %>
+<% return unless note %>
+<% remaining = @entitlements.ai_rewrites_remaining(@organization) %>
+
+<dialog id="ai-rewrite-modal" class="modal">
+  <div class="modal-box max-w-2xl"
+       data-controller="release-note-rewrite"
+       data-release-note-rewrite-fetch-url-value="<%= fetch_commits_organization_release_path(@organization, params[:id], note_id: note.id) %>">
+
+    <form method="dialog">
+      <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+              data-controller="modal"
+              data-action="click->modal#close"
+              data-modal-target-value="ai-rewrite-modal">✕</button>
+    </form>
+
+    <h3 class="font-bold text-lg mb-1">
+      <i class="fa-solid fa-wand-magic-sparkles text-primary"></i>
+      AI Rewrite
+    </h3>
+    <p class="text-xs text-base-content/50 mb-4">
+      Paste raw commit messages or fetch them from a Git host. AI will turn them into user-friendly release notes.
+      <span class="ml-1 inline-flex items-center text-[0.625rem] font-semibold tabular-nums px-[0.4rem] py-[0.1rem] rounded bg-base-content/[0.04] text-base-content/30"><%= remaining %> rewrites left this month</span>
+    </p>
+
+    <%# GitHub fetcher row %>
+    <details class="mb-4">
+      <summary class="cursor-pointer text-xs font-semibold text-base-content/60 hover:text-base-content">
+        <i class="fa-brands fa-github"></i> Fetch commits from a Git host
+      </summary>
+      <div class="mt-3 space-y-2 p-3 rounded-lg border border-base-content/5">
+        <input type="text"
+               class="<%= input_field_classes %>"
+               placeholder="https://github.com/owner/repo"
+               data-release-note-rewrite-target="githubRepoUrl" />
+        <div class="grid grid-cols-2 gap-2">
+          <input type="text"
+                 class="<%= input_field_classes %>"
+                 placeholder="from ref (e.g. v1.0.0)"
+                 data-release-note-rewrite-target="githubFromRef" />
+          <input type="text"
+                 class="<%= input_field_classes %>"
+                 placeholder="to ref (e.g. v1.1.0)"
+                 data-release-note-rewrite-target="githubToRef" />
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button"
+                  class="<%= btn_ghost_sm_classes %>"
+                  data-action="click->release-note-rewrite#fetchFromGit"
+                  data-release-note-rewrite-target="fetchBtn">
+            Fetch commits
+          </button>
+          <span class="text-xs hidden" data-release-note-rewrite-target="fetchStatus"></span>
+        </div>
+      </div>
+    </details>
+
+    <%= form_with url: rewrite_release_note_organization_release_path(@organization, params[:id], note_id: note.id),
+        method: :post,
+        data: { release_note_rewrite_target: "form",
+                action: "submit->release-note-rewrite#submit turbo:submit-end->release-note-rewrite#handleSubmitEnd" } do |f| %>
+      <label class="<%= label_form_classes %> mb-1.5">Raw commit messages or notes</label>
+      <textarea name="raw_input"
+                class="<%= textarea_field_classes %> font-mono text-xs"
+                rows="10"
+                placeholder="- 1234abc Fix login bug&#10;- 5678def Add dark mode toggle&#10;- 9abc012 Improve sync performance"
+                data-release-note-rewrite-target="rawInput"></textarea>
+
+      <div class="modal-action mt-4">
+        <button type="button" class="<%= btn_ghost_classes %>"
+                data-controller="modal"
+                data-action="click->modal#close"
+                data-modal-target-value="ai-rewrite-modal">Cancel</button>
+        <button type="submit" class="<%= btn_primary_classes %>"
+                data-release-note-rewrite-target="submitBtn"
+                <% if remaining <= 0 %>disabled<% end %>>
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Rewrite with AI
+        </button>
+      </div>
+
+      <div data-release-note-rewrite-target="statusArea"></div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

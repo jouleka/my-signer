@@ -1,0 +1,22 @@
+<%# app/views/pricing/_trial_strip.html.erb
+    Locals:
+      viewer_context: Pricing::ViewerContext
+    Renders only when viewer is on an active Pro trial.
+%>
+
+<% return unless viewer_context.trialing? %>
+
+<div class="bg-primary/[0.08] border-b border-primary/15">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 sm:gap-3 text-sm flex-wrap">
+    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary shrink-0">
+      <i class="fa-solid fa-bolt text-[0.65rem]" aria-hidden="true"></i>
+    </span>
+    <span class="font-semibold text-primary">Pro trial</span>
+    <span class="text-base-content/60">·</span>
+    <span class="text-base-content/70"><%= viewer_context.trial_days %> days left</span>
+    <% if current_user&.trial_ends_at.present? %>
+      <span class="text-base-content/40 hidden sm:inline">· ends <%= l(current_user.trial_ends_at.to_date, format: :long) %></span>
+      <span class="text-base-content/40 sm:hidden text-xs w-full">ends <%= l(current_user.trial_ends_at.to_date, format: :short) %></span>
+    <% end %>
+  </div>
+</div>

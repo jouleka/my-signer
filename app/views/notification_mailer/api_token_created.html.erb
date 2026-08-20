@@ -1,0 +1,21 @@
+<% @preheader = "A new API token was created in #{@organization.name}. Review tokens if this wasn't expected." %>
+
+<%= ms_eyebrow(30, "Security · Token created") %>
+<%= ms_headline("New <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">API token</em> issued.", size: 40) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_meta_row("Token", ms_meta_pill(@token_name)) %>
+<%= ms_meta_row("Organization", ms_meta_pill(@organization.name)) %>
+<%= ms_meta_row("Created by", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{ERB::Util.h(@creator.name || @creator.email)}</span>".html_safe) %>
+<%= ms_meta_row("At", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{Time.current.strftime('%B %-d, %Y · %H:%M %Z')}</span>".html_safe) %>
+
+<%= ms_callout(
+  "If this wasn't expected, review the API tokens for the organization and revoke anything you don't recognize. Tokens carry production access; treat them like passwords.",
+  variant: :warning,
+  accent_label: "Wasn't you?"
+) %>
+
+<%= ms_cta("Review tokens", organization_api_tokens_url(@organization), variant: :primary, margin_top: 4, margin_bottom: 24) %>
+
+<%= ms_fine_print("Token receipts are sent to every owner of the organization automatically.") %>

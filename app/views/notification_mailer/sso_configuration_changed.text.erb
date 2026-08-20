@@ -1,0 +1,13 @@
+SSO configuration <%= @event %>
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+<%= @actor_name %> <%= @event %> the SSO configuration for "<%= @organization.name %>".
+
+If this wasn't expected, review the configuration and the audit log.
+
+Review SSO settings: <%= organization_sso_configuration_url(@organization) %>
+
+Thanks,
+My Signer Team

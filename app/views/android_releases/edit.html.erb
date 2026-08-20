@@ -1,0 +1,547 @@
+<%
+  app_name = @android_app.name.presence || @android_app.package_name
+  back_path = organization_android_app_path(@organization, @android_app)
+  items = [
+    { label: "Organizations", path: organizations_path },
+    { label: @organization.name, path: organization_path(@organization) },
+    { label: "Android" },
+    { label: "Apps", path: organization_android_apps_path(@organization) },
+    { label: app_name, path: back_path },
+    { label: "CLI Defaults" }
+  ]
+
+  track_options = [
+    { value: "internal",   label: "Internal",   desc: "Internal testers only",  icon: "fa-user-shield",   accent: "from-violet-500 to-fuchsia-600",  dot: "bg-violet-400" },
+    { value: "alpha",      label: "Alpha",      desc: "Closed testing",         icon: "fa-flask",         accent: "from-sky-500 to-blue-600",        dot: "bg-sky-400" },
+    { value: "beta",       label: "Beta",       desc: "Open / public beta",     icon: "fa-vial-circle-check", accent: "from-amber-500 to-orange-600",   dot: "bg-amber-400" },
+    { value: "production", label: "Production", desc: "Live to all users",      icon: "fa-rocket",        accent: "from-emerald-500 to-green-600",   dot: "bg-emerald-400" }
+  ]
+
+  status_options = [
+    { value: "draft",      label: "Draft",       desc: "Upload only — don't release yet",  icon: "fa-box-archive",   accent: "from-slate-500 to-slate-600" },
+    { value: "inProgress", label: "In Progress", desc: "Staged rollout to a % of users",  icon: "fa-chart-line",    accent: "from-sky-500 to-blue-600" },
+    { value: "completed",  label: "Completed",   desc: "100% rollout",                     icon: "fa-circle-check",  accent: "from-emerald-500 to-green-600" }
+  ]
+
+  current_track    = @android_app.cli_default_track
+  current_status   = @android_app.cli_default_status
+  current_fraction = @android_app.cli_default_user_fraction
+  errors           = @android_app.cli_defaults_errors || {}
+%>
+<%= breadcrumbs(items) %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "CLI Defaults",
+             description: raw("Applied by <code class='bg-base-200 px-1 rounded text-xs'>mysigner ship android</code> for <strong>#{h(app_name)}</strong> unless a CLI flag overrides."),
+             gradient: "from-emerald-500/15 via-base-100 to-lime-500/10",
+             badge_icon: "fa-brands fa-android",
+             badge_text: @android_app.cli_defaults_configured? ? "Configured" : "Not configured",
+             actions: (capture do %>
+    <%= link_to back_path, class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+      <i class="fa-solid fa-arrow-left"></i>
+      Back to app
+    <% end %>
+             <% end) %>
+
+  <% if errors.any? %>
+    <div class="alert alert-error overflow-hidden">
+      <i class="fa-solid fa-circle-exclamation shrink-0"></i>
+      <div class="min-w-0">
+        <h3 class="font-bold text-sm">Please fix the following:</h3>
+        <ul class="text-sm mt-1 space-y-0.5">
+          <% errors.each do |field, message| %>
+            <li class="break-words">• <strong class="font-mono text-xs"><%= field %></strong> <%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="grid lg:grid-cols-12 gap-4 sm:gap-6">
+    <%# ───────────────────────── MAIN FORM (8/12) ───────────────────────── %>
+    <div class="lg:col-span-8 min-w-0 overflow-hidden space-y-4 sm:space-y-5">
+
+      <%# Purpose banner %>
+      <div class="bg-gradient-to-br from-emerald-500/5 to-lime-500/5 border border-emerald-500/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-start gap-3 overflow-hidden">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-terminal text-emerald-500 text-sm sm:text-base"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <h3 class="font-bold text-sm sm:text-base">Defaults for <code class="text-xs sm:text-sm bg-base-200 px-1 py-0.5 rounded">mysigner ship android</code></h3>
+          <p class="text-xs sm:text-sm text-base-content/70 mt-0.5">
+            Package: <code class="text-xs bg-base-200 px-1 py-0.5 rounded break-all"><%= @android_app.package_name %></code>
+          </p>
+          <div class="grid sm:grid-cols-2 gap-2 mt-3 text-xs sm:text-sm text-base-content/70">
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-circle-info text-info mt-0.5 shrink-0"></i>
+              <p><strong>Manual hold after approval?</strong> No Play API — toggle <em>Managed Publishing</em> in the Play Console.</p>
+            </div>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-circle-info text-info mt-0.5 shrink-0"></i>
+              <p><strong>Version / build number?</strong> Read from the AAB manifest at upload time.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%= form_with scope: :android_release,
+                    url: organization_android_release_path(@organization, @android_app),
+                    method: :patch, data: { turbo: false }, class: "space-y-4 sm:space-y-5" do |f| %>
+
+        <%# ── Section 1: Track ────────────────────────────────────────── %>
+        <div class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden">
+          <input type="checkbox" checked="checked" />
+          <div class="collapse-title px-3 sm:px-4">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25 shrink-0">
+                <i class="fa-solid fa-layer-group text-sm sm:text-base"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 class="font-bold text-sm sm:text-base">Default Track</h3>
+                <p class="text-xs text-base-content/60 font-normal">Which Play track to publish to when no <code>--track</code> flag is passed</p>
+              </div>
+            </div>
+          </div>
+          <div class="collapse-content px-3 sm:px-4">
+            <div class="pt-2 grid sm:grid-cols-2 gap-2 sm:gap-3">
+              <% track_options.each do |opt| %>
+                <label class="relative flex items-start gap-3 p-3 sm:p-4 rounded-xl border-2 border-base-200 bg-base-100 cursor-pointer hover:border-primary/40 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
+                  <%= f.radio_button :default_track, opt[:value],
+                        checked: current_track == opt[:value],
+                        class: "radio radio-primary radio-sm mt-0.5 shrink-0" %>
+                  <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br <%= opt[:accent] %> flex items-center justify-center text-white shadow-md shrink-0">
+                    <i class="fa-solid <%= opt[:icon] %> text-sm"></i>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                      <span class="font-semibold text-sm"><%= opt[:label] %></span>
+                      <span class="w-1.5 h-1.5 rounded-full <%= opt[:dot] %> opacity-70"></span>
+                    </div>
+                    <p class="text-xs text-base-content/60 mt-0.5 break-words"><%= opt[:desc] %></p>
+                  </div>
+                </label>
+              <% end %>
+            </div>
+
+            <%# "No default" option — expands the set to allow unsetting %>
+            <label class="mt-2 sm:mt-3 flex items-center gap-3 p-3 rounded-xl border border-dashed border-base-300 bg-base-100 cursor-pointer hover:border-base-content/30 transition-all has-[:checked]:border-base-content/40 has-[:checked]:bg-base-200/40">
+              <%= f.radio_button :default_track, "",
+                    checked: current_track.blank?,
+                    class: "radio radio-sm shrink-0" %>
+              <div class="w-8 h-8 rounded-lg bg-base-200 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-minus text-base-content/50 text-xs"></i>
+              </div>
+              <div class="min-w-0">
+                <span class="font-medium text-sm">No default</span>
+                <p class="text-xs text-base-content/60">CLI must pass <code class="text-[10px] bg-base-200 px-1 rounded">--track</code> each run</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <%# ── Section 2: Rollout Strategy ────────────────────────────── %>
+        <div class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden"
+             data-controller="android-release-status">
+          <input type="checkbox" checked="checked" />
+          <div class="collapse-title px-3 sm:px-4">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/25 shrink-0">
+                <i class="fa-solid fa-gauge-high text-sm sm:text-base"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 class="font-bold text-sm sm:text-base">Rollout Strategy</h3>
+                <p class="text-xs text-base-content/60 font-normal">How the release reaches users on Google Play</p>
+              </div>
+            </div>
+          </div>
+          <div class="collapse-content px-3 sm:px-4">
+            <div class="pt-2 space-y-4 sm:space-y-5">
+              <%# Status radio cards %>
+              <div class="space-y-2">
+                <label class="label pb-0">
+                  <span class="label-text font-medium text-sm">Release Status</span>
+                </label>
+                <div class="grid sm:grid-cols-3 gap-2 sm:gap-3">
+                  <% status_options.each do |opt| %>
+                    <label class="relative flex sm:flex-col items-start sm:items-center gap-3 sm:gap-0 p-3 sm:p-4 rounded-xl border-2 border-base-200 bg-base-100 cursor-pointer hover:border-primary/40 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
+                      <%= f.radio_button :default_status, opt[:value],
+                            checked: current_status == opt[:value],
+                            class: "sr-only",
+                            data: { android_release_status_target: "radio", action: "change->android-release-status#toggle" } %>
+                      <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br <%= opt[:accent] %> flex items-center justify-center text-white shadow-md shrink-0 sm:mb-3">
+                        <i class="fa-solid <%= opt[:icon] %> text-base sm:text-lg"></i>
+                      </div>
+                      <div class="min-w-0 flex-1 sm:text-center">
+                        <span class="font-semibold text-sm"><%= opt[:label] %></span>
+                        <p class="text-xs text-base-content/60 mt-0.5 sm:mt-1 break-words"><%= opt[:desc] %></p>
+                      </div>
+                      <%# Checked indicator %>
+                      <span class="hidden sm:block absolute top-2 right-2 w-4 h-4 rounded-full border-2 border-base-300 group-has-[:checked]:border-primary group-has-[:checked]:bg-primary transition-colors">
+                        <i class="fa-solid fa-check text-white text-[8px] opacity-0 group-has-[:checked]:opacity-100 flex items-center justify-center h-full"></i>
+                      </span>
+                    </label>
+                  <% end %>
+                </div>
+              </div>
+
+              <%# Conditional: Staged Rollout Fraction (inProgress only) %>
+              <div class="hidden" data-android-release-status-target="rolloutFields">
+                <div class="bg-sky-500/5 border border-sky-500/20 rounded-lg sm:rounded-xl p-3 sm:p-4 space-y-3">
+                  <div class="flex items-start gap-2">
+                    <i class="fa-solid fa-chart-pie text-sky-500 mt-0.5 shrink-0"></i>
+                    <div class="min-w-0 flex-1">
+                      <label class="label pb-1 pt-0">
+                        <span class="label-text font-medium text-sm flex items-center gap-2">
+                          Staged Rollout
+                          <span class="font-mono text-xs text-sky-600 bg-sky-500/10 px-1.5 py-0.5 rounded" data-android-release-status-target="fractionPreview">—</span>
+                        </span>
+                      </label>
+                      <%= f.number_field :default_user_fraction,
+                            step: 0.01, min: 0.01, max: 0.99,
+                            value: current_fraction,
+                            placeholder: "0.10 for 10%",
+                            class: "input input-bordered input-sm sm:input-md font-mono focus:input-primary w-full",
+                            data: { android_release_status_target: "fractionInput", action: "input->android-release-status#updatePreview" } %>
+                      <p class="text-xs text-base-content/60 mt-2">Value between 0 and 1 (exclusive). E.g. <code>0.25</code> = 25% of users.</p>
+                    </div>
+                  </div>
+
+                  <%# Quick picks %>
+                  <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 pl-6 sm:pl-7">
+                    <span class="text-[11px] uppercase tracking-wider text-base-content/50 font-semibold mr-1">Common</span>
+                    <% [["1%", "0.01"], ["5%", "0.05"], ["10%", "0.10"], ["25%", "0.25"], ["50%", "0.50"]].each do |label, val| %>
+                      <button type="button"
+                              data-action="click->android-release-status#pickFraction"
+                              data-fraction="<%= val %>"
+                              class="btn btn-xs btn-ghost border border-base-200 hover:border-sky-500 hover:bg-sky-500/10 font-mono"><%= label %></button>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <%# In-App Update Priority %>
+              <div class="form-control">
+                <label class="label pb-1">
+                  <span class="label-text font-medium text-sm">In-App Update Priority</span>
+                  <span class="label-text-alt badge badge-ghost badge-sm">0 – 5</span>
+                </label>
+                <%= f.number_field :default_in_app_update_priority,
+                      min: 0, max: 5, step: 1,
+                      value: @android_app.cli_default_in_app_update_priority,
+                      placeholder: "0 (default) – 5 (highest)",
+                      class: "input input-bordered input-sm sm:input-md font-mono focus:input-primary w-full" %>
+                <label class="label pt-1">
+                  <span class="label-text-alt text-base-content/60 text-xs">Hint for in-app update flows. Leave empty if you don't use <code>AppUpdateManager</code>.</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <%# ── Section 3: Release Notes (per locale) ──────────────────── %>
+        <div class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden"
+             data-controller="android-release-notes">
+          <input type="checkbox" checked="checked" />
+          <div class="collapse-title px-3 sm:px-4">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/25 shrink-0">
+                <i class="fa-solid fa-file-lines text-sm sm:text-base"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 class="font-bold text-sm sm:text-base">Release Notes</h3>
+                <p class="text-xs text-base-content/60 font-normal">Per-locale. BCP-47 codes (<code>en-US</code>, <code>de-DE</code>, <code>pt-BR</code>).</p>
+              </div>
+            </div>
+          </div>
+          <div class="collapse-content px-3 sm:px-4">
+            <div class="pt-2 space-y-3">
+              <div id="release-notes-rows" class="space-y-2">
+                <% existing = @android_app.cli_release_notes %>
+                <% existing = { (@android_app.primary_locale || "en-US") => "" } if existing.blank? %>
+                <% existing.each do |locale, text| %>
+                  <div class="group flex gap-2 items-start" data-release-note-row>
+                    <input type="text"
+                           name="android_release[release_notes_keys][]"
+                           value="<%= locale %>"
+                           placeholder="en-US"
+                           aria-label="Locale"
+                           class="input input-bordered input-sm font-mono w-24 sm:w-28 shrink-0 focus:input-primary" />
+                    <div class="flex-1 min-w-0">
+                      <textarea name="android_release[release_notes_values][]"
+                                rows="1"
+                                placeholder="What's new in this release?"
+                                aria-label="Release note text"
+                                class="textarea textarea-bordered textarea-sm w-full text-sm focus:textarea-primary leading-relaxed resize-y min-h-10"><%= text %></textarea>
+                    </div>
+                    <button type="button"
+                            data-action="click->android-release-notes#remove"
+                            class="btn btn-ghost btn-sm btn-square text-base-content/40 hover:text-error hover:bg-error/10 shrink-0"
+                            aria-label="Remove locale">
+                      <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                  </div>
+                <% end %>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <button type="button"
+                        data-action="click->android-release-notes#add"
+                        class="btn btn-ghost btn-sm gap-2 border border-dashed border-base-300 hover:border-primary/40 hover:bg-primary/5">
+                  <i class="fa-solid fa-plus text-xs"></i>
+                  Add locale
+                </button>
+                <p class="text-xs text-base-content/50">
+                  Google Play limit: <strong class="text-base-content/70">500 chars</strong> per locale. Override per run with <code class="bg-base-200 px-1 rounded text-[11px]">--release-notes</code>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <%# ── Section 4: Advanced ─────────────────────────────────────── %>
+        <div class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden">
+          <input type="checkbox" <%= (@android_app.cli_release_name.present? || @android_app.cli_changes_not_sent_for_review?) ? "checked" : "" %> />
+          <div class="collapse-title px-3 sm:px-4">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center text-white shadow-lg shadow-slate-500/25 shrink-0">
+                <i class="fa-solid fa-sliders text-sm sm:text-base"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 class="font-bold text-sm sm:text-base">Advanced</h3>
+                <p class="text-xs text-base-content/60 font-normal">Release name & review-bypass flag</p>
+              </div>
+            </div>
+          </div>
+          <div class="collapse-content px-3 sm:px-4">
+            <div class="pt-2 space-y-4">
+              <div class="form-control">
+                <label class="label pb-1">
+                  <span class="label-text font-medium text-sm">Release Name</span>
+                  <span class="label-text-alt badge badge-ghost badge-sm">Optional</span>
+                </label>
+                <%= f.text_field :release_name,
+                      value: @android_app.cli_release_name,
+                      placeholder: "Defaults to AAB versionName",
+                      class: "input input-bordered input-sm sm:input-md focus:input-primary w-full" %>
+                <label class="label pt-1">
+                  <span class="label-text-alt text-base-content/60 text-xs">Shown on the Play Console release page. Leave blank to use the AAB's <code>versionName</code>.</span>
+                </label>
+              </div>
+
+              <label class="flex items-start gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-warning/30 bg-warning/5 cursor-pointer hover:bg-warning/10 transition-colors has-[:checked]:border-warning/60 has-[:checked]:bg-warning/10">
+                <%= f.check_box :changes_not_sent_for_review,
+                      { checked: @android_app.cli_changes_not_sent_for_review?, class: "checkbox checkbox-warning checkbox-sm mt-0.5 shrink-0" } %>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-semibold text-sm">Don't send changes for Play review on commit</span>
+                    <span class="badge badge-warning badge-outline badge-sm gap-1">
+                      <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
+                      Use carefully
+                    </span>
+                  </div>
+                  <p class="text-xs text-base-content/70 mt-1 break-words">
+                    Sets <code class="bg-base-200 px-1 rounded text-[11px]">changesNotSentForReview=true</code> on <code class="bg-base-200 px-1 rounded text-[11px]">edits.commit</code>.
+                    Only allowed on apps with pending unreviewed changes.
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <%# ── Submit ───────────────────────────────────────────────────── %>
+        <%= hidden_field_tag "android_release[release_notes_json]", @android_app.cli_release_notes.to_json, id: "release-notes-json" %>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
+          <p class="hidden sm:flex text-sm text-base-content/50 items-center gap-2 min-w-0">
+            <i class="fa-solid fa-terminal text-primary/50 shrink-0"></i>
+            <span>Used when you run <code class="bg-base-200 px-1.5 py-0.5 rounded text-xs">mysigner ship android</code></span>
+          </p>
+          <div class="flex items-center gap-2 justify-end">
+            <%= link_to "Cancel", back_path, class: "btn btn-ghost btn-sm sm:btn-md" %>
+            <%= f.submit "Save CLI Defaults", class: "btn btn-primary btn-sm sm:btn-md gap-2 px-6" %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Danger Zone — separate form (HTML forbids nested forms). %>
+      <% if @android_app.cli_defaults_configured? %>
+        <div class="card bg-base-100 border border-error/30 overflow-hidden">
+          <div class="card-body p-3 sm:p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              <div class="flex items-center gap-2.5 sm:gap-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+                  <i class="fa-solid fa-trash text-error text-sm"></i>
+                </div>
+                <div class="min-w-0">
+                  <p class="font-bold text-sm">Clear CLI Defaults</p>
+                  <p class="text-xs text-base-content/60">Reset every saved value for this app</p>
+                </div>
+              </div>
+              <%= button_to organization_android_release_path(@organization, @android_app),
+                    method: :delete,
+                    class: "btn btn-error btn-outline btn-sm gap-2 w-full sm:w-auto shrink-0",
+                    form: { data: { turbo_confirm: "Clear CLI Defaults for #{app_name}? This does not affect builds or the Play Console." } } do %>
+                <i class="fa-solid fa-trash"></i>
+                Clear
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%# ───────────────────────── SIDEBAR (4/12) ─────────────────────────── %>
+    <div class="lg:col-span-4 space-y-4 sm:space-y-5">
+
+      <%# Current Config Summary %>
+      <div class="card bg-gradient-to-br from-emerald-500/5 to-lime-500/10 border border-emerald-500/20 overflow-hidden">
+        <div class="card-body p-4 sm:p-5">
+          <div class="flex items-center gap-3 mb-3 sm:mb-4">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-lg shrink-0">
+              <i class="fa-brands fa-android sm:text-xl"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-bold text-sm sm:text-base truncate"><%= app_name %></h3>
+              <code class="text-xs text-base-content/60 block truncate font-mono"><%= @android_app.package_name %></code>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="text-base-content/60">Track</span>
+              <% if current_track.present? %>
+                <span class="badge badge-primary badge-sm font-mono"><%= current_track %></span>
+              <% else %>
+                <span class="text-base-content/40">—</span>
+              <% end %>
+            </div>
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="text-base-content/60">Status</span>
+              <span class="badge badge-sm font-mono <%= current_status == 'completed' ? 'badge-success' : current_status == 'inProgress' ? 'badge-info' : 'badge-ghost' %>"><%= current_status %></span>
+            </div>
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="text-base-content/60">Rollout</span>
+              <% if current_fraction.present? && current_status == "inProgress" %>
+                <span class="font-mono font-medium"><%= "%.0f%%" % (current_fraction.to_f * 100) %></span>
+              <% elsif current_status == "completed" %>
+                <span class="font-mono font-medium text-success">100%</span>
+              <% else %>
+                <span class="text-base-content/40">—</span>
+              <% end %>
+            </div>
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="text-base-content/60">Locales</span>
+              <span class="font-mono font-medium"><%= @android_app.cli_release_notes.keys.count %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Features %>
+      <div class="card bg-base-100 border border-base-200 overflow-hidden">
+        <div class="card-body p-4 sm:p-5">
+          <h3 class="font-bold text-sm mb-2 sm:mb-3">Features</h3>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="flex items-center gap-2">
+                <i class="fa-solid fa-gauge-high text-info text-xs"></i>
+                Staged Rollout
+              </span>
+              <% if current_status == "inProgress" && current_fraction.present? %>
+                <span class="badge badge-info badge-sm gap-1"><i class="fa-solid fa-check text-[8px]"></i> On</span>
+              <% else %>
+                <span class="badge badge-ghost badge-sm">Off</span>
+              <% end %>
+            </div>
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="flex items-center gap-2">
+                <i class="fa-solid fa-bolt text-warning text-xs"></i>
+                Update Priority
+              </span>
+              <% if @android_app.cli_default_in_app_update_priority.present? %>
+                <span class="badge badge-warning badge-sm font-mono"><%= @android_app.cli_default_in_app_update_priority %></span>
+              <% else %>
+                <span class="badge badge-ghost badge-sm">Default</span>
+              <% end %>
+            </div>
+            <div class="flex items-center justify-between text-xs sm:text-sm">
+              <span class="flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-warning text-xs"></i>
+                Skip Review
+              </span>
+              <% if @android_app.cli_changes_not_sent_for_review? %>
+                <span class="badge badge-warning badge-sm gap-1"><i class="fa-solid fa-triangle-exclamation text-[8px]"></i> On</span>
+              <% else %>
+                <span class="badge badge-ghost badge-sm">Off</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# CLI Commands %>
+      <div class="card bg-base-100 border border-base-200 overflow-hidden">
+        <div class="card-body p-4 sm:p-5">
+          <h3 class="font-bold flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-terminal text-primary"></i>
+            CLI Commands
+          </h3>
+          <div class="mt-3 space-y-2">
+            <div class="bg-base-200/70 rounded-lg p-2.5 sm:p-3 overflow-hidden">
+              <code class="text-xs text-primary break-all">mysigner ship android</code>
+              <p class="text-xs text-base-content/60 mt-1">Build AAB &amp; publish to Play</p>
+            </div>
+            <div class="bg-base-200/70 rounded-lg p-2.5 sm:p-3 overflow-hidden">
+              <code class="text-xs text-primary break-all">mysigner ship android --track beta</code>
+              <p class="text-xs text-base-content/60 mt-1">Override the default track</p>
+            </div>
+            <div class="bg-base-200/70 rounded-lg p-2.5 sm:p-3 overflow-hidden">
+              <code class="text-xs text-primary break-all">mysigner ship android --user-fraction 0.1</code>
+              <p class="text-xs text-base-content/60 mt-1">10% staged rollout (needs <code>inProgress</code>)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Last Updated %>
+      <div class="text-center text-xs text-base-content/40 py-2">
+        <i class="fa-solid fa-clock mr-1"></i>
+        Last updated <%= time_ago_in_words(@android_app.updated_at) %> ago
+      </div>
+    </div>
+  </div>
+</section>
+
+<%# ──────────────────────── Release-notes serializer ────────────────────
+    Serializes locale/text parallel arrays into params[:android_release][:release_notes]
+    as a Hash — matching the controller's strong-params shape and the API endpoint.
+%>
+<script type="module">
+  document.addEventListener("submit", function (e) {
+    const form = e.target.closest("form")
+    if (!form || !form.querySelector("#release-notes-json")) return
+
+    const keys = form.querySelectorAll("input[name='android_release[release_notes_keys][]']")
+    const values = form.querySelectorAll("textarea[name='android_release[release_notes_values][]']")
+    const notes = {}
+    keys.forEach((input, i) => {
+      const locale = (input.value || "").trim()
+      const text = (values[i]?.value || "").trim()
+      if (locale && text) notes[locale] = text
+    })
+
+    keys.forEach(k => k.remove())
+    values.forEach(v => v.remove())
+    form.querySelector("#release-notes-json").remove()
+
+    Object.entries(notes).forEach(([locale, text]) => {
+      const input = document.createElement("input")
+      input.type = "hidden"
+      input.name = `android_release[release_notes][${locale}]`
+      input.value = text
+      form.appendChild(input)
+    })
+  })
+</script>

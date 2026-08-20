@@ -1,0 +1,15 @@
+Sync Failed
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+<%= @credential_type %> sync failed for "<%= @organization.name %>".
+
+Error: <%= @error_message.truncate(500) %>
+
+Please check your credentials and try syncing again.
+
+Check credentials: <%= organization_url(@organization) %>
+
+Thanks,
+My Signer Team

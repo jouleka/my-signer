@@ -1,0 +1,372 @@
+<%= render "shared/ios_breadcrumbs", organization: @organization, active_tab: :apps %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%
+    page_header_stats = capture do
+  %>
+    <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+      <div class="stat-title text-xs">Total</div>
+      <div class="stat-value text-xl sm:text-2xl"><%= @total_apps %></div>
+      <div class="stat-desc">apps</div>
+    </div>
+    <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+      <div class="stat-title text-xs">Builds</div>
+      <div class="stat-value text-xl sm:text-2xl text-success"><%= @total_builds %></div>
+      <div class="stat-desc">uploaded</div>
+    </div>
+    <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+      <div class="stat-title text-xs">TestFlight</div>
+      <div class="stat-value text-xl sm:text-2xl text-info"><%= @total_beta_groups %></div>
+      <div class="stat-desc">groups</div>
+    </div>
+  <% end %>
+
+  <%
+    page_header_actions = capture do
+  %>
+    <%= link_to organization_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+      <i class="fa-solid fa-arrow-left"></i>
+      <span class="hidden sm:inline">Back to Organization</span>
+      <span class="sm:hidden">Back</span>
+    <% end %>
+    <% if @organization.app_store_connect_credentials.active.exists? && policy(@organization).sync? %>
+      <button type="button"
+              data-controller="sync"
+              data-sync-url-value="<%= sync_app_store_connect_api_v1_organization_path(@organization) %>"
+              data-sync-status-url-value="<%= sync_status_organization_path(@organization) %>"
+              data-action="click->sync#start"
+              data-sync-target="button"
+              class="btn btn-ghost btn-sm sm:btn-md gap-2"
+              title="Sync iOS signing, builds, and store listings only. Use the navbar Sync button for everything.">
+        <i class="fa-solid fa-rotate"></i>
+        <span class="hidden sm:inline">Sync iOS</span>
+        <span class="sm:hidden">Sync</span>
+      </button>
+    <% end %>
+    <a href="https://appstoreconnect.apple.com" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm sm:btn-md gap-2">
+      <i class="fa-solid fa-external-link"></i>
+      <span class="hidden sm:inline">App Store Connect</span>
+      <span class="sm:hidden">Connect</span>
+    </a>
+  <% end %>
+
+  <%= render "shared/page_header",
+             title: "iOS Apps",
+             description: "Monitor your App Store Connect apps, track builds, TestFlight groups, and manage releases.",
+             gradient: "from-blue-500/10 via-base-100 to-indigo-500/10",
+             badge_icon: "fa-brands fa-apple",
+             badge_text: "App Store Connect",
+             stats: page_header_stats,
+             actions: page_header_actions %>
+
+  <% show_filter = @apps.any? || @q_query.present? %>
+  <%
+    content_card_filter = capture do
+  %>
+    <%= form_with url: organization_apple_apps_path(@organization), method: :get, local: true, class: "flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1 min-w-0" do %>
+      <div class="form-control flex-1 min-w-0">
+        <label class="label py-1">
+          <span class="label-text text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-magnifying-glass text-[10px] text-base-content/50"></i>
+            Search
+          </span>
+        </label>
+        <input type="text" name="q" value="<%= @q_query %>" placeholder="Bundle ID or app name..." class="input input-bordered input-sm w-full" autocomplete="off">
+      </div>
+      <div class="flex items-end gap-2">
+        <button class="btn btn-primary btn-sm gap-2" type="submit">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          Search
+        </button>
+        <% if @q_query.present? %>
+          <%= link_to organization_apple_apps_path(@organization), class: "btn btn-ghost btn-sm gap-2" do %>
+            <i class="fa-solid fa-xmark"></i>
+            Clear
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= render "shared/content_card", filter: (show_filter ? content_card_filter : nil) do %>
+    <% if @apps.any? %>
+      <%# Desktop Table %>
+      <div class="hidden lg:block">
+        <div class="overflow-x-auto rounded-2xl border border-base-200">
+          <table class="table">
+            <thead>
+              <tr class="bg-base-200/50 text-xs uppercase text-base-content/60 font-bold tracking-wider">
+                <th>App</th>
+                <th>Bundle ID</th>
+                <th>Builds</th>
+                <th>TestFlight</th>
+                <th>Latest Version</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @apps.each do |app| %>
+                <% latest_version = app.app_store_versions.max_by(&:created_at) %>
+                <tr class="hover:bg-base-200/30 transition-colors">
+                  <td>
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center">
+                        <i class="fa-brands fa-apple text-blue-600"></i>
+                      </div>
+                      <div>
+                        <%= link_to organization_apple_app_path(@organization, app), class: "font-semibold hover:text-primary transition-colors" do %>
+                          <%= app.name.presence || "Unnamed App" %>
+                        <% end %>
+                        <% if app.sku.present? %>
+                          <div class="text-xs text-base-content/50">SKU: <%= app.sku %></div>
+                        <% end %>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="flex items-center gap-2">
+                      <code class="text-xs bg-base-200 px-2 py-0.5 rounded"><%= app.bundle_id %></code>
+                      <button type="button" class="btn btn-ghost btn-xs btn-square"
+                              data-controller="copy"
+                              data-action="click->copy#copy"
+                              data-copy-text-value="<%= app.bundle_id %>">
+                        <i class="fa-solid fa-copy text-base-content/50"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge badge-ghost gap-1.5">
+                      <i class="fa-solid fa-cube text-[10px]"></i>
+                      <%= app.apple_builds.size %>
+                    </span>
+                  </td>
+                  <td>
+                    <% beta_count = app.testflight_beta_groups.size %>
+                    <% if beta_count > 0 %>
+                      <div class="flex flex-col gap-1">
+                        <span class="badge badge-info badge-sm gap-1.5">
+                          <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                          <%= beta_count %> groups
+                        </span>
+                        <span class="text-xs text-base-content/50"><%= app.testflight_beta_groups.sum(:tester_count) %> testers</span>
+                      </div>
+                    <% else %>
+                      <span class="text-base-content/30">&mdash;</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% if latest_version %>
+                      <div class="flex flex-col gap-1">
+                        <span class="font-mono text-sm font-medium">v<%= latest_version.version_string %></span>
+                        <% state_badge = case latest_version.app_store_state.to_s.upcase
+                             when "READY_FOR_SALE" then "badge-success"
+                             when "IN_REVIEW", "WAITING_FOR_REVIEW" then "badge-info"
+                             when "PREPARE_FOR_SUBMISSION" then "badge-warning"
+                             when "REJECTED" then "badge-error"
+                             else "badge-ghost"
+                           end %>
+                        <span class="badge <%= state_badge %> badge-xs"><%= latest_version.app_store_state.to_s.titleize %></span>
+                      </div>
+                    <% else %>
+                      <span class="text-base-content/30">&mdash;</span>
+                    <% end %>
+                  </td>
+                  <td class="text-right">
+                    <div class="flex items-center justify-end gap-1">
+                      <%= link_to organization_apple_app_path(@organization, app), class: "btn btn-ghost btn-xs gap-1.5" do %>
+                        <i class="fa-solid fa-eye"></i>
+                        View
+                      <% end %>
+                      <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                              data-controller="raw-json"
+                              data-action="click->raw-json#show"
+                              data-raw-json-content-value="<%= app.raw_json %>"
+                              data-raw-json-title-value="App: <%= app.name %>">
+                        <i class="fa-solid fa-code"></i>
+                        JSON
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <%# Mobile Cards %>
+      <div class="lg:hidden space-y-3">
+        <% @apps.each do |app| %>
+          <% latest_version = app.app_store_versions.max_by(&:created_at) %>
+          <div class="card border border-base-200 shadow-sm overflow-hidden">
+            <div class="card-body p-3 sm:p-4 space-y-3 min-w-0">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center shrink-0">
+                  <i class="fa-brands fa-apple text-blue-600 sm:text-lg"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <%= link_to organization_apple_app_path(@organization, app), class: "font-semibold text-sm sm:text-base hover:text-primary transition-colors block truncate" do %>
+                    <%= app.name.presence || "Unnamed App" %>
+                  <% end %>
+                  <code class="text-xs text-base-content/60 block truncate"><%= app.bundle_id %></code>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-1.5 sm:gap-2">
+                <span class="badge badge-ghost gap-1 badge-sm">
+                  <i class="fa-solid fa-cube text-[8px]"></i>
+                  <%= app.apple_builds.size %> builds
+                </span>
+                <% beta_count = app.testflight_beta_groups.size %>
+                <% if beta_count > 0 %>
+                  <span class="badge badge-info gap-1 badge-sm">
+                    <i class="fa-solid fa-paper-plane text-[8px]"></i>
+                    <%= beta_count %> groups
+                  </span>
+                <% end %>
+                <% if latest_version %>
+                  <span class="badge badge-outline badge-sm">v<%= latest_version.version_string %></span>
+                <% end %>
+              </div>
+
+              <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
+                <%= link_to organization_apple_app_path(@organization, app), class: "btn btn-primary btn-xs gap-1.5" do %>
+                  <i class="fa-solid fa-eye"></i>
+                  View
+                <% end %>
+                <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                        data-controller="copy"
+                        data-action="click->copy#copy"
+                        data-copy-text-value="<%= app.bundle_id %>">
+                  <i class="fa-solid fa-copy"></i>
+                  Copy
+                </button>
+                <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                        data-controller="raw-json"
+                        data-action="click->raw-json#show"
+                        data-raw-json-content-value="<%= app.raw_json %>"
+                        data-raw-json-title-value="App: <%= app.name %>">
+                  <i class="fa-solid fa-code"></i>
+                  JSON
+                </button>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <%# Empty State - Search with no results %>
+      <% if @q_query.present? %>
+        <div class="flex flex-col items-center justify-center py-10 sm:py-16 text-center px-2">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-base-200 flex items-center justify-center mb-4">
+            <i class="fa-solid fa-magnifying-glass text-2xl sm:text-3xl text-base-content/30"></i>
+          </div>
+          <h3 class="text-lg sm:text-xl font-bold">No results for "<%= @q_query %>"</h3>
+          <p class="text-base-content/60 text-sm mt-1 mb-4 break-words">
+            Try searching with a different term
+          </p>
+          <%= link_to organization_apple_apps_path(@organization), class: "btn btn-primary btn-sm sm:btn-md gap-2" do %>
+            <i class="fa-solid fa-xmark"></i>
+            Clear Search
+          <% end %>
+        </div>
+      <% end %>
+      <%# Empty State - No apps at all (onboarding) %>
+      <% if @q_query.blank? %>
+        <% asc_credential = @organization.app_store_connect_credentials.active.first %>
+        <% show_team_id_warning = asc_credential && asc_credential.team_id.blank? %>
+        <div class="py-6 sm:py-8">
+          <div class="text-center mb-6 sm:mb-8 px-2">
+            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center mx-auto mb-4">
+              <i class="fa-brands fa-apple text-2xl sm:text-3xl text-blue-500"></i>
+            </div>
+            <h3 class="text-lg sm:text-xl font-bold">Get Started with iOS Apps</h3>
+            <p class="text-base-content/60 text-sm mt-1 max-w-md mx-auto break-words">
+              Apps from App Store Connect will appear here once they're set up. Follow the steps below to get started.
+            </p>
+          </div>
+          <% if show_team_id_warning %>
+            <div class="alert alert-warning mb-4 sm:mb-6 max-w-2xl mx-auto overflow-hidden">
+              <i class="fa-solid fa-exclamation-triangle shrink-0"></i>
+              <div class="min-w-0">
+                <p class="font-medium">Team ID not configured</p>
+                <p class="text-sm opacity-80 break-words">Your App Store Connect credential needs a Team ID to sync apps properly.</p>
+              </div>
+              <a href="https://developer.apple.com/account/#!/membership/" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-ghost shrink-0">
+                <span class="hidden sm:inline">Find Team ID</span>
+                <span class="sm:hidden">Find ID</span>
+                <i class="fa-solid fa-external-link ml-1"></i>
+              </a>
+            </div>
+          <% end %>
+          <div class="grid gap-3 sm:gap-4 md:grid-cols-3 max-w-4xl mx-auto mb-6 sm:mb-8">
+            <div class="card bg-base-200/50 border border-base-200 overflow-hidden">
+              <div class="card-body p-4 sm:p-5">
+                <div class="flex items-center gap-3 mb-2 sm:mb-3">
+                  <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <span class="text-sm font-bold text-primary">1</span>
+                  </div>
+                  <h4 class="font-semibold text-sm sm:text-base">Register Bundle ID</h4>
+                </div>
+                <p class="text-sm text-base-content/60 mb-3 sm:mb-4 break-words">
+                  Create a Bundle ID in the Apple Developer Portal (e.g., com.yourcompany.appname)
+                </p>
+                <a href="https://developer.apple.com/account/resources/identifiers/list" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm gap-2 w-full">
+                  <i class="fa-solid fa-plus"></i>
+                  <span class="hidden sm:inline">Create Bundle ID</span>
+                  <span class="sm:hidden">Create</span>
+                  <i class="fa-solid fa-external-link text-xs ml-auto"></i>
+                </a>
+              </div>
+            </div>
+            <div class="card bg-base-200/50 border border-base-200 overflow-hidden">
+              <div class="card-body p-4 sm:p-5">
+                <div class="flex items-center gap-3 mb-2 sm:mb-3">
+                  <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <span class="text-sm font-bold text-primary">2</span>
+                  </div>
+                  <h4 class="font-semibold text-sm sm:text-base">Create App</h4>
+                </div>
+                <p class="text-sm text-base-content/60 mb-3 sm:mb-4 break-words">
+                  Add your app in App Store Connect and link it to the Bundle ID you created
+                </p>
+                <a href="https://appstoreconnect.apple.com/apps" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm gap-2 w-full">
+                  <i class="fa-solid fa-plus"></i>
+                  Create App
+                  <i class="fa-solid fa-external-link text-xs ml-auto"></i>
+                </a>
+              </div>
+            </div>
+            <div class="card bg-base-200/50 border border-base-200 overflow-hidden">
+              <div class="card-body p-4 sm:p-5">
+                <div class="flex items-center gap-3 mb-2 sm:mb-3">
+                  <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <span class="text-sm font-bold text-primary">3</span>
+                  </div>
+                  <h4 class="font-semibold text-sm sm:text-base">Sync Data</h4>
+                </div>
+                <p class="text-sm text-base-content/60 mb-3 sm:mb-4 break-words">
+                  Sync your organization to pull in your apps, builds, and TestFlight groups
+                </p>
+                <%= link_to organization_path(@organization), class: "btn btn-primary btn-sm gap-2 w-full" do %>
+                  <i class="fa-solid fa-sync"></i>
+                  <span class="hidden sm:inline">Sync Organization</span>
+                  <span class="sm:hidden">Sync</span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <div class="text-center px-2">
+            <p class="text-xs text-base-content/50 mb-2 break-words">
+              <i class="fa-solid fa-circle-info mr-1"></i>
+              Already have apps in App Store Connect?
+            </p>
+            <p class="text-xs text-base-content/40 max-w-lg mx-auto break-words">
+              If you've already created apps but they're not showing up, make sure your credential has the correct Team ID configured and try syncing again.
+            </p>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</section>

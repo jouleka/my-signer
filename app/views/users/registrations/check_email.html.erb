@@ -1,0 +1,219 @@
+<%# Editorial post-signup confirmation — two-column auth shell.
+    Mirrors the visual system from app/views/devise/registrations/new.html.erb
+    and app/views/devise/sessions/new.html.erb (Instrument Serif headline +
+    italic primary accent, numbered editorial markers, JetBrains Mono mono
+    blocks, warm-stone tokens). Shown after a successful signup so the user
+    feels like they've landed somewhere intentional rather than dropped on
+    the public landing page.
+
+    The right rail shows a literal-ish mock of the email we just sent
+    (subject, sender, CTA shape) — both as a useful "look for THIS in your
+    inbox" hint and as an anti-phishing tell ("if it doesn't look like this,
+    it isn't us"). %>
+<% content_for(:title) { "Check your inbox" } %>
+<% content_for(:description) { "We sent a verification link to your email." } %>
+<%
+  email = (@signup_email || params[:email]).to_s.strip
+  email_user, _at, email_domain = email.partition("@")
+%>
+
+<div class="auth-shell grid lg:grid-cols-2 h-screen w-full overflow-hidden">
+
+  <%# ── Left: editorial form ─────────────────────────────────────── %>
+  <div class="relative flex flex-col h-full overflow-y-auto bg-base-100">
+    <%# Top chrome — Back to Home %>
+    <div class="absolute top-5 left-5 sm:top-6 sm:left-8 z-20">
+      <%= link_to unauthenticated_root_path,
+            class: "inline-flex items-center gap-2 text-xs text-base-content/60 hover:text-base-content transition-colors" do %>
+        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+        <span>Back to Home</span>
+      <% end %>
+    </div>
+
+    <div class="flex flex-col min-h-full px-6 sm:px-12 lg:px-14 xl:px-20 pt-20 lg:pt-12 pb-12">
+      <div class="w-full max-w-[440px] mx-auto my-auto">
+
+        <%# Wordmark — official MySigner logo + Instrument Serif wordmark %>
+        <div class="mb-8">
+          <div class="flex items-center gap-2.5 mb-6">
+            <img src="/icon.svg" alt="" class="h-7 w-7" aria-hidden="true">
+            <span class="font-display text-[26px] tracking-tight">MySigner</span>
+          </div>
+          <%# Editorial section marker %>
+          <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em]" style="color: color-mix(in oklab, var(--color-base-content) 55%, transparent);">
+            <span class="secnum text-[14px] normal-case tracking-normal">№ 01</span>
+            <span class="editorial-rule w-10"></span>
+            <span>Verify your email</span>
+          </div>
+        </div>
+
+        <%# Headline + lede %>
+        <h1 class="font-display leading-[0.96] tracking-tight" style="font-size: clamp(48px, 5.5vw, 64px);">
+          Check your <span class="italic" style="color: var(--color-primary);">inbox.</span>
+        </h1>
+        <p class="mt-4 text-[14.5px] leading-relaxed text-mute max-w-[420px]">
+          <% if email.present? %>
+            We've sent a verification link to your email. Click it to unlock the dashboard, the CLI, and your 14-day Pro trial.
+          <% else %>
+            Click the link we just emailed to you to unlock the dashboard, the CLI, and your 14-day Pro trial.
+          <% end %>
+        </p>
+
+        <%# Envelope card — mono "delivery receipt" treatment, mirroring
+            the JetBrains Mono terminal block on the signup page. The
+            pulsing green dot is a calm "delivered" indicator that earns
+            its motion by communicating state. %>
+        <div class="mt-8 rounded-[var(--radius-box)] border border-soft overflow-hidden"
+             style="background: color-mix(in oklab, var(--color-base-200) 80%, transparent);">
+          <div class="flex items-center gap-2.5 px-4 py-2.5 border-b border-soft">
+            <span class="relative flex items-center justify-center h-3 w-3" aria-hidden="true">
+              <span class="absolute inline-flex h-full w-full rounded-full opacity-50 animate-ping" style="background: var(--color-success);"></span>
+              <span class="relative inline-flex h-2 w-2 rounded-full" style="background: var(--color-success);"></span>
+            </span>
+            <span class="text-[10.5px] uppercase tracking-[0.18em]" style="color: color-mix(in oklab, var(--color-base-content) 55%, transparent);">Email sent</span>
+            <span class="ml-auto text-[10.5px] text-faint font-mono-jb tnum"><%= Time.current.strftime("%H:%M") %></span>
+          </div>
+          <div class="px-4 py-4 font-mono-jb text-[12.5px] leading-[1.85]">
+            <% if email.present? %>
+              <div class="grid gap-y-1" style="grid-template-columns: 44px 1fr;">
+                <span class="text-faint">to</span>
+                <span class="break-all"><span class="font-medium"><%= email_user %></span><span class="text-mute">@<%= email_domain %></span></span>
+                <span class="text-faint">from</span>
+                <span class="text-mute break-all">no-reply@mysigner.dev</span>
+                <span class="text-faint">subj</span>
+                <span class="text-mute">Confirmation instructions</span>
+              </div>
+            <% else %>
+              <div class="text-mute">Confirmation email sent.</div>
+            <% end %>
+          </div>
+        </div>
+
+        <%# Resend button — POSTs to Devise's existing confirmation
+            endpoint with a return_to param the custom
+            ConfirmationsController honors so the user lands back here
+            with the resent flash, instead of bouncing to sign-in. %>
+        <% if email.present? %>
+          <%= button_to user_confirmation_path,
+                  method: :post,
+                  params: { user: { email: email }, return_to: "check_email" },
+                  data: { turbo: false },
+                  class: "btn-primary-ms mt-5 w-full" do %>
+            <i class="fa-solid fa-paper-plane text-[11px]"></i>
+            Resend the email
+          <% end %>
+        <% else %>
+          <%= link_to new_user_confirmation_path, class: "btn-primary-ms mt-5 w-full inline-flex items-center justify-center" do %>
+            <i class="fa-solid fa-paper-plane text-[11px]"></i>
+            Resend confirmation
+          <% end %>
+        <% end %>
+
+        <%# Helpful hint line %>
+        <div class="mt-3.5 flex items-start gap-2.5 text-[12px] text-faint leading-relaxed">
+          <i class="fa-solid fa-circle-info text-[11px] mt-[3px]"></i>
+          <span>Allow up to a minute. If it isn't there, check your spam folder &mdash; some inboxes route first-time senders there.</span>
+        </div>
+
+        <%# Editorial divider %>
+        <div class="flex items-center gap-3 my-7">
+          <span class="editorial-rule flex-1"></span>
+          <span class="text-[10.5px] uppercase tracking-[0.18em] text-faint">or</span>
+          <span class="editorial-rule flex-1"></span>
+        </div>
+
+        <%# Foot links %>
+        <div class="text-[12.5px] text-mute space-y-1.5">
+          <div>
+            Already verified?
+            <%= link_to "Sign in", new_user_session_path, class: "alink" %>
+          </div>
+          <div>
+            Wrong email?
+            <%= link_to "Start over", new_user_registration_path, class: "alink" %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── Right: editorial right rail (hidden under lg) ────────────── %>
+  <div class="editorial-right hidden lg:block h-full overflow-hidden relative">
+    <div class="absolute inset-0 grain p-12 flex flex-col justify-center">
+      <%# Editorial header %>
+      <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em] text-mute">
+        <span class="secnum text-[14px] normal-case tracking-normal">№ 02</span>
+        <span class="editorial-rule w-10"></span>
+        <span>What to look for</span>
+      </div>
+
+      <h2 class="mt-6 font-display leading-[0.96] tracking-tight" style="font-size: 56px;">
+        One click,<br>
+        <span class="italic" style="color: var(--color-primary);">and you're in.</span>
+      </h2>
+
+      <%# Email preview — a stylized representation of the actual
+          confirmation email so users know what to look for in their
+          inbox. The mac-style window chrome mirrors the terminal block
+          on the signup right rail for visual rhythm. %>
+      <div class="mt-10 rounded-[var(--radius-box)] border border-soft overflow-hidden"
+           style="background: color-mix(in oklab, var(--color-base-200) 80%, transparent);">
+        <div class="flex items-center gap-2 px-4 py-2.5 border-b border-soft">
+          <span class="h-2.5 w-2.5 rounded-full bg-error/70"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-warning/70"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-success/70"></span>
+          <span class="ml-3 text-[10.5px] text-mute">Inbox &middot; new message</span>
+        </div>
+        <div class="px-5 pt-4 pb-5">
+          <div class="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.18em] text-faint">
+            <span class="font-mono-jb normal-case tracking-normal">no-reply@mysigner.dev</span>
+            <span class="ml-auto text-faint">just now</span>
+          </div>
+          <div class="mt-2.5 font-display text-[20px] leading-[1.15] tracking-tight">
+            Confirm your MySigner account
+          </div>
+          <p class="mt-3 text-[12.5px] text-mute leading-relaxed">
+            Welcome to MySigner. Click below to verify your email &mdash; this unlocks the dashboard, your 14-day Pro trial, and the CLI.
+          </p>
+          <div class="mt-4 inline-flex items-center gap-2 rounded-[var(--radius-field)] px-4 py-2.5 text-[12px] font-medium shadow-sm"
+               style="background: var(--color-primary); color: var(--color-primary-content);">
+            <i class="fa-solid fa-check text-[11px]"></i>
+            Confirm my account
+          </div>
+          <p class="mt-3.5 text-[10.5px] text-faint leading-relaxed">
+            If you didn't create a MySigner account, you can safely ignore this email.
+          </p>
+        </div>
+      </div>
+
+      <%# What happens after verification %>
+      <div class="mt-3 rounded-[var(--radius-box)] border border-soft p-5"
+           style="background: var(--color-base-100);">
+        <div class="text-[10.5px] uppercase tracking-[0.18em] text-faint mb-3">Once you verify</div>
+        <ul class="grid grid-cols-2 gap-y-2 text-[12.5px] text-mute">
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            14-day Pro trial begins
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            Connect App Store Connect
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            Push your first build
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            CLI &middot; iOS &amp; Android
+          </li>
+        </ul>
+      </div>
+
+      <div class="mt-6 text-[11px] text-faint flex items-start gap-2 flex-wrap">
+        <i class="fa-solid fa-shield-halved mt-[3px]"></i>
+        <span>We email you only when you ask. Your address stays with us &mdash; never sold, never shared.</span>
+      </div>
+    </div>
+  </div>
+</div>

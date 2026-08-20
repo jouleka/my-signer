@@ -1,0 +1,30 @@
+<%#
+  AI Rewrite button. Two states:
+  - idle    (default): clickable button with counter badge; opens the modal
+  - pending (post-submit, turbo_stream'd by ReleasesController#rewrite_release_note):
+            disabled pill with spinner + "Rewriting…" label.
+  The pending state is replaced back to idle when the AI job saves the release note
+  (ReleaseNote#broadcasts_refreshes → morph refresh).
+%>
+<% pending = local_assigns.fetch(:pending, false) %>
+<% if @entitlements&.max_ai_rewrites_per_month.to_i > 0 %>
+  <div id="ai-rewrite-button" class="inline-flex">
+    <% if pending %>
+      <button type="button" class="<%= btn_accent_sm_classes %>" disabled aria-busy="true">
+        <span class="loading loading-spinner loading-xs"></span>
+        Rewriting&hellip;
+      </button>
+    <% else %>
+      <% rewrites_remaining = @entitlements.ai_rewrites_remaining(@organization) %>
+      <button type="button" class="<%= btn_accent_sm_classes %>"
+              data-controller="modal"
+              data-action="click->modal#open"
+              data-modal-target-value="ai-rewrite-modal"
+              <% if rewrites_remaining <= 0 %>disabled<% end %>>
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        AI Rewrite
+        <span class="<%= count_badge_classes %> text-[0.6rem]"><%= rewrites_remaining %></span>
+      </button>
+    <% end %>
+  </div>
+<% end %>

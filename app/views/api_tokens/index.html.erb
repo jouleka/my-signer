@@ -1,0 +1,277 @@
+<div class="max-w-5xl mx-auto py-10 px-4" data-controller="revoke-token" data-revoke-token-base-url-value="<%= organization_api_tokens_path(@organization) %>">
+  <!-- Header -->
+  <div class="flex items-center justify-between gap-4 mb-8">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2 text-sm text-base-content/50 mb-1">
+        <%= link_to @organization.name, organization_path(@organization), class: "hover:text-base-content transition-colors truncate" %>
+        <i class="fa-solid fa-chevron-right text-[10px] shrink-0"></i>
+        <span class="shrink-0">API Tokens</span>
+      </div>
+      <h1 class="text-2xl font-semibold tracking-tight">API Tokens</h1>
+    </div>
+    <button type="button"
+            data-controller="modal"
+            data-action="click->modal#open"
+            data-modal-target-value="new_api_token_modal"
+            class="btn btn-primary btn-sm gap-2 shrink-0">
+      <i class="fa-solid fa-plus text-xs"></i>
+      New Token
+    </button>
+  </div>
+
+  <!-- New Token Modal (pre-rendered) -->
+  <dialog id="new_api_token_modal" class="modal">
+    <div class="modal-box max-w-md">
+      <h3 class="font-semibold text-lg mb-6">New API Token</h3>
+      <%= render "form", inline_modal: true %>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <!-- Info banner -->
+  <div class="flex items-start gap-3 px-4 py-3 rounded-lg bg-base-200/40 border border-base-200 mb-6 text-sm">
+    <i class="fa-solid fa-user-shield text-base-content/40 mt-0.5"></i>
+    <div class="text-base-content/70">
+      <p>Tokens are personal and tied to the user who created them. When using the CLI, you'll need your email to authenticate.</p>
+      <p class="mt-1 text-base-content/50">Team members cannot share tokens — each person must create their own.</p>
+    </div>
+  </div>
+
+  <% if flash[:api_token].present? %>
+    <!-- Just-created token alert -->
+    <div id="token_created_banner" class="rounded-lg bg-success/5 border border-success/20 p-5 mb-6">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center">
+              <i class="fa-solid fa-check text-success text-[10px]"></i>
+            </div>
+            <span class="font-medium text-sm">Token created successfully</span>
+          </div>
+          <p class="text-xs text-base-content/60 mb-3">Copy this token now — you won't see it again.</p>
+          <div class="flex items-center gap-2">
+            <code class="flex-1 bg-base-200 px-3 py-2 rounded font-mono text-xs select-all break-all"><%= flash[:api_token] %></code>
+            <button type="button" class="btn btn-sm btn-ghost btn-square"
+                    data-controller="copy"
+                    data-action="click->copy#copy"
+                    data-copy-text-value="<%= flash[:api_token] %>"
+                    title="Copy to clipboard">
+              <i class="fa-solid fa-copy text-xs"></i>
+            </button>
+          </div>
+        </div>
+        <button type="button"
+                class="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-base-content"
+                data-controller="utility"
+                data-action="click->utility#remove"
+                data-utility-target-value="token_created_banner"
+                title="Dismiss">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @api_tokens.any? %>
+    <%# Shared helper to compute scope info for each token %>
+    <% token_scope_info = ->(token) {
+      scopes = token.scopes_array
+      highest_scope = if scopes.include?('admin')
+        'admin'
+      elsif scopes.include?('write')
+        'write'
+      else
+        'read'
+      end
+      scope_icon = case highest_scope
+      when 'admin' then 'fa-shield'
+      when 'write' then 'fa-pen'
+      else 'fa-eye'
+      end
+      scope_color = case highest_scope
+      when 'admin' then 'text-error'
+      when 'write' then 'text-warning'
+      else 'text-info'
+      end
+      [highest_scope, scope_icon, scope_color]
+    } %>
+
+    <!-- Mobile: Card layout -->
+    <div class="md:hidden space-y-3">
+      <% @api_tokens.each do |token| %>
+        <% highest_scope, scope_icon, scope_color = token_scope_info.call(token) %>
+        <div class="rounded-lg border border-base-200 p-4 <%= token.revoked? || token.expired? ? 'opacity-50' : '' %>">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <% if token.revoked? %>
+                <div class="w-1.5 h-1.5 rounded-full bg-error shrink-0"></div>
+              <% elsif token.expired? %>
+                <div class="w-1.5 h-1.5 rounded-full bg-warning shrink-0"></div>
+              <% else %>
+                <div class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></div>
+              <% end %>
+              <span class="font-medium text-sm truncate"><%= token.name %></span>
+            </div>
+            <% unless token.revoked? %>
+              <button type="button"
+                      class="btn btn-ghost btn-xs text-base-content/50 hover:text-error shrink-0"
+                      data-action="click->revoke-token#showModal"
+                      data-token-id="<%= token.id %>"
+                      data-token-name="<%= j(token.name) %>">
+                Revoke
+              </button>
+            <% end %>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 pl-3.5 text-xs">
+            <span class="inline-flex items-center gap-1.5 <%= scope_color %>">
+              <i class="fa-solid <%= scope_icon %> text-[10px]"></i>
+              <%= highest_scope.capitalize %>
+            </span>
+            <span class="text-base-content/30">&middot;</span>
+            <span class="text-base-content/70"><%= token.user.email.split('@').first %></span>
+            <span class="text-base-content/30">&middot;</span>
+            <span>
+              <% if token.revoked? %>
+                <span class="text-error">Revoked<% if token.revoked_at %> <%= time_ago_in_words(token.revoked_at) %> ago<% end %></span>
+              <% elsif token.expired? %>
+                <span class="text-warning">Expired</span>
+              <% elsif token.last_used_at.present? %>
+                <span class="text-base-content/70">Used <%= time_ago_in_words(token.last_used_at) %> ago</span>
+              <% else %>
+                <span class="text-base-content/40">Never used</span>
+              <% end %>
+            </span>
+          </div>
+          <% unless token.revoked? || token.expired? %>
+            <% if token.expires_at.present? %>
+              <% days_left = (token.expires_at.to_date - Date.current).to_i %>
+              <div class="text-[11px] text-base-content/40 mt-1.5 pl-3.5">
+                Expires in <%= days_left %> <%= 'day'.pluralize(days_left) %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Desktop: Table layout -->
+    <div class="hidden md:block rounded-lg border border-base-200 overflow-hidden">
+      <table class="table table-sm">
+        <thead>
+          <tr class="text-xs text-base-content/50 bg-base-200/30 border-b border-base-200">
+            <th class="font-medium">Name</th>
+            <th class="font-medium">Access</th>
+            <th class="font-medium">Owner</th>
+            <th class="font-medium">Activity</th>
+            <th class="font-medium text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-base-200/50">
+          <% @api_tokens.each do |token| %>
+            <% highest_scope, scope_icon, scope_color = token_scope_info.call(token) %>
+            <tr class="<%= token.revoked? || token.expired? ? 'opacity-50' : '' %>">
+              <td>
+                <div class="flex items-center gap-2">
+                  <% if token.revoked? %>
+                    <div class="w-1.5 h-1.5 rounded-full bg-error"></div>
+                  <% elsif token.expired? %>
+                    <div class="w-1.5 h-1.5 rounded-full bg-warning"></div>
+                  <% else %>
+                    <div class="w-1.5 h-1.5 rounded-full bg-success"></div>
+                  <% end %>
+                  <span class="font-medium text-sm"><%= token.name %></span>
+                </div>
+              </td>
+              <td>
+                <span class="inline-flex items-center gap-1.5 text-xs <%= scope_color %>">
+                  <i class="fa-solid <%= scope_icon %> text-[10px]"></i>
+                  <%= highest_scope.capitalize %>
+                </span>
+              </td>
+              <td>
+                <span class="text-xs text-base-content/70"><%= token.user.email.split('@').first %></span>
+              </td>
+              <td>
+                <div class="text-xs">
+                  <% if token.revoked? %>
+                    <span class="text-error">Revoked<% if token.revoked_at %> <%= time_ago_in_words(token.revoked_at) %> ago<% end %></span>
+                  <% elsif token.expired? %>
+                    <span class="text-warning">Expired</span>
+                  <% elsif token.last_used_at.present? %>
+                    <span class="text-base-content/70">Used <%= time_ago_in_words(token.last_used_at) %> ago</span>
+                  <% else %>
+                    <span class="text-base-content/40">Never used</span>
+                  <% end %>
+                  <% unless token.revoked? || token.expired? %>
+                    <% if token.expires_at.present? %>
+                      <% days_left = (token.expires_at.to_date - Date.current).to_i %>
+                      <span class="block text-base-content/40 mt-0.5">
+                        Expires in <%= days_left %> <%= 'day'.pluralize(days_left) %>
+                      </span>
+                    <% end %>
+                  <% end %>
+                </div>
+              </td>
+              <td class="text-right">
+                <% unless token.revoked? %>
+                  <button type="button"
+                          class="btn btn-ghost btn-xs text-base-content/50 hover:text-error"
+                          data-action="click->revoke-token#showModal"
+                          data-token-id="<%= token.id %>"
+                          data-token-name="<%= j(token.name) %>">
+                    Revoke
+                  </button>
+                <% else %>
+                  <span class="text-xs text-base-content/30">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Subtle help text -->
+    <div class="flex items-center gap-4 mt-4 text-xs text-base-content/40">
+      <span><i class="fa-solid fa-circle-info mr-1"></i> Tokens are personal and tied to your account</span>
+    </div>
+  <% else %>
+    <!-- Empty state -->
+    <div class="rounded-lg border border-base-200 border-dashed py-16 px-8 text-center">
+      <div class="w-12 h-12 rounded-full bg-base-200/50 flex items-center justify-center mx-auto mb-4">
+        <i class="fa-solid fa-key text-base-content/30"></i>
+      </div>
+      <h3 class="font-medium text-base-content/80 mb-1">No tokens yet</h3>
+      <p class="text-sm text-base-content/50 mb-6 max-w-sm mx-auto">
+        Create an API token to authenticate with the CLI and automate your signing workflows.
+      </p>
+      <button type="button"
+              data-controller="modal"
+              data-action="click->modal#open"
+              data-modal-target-value="new_api_token_modal"
+              class="btn btn-primary btn-sm gap-2">
+        <i class="fa-solid fa-plus text-xs"></i>
+        Create your first token
+      </button>
+    </div>
+  <% end %>
+
+  <!-- Revoke Modal -->
+  <dialog id="revoke_token_modal" class="modal" data-revoke-token-target="modal">
+    <div class="modal-box max-w-sm">
+      <h3 class="font-semibold text-base mb-2">Revoke token?</h3>
+      <p class="text-sm text-base-content/60 mb-6">
+        <span data-revoke-token-target="tokenName" class="font-medium text-base-content"></span> will be permanently disabled. This action cannot be undone.
+      </p>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn btn-ghost btn-sm" data-action="click->revoke-token#closeModal">Cancel</button>
+        <%= button_to "Revoke", "#", data: { revoke_token_target: "form" }, method: :delete, class: "btn btn-error btn-sm" %>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+</div>

@@ -1,0 +1,16 @@
+New SSO user provisioned
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+A new user was automatically provisioned in "<%= @organization.name %>" via SAML SSO:
+
+Email: <%= @provisioned_user.email %>
+<% if @provisioned_user.name.present? %>Name: <%= @provisioned_user.name %>
+<% end %>
+If this wasn't expected, review your organization's SSO configuration and verified domains.
+
+Review SSO settings: <%= organization_sso_configuration_url(@organization) %>
+
+Thanks,
+My Signer Team

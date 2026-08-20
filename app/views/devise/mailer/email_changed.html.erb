@@ -1,0 +1,33 @@
+<% @preheader = "Your MySigner email address was just changed." %>
+
+<%= ms_eyebrow(4, "Security · Email changed") %>
+
+<% if @resource.try(:unconfirmed_email?) %>
+  <%= ms_headline("Email change <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">requested.</em>") %>
+
+  <%= ms_lead("We received a request to change the email address on your MySigner account.") %>
+
+  <%= ms_meta_row("Previous", ms_meta_pill(@email)) %>
+  <%= ms_meta_row("New", ms_meta_pill(@resource.unconfirmed_email)) %>
+
+  <%= ms_callout(
+    "Open your new inbox and click the confirmation link we just sent there. The change isn't final until you do.",
+    variant: :warning,
+    accent_label: "Action required"
+  ) %>
+<% else %>
+  <%= ms_headline("Email <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">updated.</em>") %>
+
+  <%= ms_lead("This is a confirmation that the email address on your MySigner account has been changed.") %>
+
+  <%= ms_meta_row("New email", ms_meta_pill(@resource.email)) %>
+  <%= ms_meta_row("Changed at", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{Time.current.strftime('%B %-d, %Y · %H:%M %Z')}</span>".html_safe) %>
+
+  <%= ms_callout(
+    "If you didn't make this change, contact us right away. We can roll the address back and lock the account while we look at it.",
+    variant: :danger,
+    accent_label: "Wasn't you?"
+  ) %>
+<% end %>
+
+<%= ms_fine_print("This message goes to the previous address every time an email is changed, so the original owner is always informed.") %>

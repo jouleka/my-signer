@@ -1,0 +1,34 @@
+<%#
+  "AI Translate" button for the Listings tab. Two states:
+  - idle    (default): button_to POSTing to translate; shows remaining-translations
+                       counter; disabled when quota is exhausted.
+  - pending (post-submit, turbo_stream'd by ReleasesController#translate):
+            disabled pill with spinner + "Translating…" label.
+  Restored to idle by the refresh broadcast fired when StoreListingTranslationJob
+  finishes (see StoreListing#trigger_live_refresh → morph refresh).
+%>
+<% pending      = local_assigns.fetch(:pending, false) %>
+<% has_reference = local_assigns.fetch(:has_reference, true) %>
+<% return unless @entitlements&.max_ai_translations_per_month.to_i > 0 %>
+<% return unless has_reference %>
+
+<div id="ai-translate-listing-button" class="inline-flex">
+  <% if pending %>
+    <button type="button" class="<%= btn_accent_sm_classes %>" disabled aria-busy="true">
+      <span class="loading loading-spinner loading-xs"></span>
+      Translating&hellip;
+    </button>
+  <% else %>
+    <% remaining = @entitlements.ai_translations_remaining(@organization) %>
+    <%= button_to translate_organization_release_path(@organization, params[:id], locale: @current_locale, base_locale: @primary_locale),
+        method: :post, class: btn_accent_sm_classes,
+        form: { class: "inline", data: { action: "submit->store-listing-editor#flushBeforeAction" } },
+        disabled: remaining <= 0,
+        title: (remaining <= 0 ? "Monthly translation limit reached" : nil),
+        data: { turbo_submits_with: "Translating…" } do %>
+      <i class="fa-solid fa-language"></i>
+      AI Translate
+      <span class="<%= count_badge_classes %> text-[0.6rem]"><%= remaining %></span>
+    <% end %>
+  <% end %>
+</div>

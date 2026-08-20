@@ -1,0 +1,23 @@
+<% @preheader = "Last day of your Pro trial. Tomorrow your account moves to Free." %>
+
+<%= ms_eyebrow(22, "Trial · Day XIV of XIV") %>
+
+<%= ms_display_num("01", "day") %>
+
+<%= ms_headline("Today is the <em style=\"font-style:italic; color:#f57c97;\" class=\"ms-callout-danger-text\">last day.</em>", size: 40) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name.presence || @user.email)},") %>
+
+<%= ms_callout(
+  "Your Pro trial ends <strong style=\"color:inherit;\">today</strong> (#{@trial_ends_at.strftime('%B %-d, %Y')}). Tomorrow the account reverts to Free &mdash; all your work stays, but you'll lose access to Pro features until you upgrade.",
+  variant: :danger,
+  accent_label: "Final hours"
+) %>
+
+<%= ms_body("Keep store uploads, fifty tracked keywords per app, response templates, custom product pages, and ninety days of analytics history.") %>
+
+<%= ms_cta("Upgrade now &mdash; $12/mo", pricing_url, variant: :primary, margin_top: 12, margin_bottom: 24) %>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 18) %>
+
+<%= ms_fine_print("The CLI stays free for everyone &mdash; signing, builds, TestFlight and Play Store uploads keep working on Free. You can upgrade later if you change your mind. Thanks for trying MySigner.") %>

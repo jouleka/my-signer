@@ -1,0 +1,11 @@
+Member role changed
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+<%= @actor_name %> changed <%= @target_name %>'s role in "<%= @organization.name %>" from <%= @old_role %> to <%= @new_role %>.
+
+View organization: <%= organization_url(@organization) %>
+
+Thanks,
+My Signer Team

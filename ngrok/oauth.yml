@@ -1,0 +1,25 @@
+# ngrok Traffic Policy - OAuth Protection
+# https://ngrok.com/docs/traffic-policy/
+#
+# Usage:
+#   ngrok http 3000 --traffic-policy-file ngrok/oauth.yml
+#
+# With your static domain:
+#   ngrok http 3000 --url your-domain.ngrok.app --traffic-policy-file ngrok/oauth.yml
+
+on_http_request:
+  - actions:
+      - type: oauth
+        config:
+          provider: google
+          # Uncomment to restrict to specific email domains:
+          # options:
+          #   email_domains:
+          #     - "yourdomain.com"
+          
+          # Uncomment to bring your own OAuth app (Google Cloud Console):
+          # client_id: ""
+          # client_secret: ""
+          
+          # Uncomment to customize session/cookie namespace:
+          # auth_id: "my-signer-dev"

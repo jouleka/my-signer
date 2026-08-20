@@ -1,0 +1,97 @@
+<%# Locale Map tab: cross-locale keyword coverage matrix %>
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_classes %>">
+    <div class="<%= card_icon_classes %>">
+      <i class="fa-solid fa-globe"></i>
+    </div>
+    <span class="<%= card_title_classes %>">Locale Keyword Map</span>
+  </div>
+
+  <div class="<%= card_body_classes %>">
+    <% if @locale_map.nil? || @locale_map[:locales].empty? %>
+      <p class="<%= empty_inline_classes %>">
+        <i class="fa-solid fa-circle-info"></i>
+        No store listings found. Sync from the store to populate locale data.
+      </p>
+    <% else %>
+      <%# Shared keyword pools info %>
+      <% if @locale_map[:pool_groups].any? %>
+        <div class="mb-5 p-3 rounded-lg border border-info/15 bg-info/[0.04]">
+          <p class="text-xs font-semibold text-info/80 mb-1.5">
+            <i class="fa-solid fa-circle-info mr-1"></i>
+            Shared Keyword Pools
+          </p>
+          <p class="text-xs text-base-content/50 mb-2 leading-relaxed">
+            Apple groups some locales together for keyword search. Keywords set in one locale of a pool apply to all locales in that group.
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <% @locale_map[:pool_groups].each do |group| %>
+              <div class="flex items-center gap-1">
+                <% group.each_with_index do |loc, idx| %>
+                  <span class="<%= locale_badge_classes %>"><%= loc %></span>
+                  <% if idx < group.size - 1 %>
+                    <i class="fa-solid fa-link text-[0.5rem] text-base-content/20"></i>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Gaps warning %>
+      <% if @locale_map[:gaps].any? %>
+        <div class="mb-5 p-3 rounded-lg border border-warning/15 bg-warning/[0.04]">
+          <p class="text-xs font-semibold text-warning/80 mb-1.5">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+            Locales without keywords
+          </p>
+          <div class="flex flex-wrap gap-1.5 mt-1">
+            <% @locale_map[:gaps].each do |gap_locale| %>
+              <span class="<%= kw_tag_warn_classes %>"><%= gap_locale %></span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Keyword coverage matrix %>
+      <% if @locale_map[:all_keywords].any? %>
+        <p class="<%= label_uppercase_classes %> mb-3">Coverage Matrix</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-base-content/[0.08]">
+                <th class="text-left py-2 px-2 font-semibold text-base-content/50 sticky left-0 bg-base-100 min-w-[8rem]">Keyword</th>
+                <% @locale_map[:locales].each do |loc| %>
+                  <th class="text-center py-2 px-1.5 font-semibold text-base-content/50 whitespace-nowrap"><%= loc %></th>
+                <% end %>
+              </tr>
+            </thead>
+            <tbody>
+              <% @locale_map[:all_keywords].each do |kw| %>
+                <tr class="border-b border-base-content/[0.04] hover:bg-base-content/[0.02]">
+                  <td class="py-1.5 px-2 font-medium text-base-content/70 sticky left-0 bg-base-100"><%= kw %></td>
+                  <% @locale_map[:locales].each do |loc| %>
+                    <% locale_kws = (@locale_map[:keywords_by_locale][loc] || []).map(&:downcase) %>
+                    <td class="text-center py-1.5 px-1.5">
+                      <% if locale_kws.include?(kw) %>
+                        <i class="fa-solid fa-check text-[var(--color-cat-new)] text-[0.625rem]"></i>
+                      <% else %>
+                        <span class="text-base-content/15">-</span>
+                      <% end %>
+                    </td>
+                  <% end %>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p class="<%= empty_inline_classes %> mt-2">
+          <i class="fa-solid fa-circle-info"></i>
+          No keywords found across any locale.
+        </p>
+      <% end %>
+    <% end %>
+  </div>
+</div>

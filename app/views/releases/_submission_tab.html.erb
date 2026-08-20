@@ -1,0 +1,472 @@
+<%# ── Submission Tab ──
+    iOS: full submission console — state + release type + metadata preview +
+         Apple validation errors + inline pre-submission checklist.
+    Android: placeholder pointing to Play Console (Google Play track management
+             is not yet supported via API in MySigner). %>
+
+<% if @app.is_a?(AppleApp) %>
+  <% latest_version = @app.app_store_versions.order(created_at: :desc).first %>
+
+  <% if latest_version.nil? %>
+    <%# ── Empty state: no version synced yet ── %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_body_classes %>">
+        <div class="<%= empty_state_classes %>">
+          <div class="<%= empty_state_icon_classes %>">
+            <i class="fa-solid fa-paper-plane text-2xl"></i>
+          </div>
+          <h2 class="<%= empty_state_title_classes %>">No App Store version yet</h2>
+          <p class="<%= empty_state_text_classes %>">
+            Click "Sync from Store" at the top of the page to fetch your current
+            App Store version and its state.
+          </p>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <%# Auto-detected items from the checklist pipeline. Same source as the
+        Checklist tab — we filter to errors for the inline pre-flight panel. %>
+    <% auto_items = ReleaseChecklist::AutoDetector.new(
+         organization: @organization, app: @app, checklist: @checklist
+       ).detect rescue [] %>
+    <% ios_auto_items = auto_items.select { |i| i["source"] == "app_store_connect" || i["source"] == "local_check" } %>
+    <% blocking_items = ios_auto_items.select { |i| i["required"] == true && i["severity"] == "error" } %>
+
+    <% active_credential = @organization.app_store_connect_credentials.find_by(active: true) %>
+    <% build_attached = latest_version.apple_build_id.present? %>
+    <% has_blockers = blocking_items.any? %>
+    <% can_submit = latest_version.submittable? &&
+                    !latest_version.submitting? &&
+                    active_credential.present? &&
+                    build_attached &&
+                    !has_blockers %>
+
+    <% current_release_type = latest_version.raw_json&.dig("attributes", "releaseType") || "AFTER_APPROVAL" %>
+
+    <section class="flex flex-col gap-5"
+             <% if latest_version.submitting? %>data-submission-active="true"<% end %>>
+
+      <%# ── Submitting banner (server-rendered, triggers Stimulus polling) ── %>
+      <% if latest_version.submitting? %>
+        <div class="<%= sn_loading_classes %>">
+          <div class="flex items-center gap-3">
+            <span class="loading loading-spinner loading-xs text-primary"></span>
+            <div>
+              <span class="text-sm font-medium text-base-content/80">Submitting v<%= latest_version.version_string %> to App Store Review…</span>
+              <p class="text-xs text-base-content/40 mt-0.5">MySigner is talking to App Store Connect. This usually takes a few seconds.</p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%# ── Last submission error banner (after a failed attempt) ── %>
+      <% if latest_version.submission_status == "failed" && latest_version.submission_error.present? %>
+        <div class="<%= sn_error_classes %>">
+          <div class="flex items-start gap-3">
+            <div class="<%= sn_icon_error_classes %>">
+              <i class="fa-solid fa-xmark text-[0.625rem]"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold text-base-content/90">Last submission failed</div>
+              <p class="text-xs text-base-content/60 mt-1 leading-relaxed whitespace-pre-wrap"><%= latest_version.submission_error %></p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%# ── Section 1: State header card with Submit button ── %>
+      <div class="<%= card_container_classes %>">
+        <div class="<%= card_header_split_classes %>">
+          <div class="flex items-center gap-2.5">
+            <div class="<%= card_icon_classes %>">
+              <i class="fa-solid fa-paper-plane"></i>
+            </div>
+            <span class="<%= card_title_classes %>">Submit for App Store Review</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="<%= version_badge_classes %>">v<%= latest_version.version_string %></span>
+            <span class="<%= status_badge_classes(latest_version.app_store_state) %>">
+              <%= latest_version.app_store_state&.titleize || "Unknown" %>
+            </span>
+          </div>
+        </div>
+        <div class="<%= card_body_classes %>">
+          <% if !latest_version.submittable? %>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-circle-info text-info/70 mt-0.5"></i>
+              <p class="<%= meta_text_classes %> leading-relaxed">
+                This version is <strong><%= latest_version.app_store_state&.titleize %></strong>
+                and can't be submitted from MySigner. Apple is either reviewing it,
+                it's already live, or it's waiting for developer release. Sync from
+                the store to refresh the state.
+              </p>
+            </div>
+          <% elsif !active_credential %>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-triangle-exclamation text-warning/80 mt-0.5"></i>
+              <p class="<%= meta_text_classes %> leading-relaxed">
+                No active App Store Connect credential. Add one in
+                <%= link_to "Settings", settings_path, class: "text-primary hover:underline" %>
+                before submitting.
+              </p>
+            </div>
+          <% elsif !build_attached %>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-cube text-base-content/40 mt-0.5"></i>
+              <p class="<%= meta_text_classes %> leading-relaxed">
+                No build is attached to this version. Attach a build in the
+                <%= link_to "Build tab", organization_release_path(@organization, params[:id], tab: "build"), class: "text-primary hover:underline" %>
+                before submitting.
+              </p>
+            </div>
+          <% elsif has_blockers %>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-triangle-exclamation text-error/80 mt-0.5"></i>
+              <p class="<%= meta_text_classes %> leading-relaxed">
+                <strong><%= blocking_items.size %></strong> required issue<%= blocking_items.size == 1 ? "" : "s" %>
+                must be resolved before submitting. See the pre-submission checks below or
+                <%= link_to "the full Checklist", organization_release_path(@organization, params[:id], tab: "checklist"), class: "text-primary hover:underline" %>.
+              </p>
+            </div>
+          <% else %>
+            <p class="<%= meta_text_classes %> leading-relaxed">
+              Ready to submit. MySigner will call Apple's reviewSubmissions API.
+              If an existing draft review submission is already open for this app,
+              it will be reused automatically.
+            </p>
+          <% end %>
+        </div>
+      </div>
+
+      <%# ── Section 2: Release type + Submit form ── %>
+      <% if latest_version.submittable? && !latest_version.submitting? %>
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_header_classes %>">
+            <div class="<%= card_icon_classes %>">
+              <i class="fa-solid fa-gear"></i>
+            </div>
+            <span class="<%= card_title_classes %>">Release Settings</span>
+          </div>
+          <div class="<%= card_body_classes %>">
+            <%= form_with url: submit_to_store_organization_release_path(@organization, params[:id]),
+                          method: :post,
+                          local: true,
+                          data: { turbo_confirm: "Submit v#{latest_version.version_string} for App Store review?" },
+                          class: "flex flex-col gap-5",
+                          id: "submission-form" do |f| %>
+
+              <%# ── Release type radio group ── %>
+              <div class="flex flex-col gap-2">
+                <label class="<%= label_form_classes %>">How should the release happen after approval?</label>
+                <div class="flex flex-col gap-2" data-submission-release-type>
+                  <% [
+                    { value: "AFTER_APPROVAL", label: "Release automatically", detail: "Your app goes live as soon as Apple approves it." },
+                    { value: "MANUAL",         label: "Hold for manual release", detail: "Your app stays in Pending Developer Release until you click Release in App Store Connect." },
+                    { value: "SCHEDULED",      label: "Schedule a release date",   detail: "Your app goes live at the specific date and time you choose (at least 1 hour from now)." }
+                  ].each do |option| %>
+                    <label class="flex items-start gap-3 p-3 rounded-lg border border-base-content/[0.08] hover:border-base-content/[0.15] cursor-pointer transition-colors has-[:checked]:border-primary/40 has-[:checked]:bg-primary/[0.03]">
+                      <input type="radio"
+                             name="release_type"
+                             value="<%= option[:value] %>"
+                             <%= "checked" if current_release_type == option[:value] %>
+                             class="radio radio-primary radio-sm mt-0.5"
+                             data-action="change->submission-form#toggleScheduled"
+                             data-submission-release-type-value="<%= option[:value] %>">
+                      <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold text-base-content/85"><%= option[:label] %></div>
+                        <p class="<%= hint_text_classes %> mt-0.5"><%= option[:detail] %></p>
+                      </div>
+                    </label>
+                  <% end %>
+                </div>
+              </div>
+
+              <%# ── Scheduled date picker (shown only when SCHEDULED selected) ── %>
+              <div class="flex flex-col gap-1"
+                   data-submission-scheduled-wrapper
+                   style="<%= current_release_type == "SCHEDULED" ? "" : "display: none;" %>">
+                <label class="<%= label_form_classes %>">Scheduled release date</label>
+                <input type="datetime-local"
+                       name="earliest_release_date"
+                       class="<%= input_field_classes %>"
+                       min="<%= (1.hour.from_now + 5.minutes).strftime("%Y-%m-%dT%H:%M") %>">
+                <p class="<%= hint_text_classes %> mt-0.5">Must be at least 1 hour from now. Times are your local timezone.</p>
+              </div>
+
+              <%# ── Submit button row ── %>
+              <div class="flex items-center justify-end gap-3 pt-1">
+                <button type="submit" class="<%= btn_primary_classes %>" <%= "disabled" unless can_submit %>>
+                  <i class="fa-solid fa-paper-plane"></i> Submit for Review
+                </button>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <%# Tiny inline script: toggle the Scheduled datetime picker visibility
+            based on the selected radio. Wrapped in turbo:load so it re-runs
+            after Turbo cache restore (back button) and full navigations.
+            Cheaper than a dedicated Stimulus controller for 12 lines. %>
+        <script>
+          (function() {
+            const wire = () => {
+              const form = document.getElementById("submission-form");
+              if (!form || form.dataset.schedulerWired === "true") return;
+              form.dataset.schedulerWired = "true";
+              const wrapper = form.querySelector("[data-submission-scheduled-wrapper]");
+              const radios = form.querySelectorAll("input[name='release_type']");
+              const update = () => {
+                const selected = Array.from(radios).find(r => r.checked);
+                if (!selected || !wrapper) return;
+                wrapper.style.display = (selected.value === "SCHEDULED") ? "" : "none";
+              };
+              radios.forEach(r => r.addEventListener("change", update));
+              update();
+            };
+            wire();
+            document.addEventListener("turbo:load", wire);
+            document.addEventListener("turbo:render", wire);
+          })();
+        </script>
+      <% end %>
+
+      <%# ── Section 3: Metadata preview ── %>
+      <div class="<%= card_container_classes %>">
+        <div class="<%= card_header_classes %>">
+          <div class="<%= card_icon_classes %>">
+            <i class="fa-solid fa-eye"></i>
+          </div>
+          <span class="<%= card_title_classes %>">What will be submitted</span>
+        </div>
+        <div class="<%= card_body_classes %>">
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+            <div class="flex flex-col gap-1">
+              <dt class="<%= label_uppercase_classes %>">Version</dt>
+              <dd class="<%= field_text_classes %>">v<%= latest_version.version_string %></dd>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <dt class="<%= label_uppercase_classes %>">Build</dt>
+              <dd class="<%= field_text_classes %>">
+                <% if latest_version.apple_build %>
+                  <%= latest_version.apple_build.version %> (<%= latest_version.apple_build.build_number %>)
+                  <%= link_to organization_release_path(@organization, params[:id], tab: "build"),
+                      class: "text-xs text-primary hover:underline ml-2" do %>
+                    Edit
+                  <% end %>
+                <% else %>
+                  <span class="<%= empty_inline_classes %>">None attached</span>
+                <% end %>
+              </dd>
+            </div>
+
+            <div class="flex flex-col gap-1 sm:col-span-2">
+              <dt class="<%= label_uppercase_classes %> flex items-center gap-2">
+                What's New
+                <%= link_to organization_release_path(@organization, params[:id], tab: "whats_new"),
+                    class: "text-[0.625rem] font-semibold text-primary hover:underline" do %>
+                  Edit
+                <% end %>
+              </dt>
+              <dd class="<%= field_text_classes %>">
+                <% whats_new_text = @release_note&.rendered_text.presence || @store_listing&.whats_new.presence %>
+                <% if whats_new_text.present? %>
+                  <span class="whitespace-pre-wrap line-clamp-4"><%= whats_new_text %></span>
+                <% else %>
+                  <span class="<%= empty_inline_classes %>">No release notes set</span>
+                <% end %>
+              </dd>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <dt class="<%= label_uppercase_classes %> flex items-center gap-2">
+                App Name
+                <%= link_to organization_release_path(@organization, params[:id], tab: "listing"),
+                    class: "text-[0.625rem] font-semibold text-primary hover:underline" do %>
+                  Edit
+                <% end %>
+              </dt>
+              <dd class="<%= field_text_classes %>">
+                <%= @store_listing&.app_name.presence || @app.name.presence || @app.bundle_id %>
+              </dd>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <dt class="<%= label_uppercase_classes %>">Primary Locale</dt>
+              <dd class="<%= field_text_classes %>">
+                <span class="<%= locale_badge_classes %>"><%= @primary_locale %></span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <%# ── Section 4: Apple validation errors panel ── %>
+      <div class="<%= card_container_classes %>">
+        <div class="<%= card_header_split_classes %>">
+          <div class="flex items-center gap-2.5">
+            <div class="<%= card_icon_classes %>">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <span class="<%= card_title_classes %>">Apple Validation Errors</span>
+            <% if latest_version.issues.is_a?(Array) && latest_version.issues.any? %>
+              <span class="<%= count_badge_classes %>"><%= latest_version.issues.size %></span>
+            <% end %>
+          </div>
+          <%= button_to refresh_validation_errors_organization_release_path(@organization, params[:id]),
+              method: :post, class: btn_ghost_sm_classes,
+              form: { class: "inline" } do %>
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh from App Store
+          <% end %>
+        </div>
+        <div class="<%= card_body_classes %>">
+          <% if latest_version.issues.is_a?(Array) && latest_version.issues.any? %>
+            <ul class="flex flex-col gap-2">
+              <% latest_version.issues.each do |issue| %>
+                <% next unless issue.is_a?(Hash) %>
+                <li class="flex items-start gap-2">
+                  <i class="fa-solid fa-circle-xmark text-error/70 mt-1 text-[0.625rem]"></i>
+                  <div class="flex-1 min-w-0">
+                    <% code = issue["code"].presence %>
+                    <% if code.present? && code != "UNKNOWN" %>
+                      <span class="text-[0.6875rem] font-semibold uppercase tracking-[0.04em] text-error/70"><%= code %></span>
+                    <% end %>
+                    <p class="<%= field_text_classes %> leading-snug"><%= issue["detail"] || "Apple reported a validation error." %></p>
+                  </div>
+                </li>
+              <% end %>
+            </ul>
+            <p class="<%= hint_text_classes %> mt-3">
+              <% if latest_version.issues_synced_at %>
+                Last refreshed <%= time_ago_in_words(latest_version.issues_synced_at) %> ago.
+              <% end %>
+              Validation errors are fetched from Apple's
+              <code class="text-[0.6875rem] bg-base-content/[0.05] px-1 rounded">appStoreVersionSubmission</code>
+              endpoint.
+            </p>
+          <% else %>
+            <p class="<%= empty_inline_classes %>">
+              <i class="fa-solid fa-circle-check text-success/60"></i>
+              No validation errors reported by Apple.
+            </p>
+          <% end %>
+        </div>
+      </div>
+
+      <%# ── Section 5: Inline pre-submission checks ── %>
+      <div class="<%= card_container_classes %>">
+        <div class="<%= card_header_split_classes %>">
+          <div class="flex items-center gap-2.5">
+            <div class="<%= card_icon_classes %>">
+              <i class="fa-solid fa-clipboard-check"></i>
+            </div>
+            <span class="<%= card_title_classes %>">Pre-Submission Checks</span>
+            <% if ios_auto_items.any? %>
+              <span class="<%= count_badge_classes %>"><%= ios_auto_items.size %></span>
+            <% end %>
+          </div>
+          <%= link_to organization_release_path(@organization, params[:id], tab: "checklist"),
+              class: btn_ghost_sm_classes do %>
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Full Checklist
+          <% end %>
+        </div>
+        <div class="<%= card_body_classes %>">
+          <% if ios_auto_items.empty? %>
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-circle-check text-success/70"></i>
+              <span class="<%= field_text_classes %>">All pre-submission checks passed.</span>
+            </div>
+          <% else %>
+            <div class="flex flex-col gap-0">
+              <% ios_auto_items.each do |item| %>
+                <% severity = item["severity"].presence || "info" %>
+                <% icon = { "error" => "fa-circle-exclamation", "warning" => "fa-triangle-exclamation", "info" => "fa-circle-info" }[severity] || "fa-circle-info" %>
+                <% severity_classes = case severity
+                     when "error"   then "border-l-error/70 [&>.flex>i]:text-error/80"
+                     when "warning" then "border-l-warning/70 [&>.flex>i]:text-warning/80"
+                     else                 "border-l-info/70 [&>.flex>i]:text-info/80"
+                   end %>
+                <div class="px-3 py-2 border-l-[3px] mb-2 rounded-r-md bg-base-content/[0.02] <%= severity_classes %>">
+                  <div class="flex items-start gap-2 w-full">
+                    <i class="fa-solid <%= icon %> mt-0.5 text-xs"></i>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-sm font-medium text-base-content/85"><%= item["label"] %></span>
+                        <% if item["required"] == true %>
+                          <span class="text-[0.6rem] font-semibold uppercase tracking-[0.04em] px-[0.3rem] py-[0.1rem] rounded bg-error/[0.08] text-error/70">Required</span>
+                        <% end %>
+                      </div>
+                      <% if item["detail"].present? %>
+                        <p class="<%= hint_text_classes %> mt-0.5"><%= item["detail"] %></p>
+                      <% end %>
+                      <% if item["action_url"].present? %>
+                        <%= link_to item["action_url"], target: "_blank", rel: "noopener",
+                            class: "text-[0.6875rem] text-primary hover:underline mt-1 inline-flex items-center gap-1" do %>
+                          <i class="fa-solid fa-arrow-up-right-from-square text-[0.5rem]"></i>
+                          Open in App Store Connect
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# ── Footer note about age rating deadline ── %>
+      <div class="flex items-start gap-2 px-1">
+        <i class="fa-solid fa-circle-info text-base-content/30 mt-0.5 text-xs"></i>
+        <p class="<%= hint_text_classes %> leading-relaxed">
+          As of January 31, 2026, Apple requires the updated age rating
+          questionnaire for all apps. If submission fails with an age-rating
+          error, complete the questionnaire in
+          <%= link_to "App Store Connect", "https://appstoreconnect.apple.com/apps/#{@app.app_store_id}", target: "_blank", rel: "noopener", class: "text-primary hover:underline" %>
+          and submit again.
+        </p>
+      </div>
+
+      <%# ── Footer note linking to CLI Defaults (for CI/CD users) ── %>
+      <div class="flex items-start gap-2 px-1">
+        <i class="fa-solid fa-terminal text-base-content/30 mt-0.5 text-xs"></i>
+        <p class="<%= hint_text_classes %> leading-relaxed">
+          For unattended CI/CD submissions via <code class="bg-base-content/[0.05] px-1 rounded">mysigner ship appstore</code>,
+          configure defaults on the
+          <%= link_to "CLI Defaults page", edit_organization_app_store_release_path(@organization, @app), class: "text-primary hover:underline" %>.
+        </p>
+      </div>
+    </section>
+  <% end %>
+
+<% else %>
+  <%# ── Android: Play Console placeholder (unchanged behavior) ── %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_classes %>">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-solid fa-paper-plane"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Submission State</span>
+    </div>
+    <div class="<%= card_body_classes %>">
+      <% latest = @app.play_store_releases.order(Arel.sql("COALESCE(released_at, created_at) DESC")).first %>
+      <% if latest %>
+        <p class="<%= meta_text_classes %> mb-2">Current Play Store release: <strong>v<%= latest.version_code %></strong></p>
+        <p class="<%= meta_text_classes %>">Track: <strong><%= latest.track&.capitalize %></strong></p>
+        <p class="<%= meta_text_classes %>">Status: <strong><%= latest.status&.capitalize %></strong></p>
+        <% if latest.user_fraction.present? && latest.user_fraction < 1.0 %>
+          <p class="<%= meta_text_classes %>">Rollout: <strong><%= (latest.user_fraction * 100).round %>%</strong></p>
+        <% end %>
+        <p class="<%= meta_text_classes %> mt-3">
+          To increase rollout or promote between tracks, use Google Play Console directly.
+          Track management via API is not yet supported in MySigner.
+        </p>
+      <% else %>
+        <p class="<%= empty_inline_classes %>">
+          <i class="fa-solid fa-box-open"></i>
+          No release data synced yet. Click "Sync from Store" above to fetch the latest state.
+        </p>
+      <% end %>
+    </div>
+  </div>
+<% end %>

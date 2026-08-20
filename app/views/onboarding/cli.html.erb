@@ -1,0 +1,94 @@
+<% content_for(:title, "Install the MySigner CLI") %>
+
+<%= render "onboarding/layout" do %>
+  <div class="step-body step-animate">
+    <div class="step-eyebrow">
+      <span class="secnum">II</span>
+      <span class="step-eyebrow-label">Install the toolchain</span>
+      <span class="step-eyebrow-rule"></span>
+    </div>
+
+    <h1 class="step-title">Install the <em>CLI</em>.</h1>
+    <p class="step-lead">
+      The CLI is how you ship builds to TestFlight and Google Play. One command to build, sign, and upload.
+      It's a Ruby gem &mdash; install it once, use it everywhere.
+    </p>
+
+    <div class="section-label">
+      <span class="num">i.</span>
+      <span>Install via RubyGems</span>
+    </div>
+
+    <div class="terminal" style="margin-bottom: 0.625rem;">
+      <div class="terminal-bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="label">~ &middot; zsh</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line"><span class="prompt">$</span><span>gem install mysigner</span></div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top: 1.5rem;">
+      <span class="num">ii.</span>
+      <span>Verify it installed</span>
+    </div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="label">~ &middot; zsh</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line"><span class="prompt">$</span><span>mysigner version</span></div>
+        <div class="terminal-line"><span class="prompt" style="visibility: hidden;">$</span><span class="out">My Signer CLI v<%= MySigner::CLI_VERSION %></span></div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top: 2rem;">
+      <span class="num">iii.</span>
+      <span>Once connected, you'll be able to</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+      <% [
+        ["mysigner ship testflight", "Ship to TestFlight"],
+        ["mysigner ship appstore",   "Submit to App Store"],
+        ["mysigner ship internal",   "Internal Play track"],
+        ["mysigner doctor",          "Diagnose your setup"]
+      ].each do |cmd, label| %>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 0.625rem 0.75rem;
+                    border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+                    border-radius: var(--radius-field);
+                    background: color-mix(in oklab, var(--color-base-content) 2%, transparent);">
+          <code class="font-mono-jb" style="font-size: 11.5px; color: var(--color-primary);"><%= cmd %></code>
+          <span style="font-size: 11.5px; color: color-mix(in oklab, var(--color-base-content) 55%, transparent);"><%= label %></span>
+        </div>
+      <% end %>
+    </div>
+
+    <details style="margin-top: 1.5rem;">
+      <summary style="cursor: pointer; font-size: 12.5px; font-weight: 500;
+                      color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+                      padding: 0.5rem 0; list-style: none;">
+        <span style="font-family: 'Instrument Serif', serif; font-style: italic; margin-right: 8px;">?</span>
+        Don't have Ruby installed?
+      </summary>
+      <div style="padding-top: 0.5rem; font-size: 12.5px; line-height: 1.6;
+                  color: color-mix(in oklab, var(--color-base-content) 60%, transparent);">
+        MySigner needs Ruby 3.2+. On macOS: <span class="kbd-mono">brew install ruby</span>.
+        On Ubuntu: <span class="kbd-mono">sudo apt install ruby-full</span>.
+        On Windows, use <a class="alink" href="https://rubyinstaller.org/" target="_blank" rel="noopener">RubyInstaller</a>.
+      </div>
+    </details>
+
+    <%= form_with url: onboarding_advance_path, method: :post, data: { turbo: false } do %>
+      <input type="hidden" name="step" value="token">
+      <div class="action-row">
+        <span class="filler"></span>
+        <button type="submit" class="btn-primary-ms">
+          I've installed it
+          <span style="font-size: 16px; margin-left: 2px;">&rarr;</span>
+        </button>
+      </div>
+    <% end %>
+  </div>
+<% end %>

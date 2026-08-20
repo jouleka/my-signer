@@ -1,0 +1,6 @@
+<%# ── Build Tab ── Wraps the existing iOS / Android release card. %>
+<% if @app.is_a?(AppleApp) %>
+  <%= render "releases/ios_release_card", app: @app %>
+<% else %>
+  <%= render "releases/android_release_card", app: @app %>
+<% end %>

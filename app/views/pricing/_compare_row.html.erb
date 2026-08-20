@@ -1,0 +1,35 @@
+<%# app/views/pricing/_compare_row.html.erb
+    Locals:
+      category: String — "overview" / "screenshots" / "listings" / "ai" / "keywords" / "analytics" / "team-security"
+      label: String
+      free: String or Boolean — the value for the Free column
+      pro: String or Boolean
+      team: String or Boolean
+      current_tier: String or nil — highlights the current column
+
+    Non-"overview" rows ship with `hidden` so a slow/missed Stimulus connect
+    (e.g. after a Turbo-replace visit back from Paddle checkout) doesn't
+    render the entire table flat — the compare-tabs controller toggles
+    `hidden` back off when its tab is selected.
+%>
+
+<tr data-compare-tabs-target="row"
+    data-category="<%= category %>"
+    <%= "hidden" if category != "overview" %>
+    class="border-b border-base-content/[0.04] last:border-b-0">
+  <th scope="row" class="text-left text-sm font-medium text-base-content/70 py-3 pr-4 w-1/3"><%= label %></th>
+  <% %w[free pro team].each do |tier| %>
+    <% value = local_assigns[tier.to_sym] %>
+    <% highlight = current_tier == tier ? "border-l border-base-content/[0.08]" : "" %>
+    <td class="text-center text-sm py-3 px-3 <%= highlight %>">
+      <% case value
+         when true %>
+        <i class="fa-solid fa-check text-success" aria-label="Included"></i>
+      <% when false, nil %>
+        <span class="text-base-content/30" aria-label="Not included">—</span>
+      <% else %>
+        <span class="text-base-content/85 tabular-nums"><%= value %></span>
+      <% end %>
+    </td>
+  <% end %>
+</tr>

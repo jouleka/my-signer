@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="my-signer-dark">
+  <head>
+    <title><%= page_title(content_for(:title).presence) %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="<%= meta_description(content_for(:description).presence) %>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <%# Referrer policy. Modern browsers default to this, but older browsers,
+        webview embeds, and some extensions may default to a more permissive
+        policy that would leak the full URL (including any tokens or session
+        identifiers in the query string) when loading cross-origin sub-
+        resources like fonts and CDN assets. Setting it explicitly forces
+        all clients to send origin-only on cross-origin requests. %>
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <%# Open Graph %>
+    <meta property="og:site_name" content="MySigner">
+    <meta property="og:title" content="<%= page_title(content_for(:title).presence) %>">
+    <meta property="og:description" content="<%= meta_description(content_for(:description).presence) %>">
+    <meta property="og:type" content="<%= content_for(:og_type).presence || 'website' %>">
+    <meta property="og:url" content="<%= canonical_url %>">
+    <meta property="og:image" content="<%= og_image_url(content_for(:og_image).presence) %>">
+
+    <%# Twitter Card %>
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<%= page_title(content_for(:title).presence) %>">
+    <meta name="twitter:description" content="<%= meta_description(content_for(:description).presence) %>">
+    <meta name="twitter:image" content="<%= og_image_url(content_for(:og_image).presence) %>">
+
+    <%# Canonical URL %>
+    <link rel="canonical" href="<%= canonical_url %>">
+
+    <%# Tell search engines not to index authenticated/private pages %>
+    <% if user_signed_in? %>
+      <meta name="robots" content="noindex, nofollow">
+    <% end %>
+
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%# Enable Turbo morph refresh so broadcasts_refreshes updates pages in place
+        (no full reload) and preserves scroll position. %>
+    <meta name="turbo-refresh-method" content="morph">
+    <meta name="turbo-refresh-scroll" content="preserve">
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any">
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="/icon.png" type="image/png" sizes="512x512">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+    <%# Preconnect to external origins for faster loading %>
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+
+    <%# Editorial display accent + monospace. Body & UI keep the system stack
+        for visual coherence with the docs / authenticated app. Instrument
+        Serif is used only on the marketing hero headline and section
+        numbered markers; JetBrains Mono powers the terminal. %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload"
+          as="style"
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap">
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+    <%# Includes all stylesheet files in app/assets/stylesheets %>
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%# SRI hash pinned to Font Awesome 6.5.2 all.min.css. If bumping the
+        version, recompute with:
+          curl -sS "<new-url>" | openssl dgst -sha384 -binary | openssl base64 -A %>
+    <link rel="preload"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+          as="style"
+          integrity="sha384-PPIZEGYM1v8zp5Py7UjFb79S58UeqCL9pYVnVPURKEqvioPROaVAJKKLzvH2rDnI"
+          crossorigin="anonymous">
+    <%= javascript_tag nonce: true do %>
+      // Load Font Awesome asynchronously to keep initial render path lean.
+      (function() {
+        if (document.getElementById("font-awesome-style")) return;
+        const link = document.createElement("link");
+        link.id = "font-awesome-style";
+        link.rel = "stylesheet";
+        link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css";
+        link.integrity = "sha384-PPIZEGYM1v8zp5Py7UjFb79S58UeqCL9pYVnVPURKEqvioPROaVAJKKLzvH2rDnI";
+        link.crossOrigin = "anonymous";
+        link.referrerPolicy = "no-referrer";
+        document.head.appendChild(link);
+      })();
+    <% end %>
+    
+    <%= javascript_tag nonce: true do %>
+      // Set theme immediately to prevent flash (dark mode is default)
+      (function() {
+        const theme = localStorage.getItem('theme') || 'my-signer-dark';
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    <% end %>
+    
+    <%= javascript_importmap_tags %>
+
+    <%# JSON-LD Structured Data %>
+    <%= content_for?(:json_ld) ? yield(:json_ld) : tag.script(
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "MySigner",
+        "description": meta_description(content_for(:description).presence),
+        "url": "https://mysigner.dev",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }.to_json.html_safe,
+      type: "application/ld+json"
+    ) %>
+  </head>
+
+  <body class="flex flex-col min-h-screen" data-user-id="<%= current_user&.id || 'anon' %>">
+    <%= render "shared/trial_banner" %>
+    <!--email_off-->
+    <% upgrade_prompt_flash = flash[:upgrade_prompt] %>
+    <% full_screen_devise = devise_controller? && (action_name == 'new' || action_name == 'create' || (controller_name == 'registrations' && action_name == 'check_email') || (controller_name == 'passwords' && (action_name == 'edit' || action_name == 'update'))) %>
+    <% full_screen_onboarding = controller_name == 'onboarding' %>
+    <%# The marketing navbar covers every public-facing page when logged out:
+        landing, docs, pricing, legal. Authenticated visitors keep the
+        sidebar/shared navbar even on these surfaces. Only the landing
+        controller gets a full-bleed <main>; docs/pricing/legal keep their
+        constrained container. %>
+    <% public_marketing_pages = %w[landing docs pricing legal] %>
+    <% marketing_surface = !user_signed_in? && public_marketing_pages.include?(controller_name) %>
+    <% landing_full_bleed = marketing_surface && controller_name == 'landing' %>
+    <% unless full_screen_devise || full_screen_onboarding %>
+      <% if marketing_surface %>
+        <%= render "landing/navbar" %>
+      <% else %>
+        <%= render "shared/navbar" %>
+      <% end %>
+    <% end %>
+    
+    <!-- Toast Container -->
+    <div class="toast toast-top toast-end z-50" id="toast-container">
+      <% if notice %>
+        <div class="alert alert-success shadow-lg max-w-sm" 
+             data-controller="toast" 
+             data-toast-type-value="success"
+             data-action="mouseenter->toast#mouseenter mouseleave->toast#mouseleave">
+          <i class="fa-solid fa-circle-check"></i>
+          <span class="flex-1"><%= notice %></span>
+          <button class="btn btn-sm btn-ghost ml-2" data-action="click->toast#close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      <% end %>
+      
+      <% if alert && upgrade_prompt_flash.blank? %>
+        <div class="alert alert-error shadow-lg max-w-sm" 
+             data-controller="toast" 
+             data-toast-type-value="error"
+             data-action="mouseenter->toast#mouseenter mouseleave->toast#mouseleave">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span class="flex-1"><%= alert %></span>
+          <button class="btn btn-sm btn-ghost ml-2" data-action="click->toast#close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      <% end %>
+    </div>
+
+    <% if full_screen_onboarding %>
+      <%# The onboarding layout partial provides its own <main class="canvas">
+          plus a min-h-screen flex column. Wrapping it in another <main> here
+          would duplicate the landmark and double up the layout. %>
+      <%= yield %>
+    <% elsif user_signed_in? %>
+      <%= render("shared/sidebar") do %>
+        <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex-grow min-w-0">
+          <%= render "shared/upgrade_prompt_callout", upgrade_prompt_flash: upgrade_prompt_flash || {} %>
+          <%= yield %>
+        </main>
+      <% end %>
+    <% else %>
+      <% if full_screen_devise %>
+        <main class="w-full h-screen overflow-hidden">
+          <%= yield %>
+        </main>
+      <% elsif landing_full_bleed %>
+        <%# Landing manages its own widths/padding so editorial sections can
+            go full-bleed (grain texture, section backgrounds, etc.). %>
+        <main class="w-full flex-grow">
+          <%= yield %>
+        </main>
+      <% else %>
+        <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex-grow">
+          <%= yield %>
+        </main>
+      <% end %>
+    <% end %>
+
+    <%= render "shared/raw_json_modal" %>
+
+    <!-- Add ASC Credential Modal -->
+    <dialog id="asc-add-cred-modal" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box w-full max-w-2xl p-0 overflow-hidden">
+        <div class="flex items-start justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5 bg-base-200/80 border-b border-base-300">
+          <div class="space-y-1 min-w-0">
+            <h3 class="text-lg font-semibold flex items-center gap-2">
+              <span class="badge badge-sm badge-outline border-primary/40 text-primary">ASC</span>
+              Add App Store Connect Credential
+            </h3>
+            <p class="text-sm text-base-content/60">
+              From <a href="https://appstoreconnect.apple.com/access/integrations/api" target="_blank" rel="noopener" class="link link-primary">App Store Connect</a>
+              <span class="text-base-content/30 mx-1">&middot;</span>
+              <a href="https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api" target="_blank" rel="noopener" class="link text-xs">How to create a key <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+            </p>
+          </div>
+          <button type="button" class="btn btn-sm btn-circle btn-ghost shrink-0" data-controller="modal" data-action="click->modal#close" data-modal-target-value="asc-add-cred-modal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="p-5 sm:p-6 space-y-5">
+          <% if current_organization && policy(current_organization).manage_credentials? %>
+            <%# Close the dialog on submit so the browser's top-layer/inert state
+                is cleared before Turbo navigates to the redirect target.
+                Without this the page can stay non-interactive after success. %>
+            <%= form_with url: organization_app_store_connect_credentials_path(current_organization),
+                  scope: :app_store_connect_credential,
+                  data: {
+                    turbo: true,
+                    controller: "modal",
+                    action: "turbo:submit-start->modal#close",
+                    modal_target_value: "asc-add-cred-modal"
+                  },
+                  html: { class: "space-y-4" } do |f| %>
+              <div class="form-control w-full">
+                <label class="label pb-1">
+                  <span class="label-text font-medium text-sm">Name</span>
+                </label>
+                <%= f.text_field :name, class: "input input-bordered w-full input-sm", placeholder: "e.g. Distribution Key" %>
+              </div>
+
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="form-control w-full">
+                  <label class="label pb-1 justify-between">
+                    <span class="label-text font-medium text-sm">Key ID</span>
+                    <span class="label-text-alt text-xs text-base-content/50">From the keys table</span>
+                  </label>
+                  <%= f.text_field :key_id, class: "input input-bordered w-full input-sm uppercase tracking-wide", placeholder: "ABC123DEF4" %>
+                </div>
+                <div class="form-control w-full">
+                  <label class="label pb-1 justify-between">
+                    <span class="label-text font-medium text-sm">Issuer ID</span>
+                    <span class="label-text-alt text-xs text-base-content/50">Above the table</span>
+                  </label>
+                  <%= f.text_field :issuer_id, class: "input input-bordered w-full input-sm font-mono text-xs", placeholder: "00000000-0000-0000-0000-000000000000" %>
+                </div>
+              </div>
+
+              <div class="form-control w-full"
+                   data-controller="file-drop"
+                   data-file-drop-extensions-value=".p8">
+                <label class="label pb-1 justify-between">
+                  <span class="label-text font-medium text-sm">Private Key (.p8)</span>
+                  <span class="label-text-alt text-xs text-base-content/50">Apple shows it once</span>
+                </label>
+                <%= f.text_area :private_key,
+                      class: "textarea textarea-bordered w-full font-mono text-xs leading-relaxed border-dashed transition-colors focus:border-primary focus:ring-primary",
+                      rows: 6,
+                      placeholder: "-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqGSM49AgEG...\n-----END PRIVATE KEY-----",
+                      spellcheck: false,
+                      data: { file_drop_target: "textarea" } %>
+                <p class="mt-1.5 text-xs text-base-content/50" data-file-drop-target="helper">
+                  Drag in the <code>.p8</code> or paste its contents. Team ID is auto-detected.
+                </p>
+              </div>
+
+              <div class="flex items-center justify-end gap-2 pt-3 border-t border-base-300">
+                <button class="btn btn-ghost btn-sm" type="button" data-controller="modal" data-action="click->modal#close" data-modal-target-value="asc-add-cred-modal">Cancel</button>
+                <%= f.submit "Save credential", class: "btn btn-primary btn-sm" %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-base-200/50 border border-error/30 text-sm">
+              <i class="fa-solid fa-lock text-error"></i>
+              <span class="text-base-content/70">You are not allowed to manage credentials for this organization.</span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+
+    <!-- Add Google Play Credential Modal -->
+    <dialog id="gplay-add-cred-modal" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box w-full max-w-2xl p-0 overflow-hidden">
+        <div class="flex items-start justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5 bg-base-200/80 border-b border-base-300">
+          <div class="space-y-1 min-w-0">
+            <h3 class="text-lg font-semibold flex items-center gap-2">
+              <span class="badge badge-sm badge-outline border-success/40 text-success">Google Play</span>
+              Add Google Play Credential
+            </h3>
+            <p class="text-sm text-base-content/60">
+              Paste your service account JSON from
+              <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener" class="link link-primary">Google Cloud Console</a>.
+              Requires <em>Service Account User</em> + <em>Release Manager</em> roles.
+            </p>
+          </div>
+          <button type="button" class="btn btn-sm btn-circle btn-ghost shrink-0" data-controller="modal" data-action="click->modal#close" data-modal-target-value="gplay-add-cred-modal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="p-5 sm:p-6 space-y-5">
+          <% if current_organization && policy(current_organization).manage_credentials? %>
+            <%= form_with url: organization_google_play_credentials_path(current_organization),
+                  scope: :google_play_credential,
+                  data: {
+                    turbo: true,
+                    controller: "modal",
+                    action: "turbo:submit-start->modal#close",
+                    modal_target_value: "gplay-add-cred-modal"
+                  },
+                  html: { class: "space-y-4" } do |f| %>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="form-control w-full">
+                  <label class="label pb-1">
+                    <span class="label-text font-medium text-sm">Name</span>
+                  </label>
+                  <%= f.text_field :name, class: "input input-bordered w-full input-sm", placeholder: "e.g. Play Console prod access" %>
+                </div>
+                <div class="form-control w-full">
+                  <label class="label pb-1">
+                    <span class="label-text font-medium text-sm">Developer Account ID <span class="font-normal text-base-content/50">(optional)</span></span>
+                  </label>
+                  <%= f.text_field :developer_account_id,
+                        class: "input input-bordered w-full input-sm font-mono text-xs",
+                        placeholder: "12345678901234567890" %>
+                </div>
+              </div>
+
+              <div class="form-control w-full"
+                   data-controller="file-drop"
+                   data-file-drop-extensions-value=".json">
+                <label class="label pb-1 justify-between">
+                  <span class="label-text font-medium text-sm">Service Account JSON</span>
+                  <span class="label-text-alt text-xs text-base-content/50">Paste or drop file</span>
+                </label>
+                <%= f.text_area :service_account_json,
+                      class: "textarea textarea-bordered w-full font-mono text-xs leading-relaxed border-dashed transition-colors focus:border-success focus:ring-success",
+                      rows: 8,
+                      placeholder: "{\n  \"type\": \"service_account\",\n  \"project_id\": \"...\",\n  \"private_key\": \"-----BEGIN PRIVATE KEY-----\\n...\",\n  \"client_email\": \"svc-account@project.iam.gserviceaccount.com\"\n}",
+                      spellcheck: false,
+                      data: { file_drop_target: "textarea" } %>
+                <p class="mt-1.5 text-xs text-base-content/50" data-file-drop-target="helper">
+                  Must include <code>type</code>, <code>project_id</code>, <code>private_key</code>, <code>client_email</code> and <code>client_id</code>.
+                </p>
+              </div>
+
+              <div class="flex items-center justify-end gap-2 pt-3 border-t border-base-300">
+                <button class="btn btn-ghost btn-sm" type="button" data-controller="modal" data-action="click->modal#close" data-modal-target-value="gplay-add-cred-modal">Cancel</button>
+                <%= f.submit "Save credential", class: "btn btn-primary btn-sm" %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-base-200/50 border border-error/30 text-sm">
+              <i class="fa-solid fa-lock text-error"></i>
+              <span class="text-base-content/70">You are not allowed to manage credentials for this organization.</span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+
+    <% if !user_signed_in? && !full_screen_devise && !full_screen_onboarding %>
+      <%= render "shared/footer" %>
+    <% end %>
+    <!--email_on-->
+  </body>
+</html>

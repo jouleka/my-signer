@@ -1,0 +1,69 @@
+<%= form_with model: @api_token, url: organization_api_tokens_path(@organization), method: :post, scope: :api_token, class: "space-y-5", data: local_assigns[:inline_modal] ? { turbo_frame: "_top" } : {} do |f| %>
+  <% if @api_token.errors.any? %>
+    <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-error/5 border border-error/20 text-sm">
+      <i class="fa-solid fa-circle-exclamation text-error mt-0.5 text-xs"></i>
+      <ul class="text-base-content/70 space-y-0.5">
+        <% @api_token.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="form-control">
+    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/60 uppercase tracking-wide">Name</span></label>
+    <%= f.text_field :name, value: params.dig(:api_token, :name), class: "input input-bordered input-sm w-full #{'input-error' if @api_token.errors[:name].any?}", required: true, placeholder: "e.g., CI Pipeline, Local Dev" %>
+  </div>
+
+  <div class="form-control">
+    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/60 uppercase tracking-wide">Permission</span></label>
+    <div class="space-y-2">
+      <% [
+        ["read", "Read", "View resources only", "fa-eye", ""],
+        ["write", "Write", "View and modify resources", "fa-pen", "checked"],
+        (@can_create_admin_scope ? ["admin", "Admin", "Full access", "fa-shield", ""] : nil)
+      ].compact.each do |value, label, desc, icon, checked| %>
+        <label class="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-base-200 cursor-pointer hover:border-base-300 has-[:checked]:border-primary/50 has-[:checked]:bg-primary/5 transition-colors">
+          <%= f.radio_button :scope_level, value, class: "radio radio-sm radio-primary", checked: (params.dig(:api_token, :scope_level) == value || (params.dig(:api_token, :scope_level).nil? && checked == "checked")) %>
+          <div class="flex-1">
+            <span class="text-sm font-medium"><%= label %></span>
+            <span class="text-xs text-base-content/50 ml-1"><%= desc %></span>
+          </div>
+          <i class="fa-solid <%= icon %> text-xs text-base-content/30"></i>
+        </label>
+      <% end %>
+    </div>
+    <% unless @can_create_admin_scope %>
+      <p class="text-[11px] text-base-content/40 mt-2 pl-1">
+        <i class="fa-solid fa-lock text-[9px] mr-1"></i>Admin requires owner or admin role
+      </p>
+    <% end %>
+  </div>
+
+  <div class="form-control">
+    <label class="label pb-1"><span class="label-text text-xs font-medium text-base-content/60 uppercase tracking-wide">Expires</span></label>
+    <%= render "shared/custom_select",
+               name: "api_token[expires_in]",
+               options: [["30 days", "30_days"], ["90 days", "90_days"], ["1 year", "1_year"], ["No expiration", "never"]],
+               selected: params.dig(:api_token, :expires_in) || "90_days" %>
+  </div>
+
+  <div class="flex items-center gap-2 text-xs text-base-content/50 pt-2">
+    <i class="fa-solid fa-user-lock text-[10px]"></i>
+    <span>Token will be tied to <strong><%= current_user.email %></strong></span>
+  </div>
+
+  <div class="flex justify-end gap-2 pt-2 border-t border-base-200">
+    <% if local_assigns[:inline_modal] %>
+      <button type="button" class="btn btn-ghost btn-sm"
+              data-controller="modal"
+              data-action="click->modal#close"
+              data-modal-target-value="new_api_token_modal">Cancel</button>
+    <% elsif turbo_frame_request? %>
+      <button type="button" class="btn btn-ghost btn-sm" data-controller="utility" data-action="click->utility#clearElement" data-utility-target-value="api_token_modal">Cancel</button>
+    <% else %>
+      <%= link_to "Cancel", organization_api_tokens_path(@organization), class: "btn btn-ghost btn-sm" %>
+    <% end %>
+    <%= f.submit "Create token", class: "btn btn-primary btn-sm" %>
+  </div>
+<% end %>

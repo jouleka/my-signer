@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -e
+
+echo "==> Running RSpec test suite before push..."
+bundle exec rspec
+
+echo "==> All tests passed! Pushing..."

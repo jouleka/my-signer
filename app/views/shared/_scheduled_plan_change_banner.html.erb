@@ -1,0 +1,132 @@
+<%
+  impact = local_assigns.fetch(:impact)
+  compact = local_assigns.fetch(:compact, false)
+  current_only = local_assigns.fetch(:current_only, false)
+  current_organization_impact = impact.current_organization_impact
+  blocked_organizations = if current_only && impact.current_organization_blocked?
+    [impact.organization].compact
+  else
+    impact.blocked_organizations
+  end
+  other_organization_impacts = current_only ? [] : impact.other_organization_impacts
+  target_plan_name = [impact.target_tier&.titleize, impact.target_interval&.titleize].compact.join(" ")
+  alert_border = impact.impactful? ? "border-warning/30 bg-warning/5" : "border-info/30 bg-info/5"
+  alert_icon = impact.impactful? ? "fa-triangle-exclamation text-warning" : "fa-circle-info text-info"
+%>
+
+<section class="space-y-3">
+  <div class="alert <%= alert_border %> items-start">
+    <i class="fa-solid <%= alert_icon %> mt-0.5"></i>
+    <div class="min-w-0">
+      <div class="font-medium">
+        <% if impact.impactful? %>
+          Scheduled downgrade impact
+        <% else %>
+          Scheduled downgrade is already within the upcoming limits
+        <% end %>
+      </div>
+      <div class="text-sm text-base-content/70">
+        <%= target_plan_name %> starts on <%= l(impact.effective_at, format: :long) %>.
+        <% if impact.impactful? %>
+          Review what will be blocked or frozen before renewal.
+        <% else %>
+          No organizations or limits need cleanup before renewal.
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <% if blocked_organizations.any? %>
+    <article class="rounded-2xl border border-warning/20 bg-base-100 p-3 sm:p-4 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="font-semibold text-sm sm:text-base">Owned organizations</h3>
+          <p class="text-xs sm:text-sm text-base-content/70 mt-1">
+            <% if current_only && impact.current_organization_blocked? %>
+              This organization will be blocked when the downgrade applies because only the oldest <%= impact.target_entitlements.max_owned_organizations %> owned organization<%= "s" unless impact.target_entitlements.max_owned_organizations == 1 %> stay active on <%= impact.target_tier.titleize %>.
+            <% else %>
+              The oldest <%= impact.target_entitlements.max_owned_organizations %> owned organization<%= "s" unless impact.target_entitlements.max_owned_organizations == 1 %> stay active on <%= impact.target_tier.titleize %>. These organizations will be blocked when the downgrade applies.
+            <% end %>
+          </p>
+        </div>
+        <span class="badge badge-warning badge-outline shrink-0"><%= blocked_organizations.size %> blocked</span>
+      </div>
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        <% blocked_organizations.each do |organization| %>
+          <span class="badge badge-warning badge-sm"><%= organization.name %></span>
+        <% end %>
+      </div>
+    </article>
+  <% end %>
+
+  <% if current_organization_impact.present? %>
+    <div class="space-y-3">
+      <article class="rounded-2xl border border-warning/20 bg-base-100 p-3 sm:p-4 shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="font-semibold text-sm sm:text-base">Current organization</h3>
+            <p class="text-xs sm:text-sm text-base-content/70 mt-1">
+              <%= impact.organization.name %> is above the upcoming <%= impact.target_tier.titleize %> limits. Reduce usage before renewal to avoid freezes on new writes.
+            </p>
+          </div>
+          <span class="badge badge-warning badge-outline shrink-0"><%= current_organization_impact.status.sections.size %> warning<%= "s" unless current_organization_impact.status.sections.size == 1 %></span>
+        </div>
+      </article>
+
+      <div class="grid gap-3">
+        <% current_organization_impact.status.sections.each do |section| %>
+          <article class="rounded-2xl border border-warning/20 bg-base-100 p-3 sm:p-4 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="min-w-0">
+                <h3 class="font-semibold text-sm sm:text-base"><%= section[:title] %></h3>
+                <p class="text-xs sm:text-sm text-base-content/70 mt-1"><%= section[:summary] %></p>
+                <p class="text-xs sm:text-sm text-base-content/60 mt-1"><%= section[:detail] %></p>
+              </div>
+              <span class="badge badge-warning badge-outline shrink-0"><%= section[:badge] %></span>
+            </div>
+
+            <% if section[:overflow_projects].present? %>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <% section[:overflow_projects].each do |project| %>
+                  <span class="badge badge-warning badge-sm"><%= project.name %></span>
+                <% end %>
+              </div>
+            <% end %>
+          </article>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if other_organization_impacts.any? %>
+    <article class="rounded-2xl border border-warning/20 bg-base-100 p-3 sm:p-4 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="font-semibold text-sm sm:text-base">Other organizations above the upcoming limit</h3>
+          <p class="text-xs sm:text-sm text-base-content/70 mt-1">
+            These organizations keep access after renewal, but they still need cleanup to fit the upcoming <%= impact.target_tier.titleize %> limits.
+          </p>
+        </div>
+        <span class="badge badge-warning badge-outline shrink-0"><%= other_organization_impacts.size %> impacted</span>
+      </div>
+
+      <div class="mt-3 space-y-2">
+        <% other_organization_impacts.each do |organization_impact| %>
+          <div class="rounded-xl border border-base-200 bg-base-200/30 px-3 py-2">
+            <div class="text-sm font-medium"><%= organization_impact.organization.name %></div>
+            <div class="text-xs text-base-content/60 mt-1"><%= organization_impact.summary %></div>
+          </div>
+        <% end %>
+      </div>
+    </article>
+  <% elsif compact %>
+    <div class="text-xs text-base-content/60">
+      <% if impact.impactful? %>
+        This scheduled downgrade stays visible until renewal or until usage is reduced under the upcoming limit.
+      <% else %>
+        This scheduled downgrade stays visible until renewal so you can confirm the upcoming plan.
+      <% end %>
+    </div>
+  <% end %>
+</section>

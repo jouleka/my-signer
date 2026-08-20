@@ -1,0 +1,87 @@
+<%#
+  Partial: pricing/billing_change_preview_modal
+  Rendered from show.html.erb inside a subscription-present guard.
+  Requires no locals — relies on instance variables and Stimulus targets
+  set by the pricing-plans controller.
+%>
+    <dialog id="billing-change-preview-modal" class="modal modal-bottom sm:modal-middle" data-pricing-plans-target="previewModal">
+      <div class="modal-box w-full max-w-lg border border-base-200 bg-base-100 p-0 overflow-hidden">
+        <%# Header %>
+        <div class="flex items-center justify-between border-b border-base-200 px-6 py-4">
+          <h3 class="text-base font-semibold">Confirm plan change</h3>
+          <button type="button" class="btn btn-sm btn-circle btn-ghost -mr-2" data-action="pricing-plans#closePreview">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+
+        <div class="px-6 py-5 space-y-4">
+          <%# Plan + timing %>
+          <div>
+            <div class="flex items-center gap-2.5">
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <i class="fa-solid fa-arrow-right-arrow-left text-sm text-primary"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold" data-pricing-plans-target="previewTitle">Subscription change</p>
+                <p class="text-xs text-primary font-medium" data-pricing-plans-target="previewTiming">Loading preview</p>
+              </div>
+            </div>
+            <p class="mt-2 text-sm text-base-content/55" data-pricing-plans-target="previewMessage">Fetching your live billing preview.</p>
+          </div>
+
+          <%# Loading / Error states %>
+          <div class="hidden text-sm text-base-content/50" data-pricing-plans-target="previewLoading">
+            <div class="flex items-center gap-2">
+              <span class="loading loading-spinner loading-xs"></span>
+              Preparing preview...
+            </div>
+          </div>
+          <div class="text-sm text-error" data-pricing-plans-target="previewError"></div>
+
+          <%# Billing breakdown %>
+          <div class="rounded-[0.875rem] bg-base-200/40 divide-y divide-base-200/60">
+            <div class="flex items-center justify-between px-4 py-3">
+              <span class="text-sm text-base-content/55">Due today</span>
+              <span class="text-sm font-semibold" data-pricing-plans-target="previewDueToday">...</span>
+            </div>
+            <div class="flex items-center justify-between px-4 py-3">
+              <span class="text-sm text-base-content/55">Next renewal</span>
+              <span class="text-sm font-semibold" data-pricing-plans-target="previewNextCharge">...</span>
+            </div>
+            <div class="flex items-center justify-between px-4 py-3">
+              <span class="text-sm text-base-content/55">Recurring price</span>
+              <span class="text-sm font-semibold" data-pricing-plans-target="previewRecurringCharge">...</span>
+            </div>
+          </div>
+
+          <%# Summary line %>
+          <p class="text-xs text-base-content/45" data-pricing-plans-target="previewSummary"></p>
+
+          <%# Warnings (hidden when empty via JS) %>
+          <div data-pricing-plans-target="previewWarningsContainer" class="hidden">
+            <div class="rounded-[0.875rem] border border-warning/15 bg-warning/5 px-4 py-3">
+              <div class="flex items-start gap-2.5">
+                <i class="fa-solid fa-triangle-exclamation text-warning text-xs mt-0.5"></i>
+                <ul class="space-y-1 text-sm text-base-content/60" data-pricing-plans-target="previewWarnings"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <%# Actions %>
+        <%= form_with url: billing_paddle_subscription_change_path, method: :post, data: { turbo: false }, html: { class: "flex flex-col gap-2 border-t border-base-200 px-6 py-4 sm:flex-row-reverse" } do %>
+          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+          <%= hidden_field_tag :plan_tier, nil, data: { pricing_plans_target: "previewPlanTierInput" } %>
+          <%= hidden_field_tag :billing_interval, nil, data: { pricing_plans_target: "previewBillingIntervalInput" } %>
+          <%= hidden_field_tag :return_to, pricing_path, data: { pricing_plans_target: "previewReturnToInput" } %>
+          <button type="submit" class="btn btn-primary flex-1 gap-2" data-pricing-plans-target="previewSubmit" disabled>
+            <i class="fa-solid fa-circle-check text-xs"></i>
+            Confirm change
+          </button>
+          <button type="button" class="btn btn-ghost flex-1" data-action="pricing-plans#closePreview">Back</button>
+        <% end %>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>

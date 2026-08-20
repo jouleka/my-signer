@@ -1,0 +1,15 @@
+<% @preheader = "You've been invited to join #{@organization.name} on MySigner as a #{@invite.role.humanize}." %>
+
+<%= ms_eyebrow(60, "Invitation · You're invited") %>
+<%= ms_headline("You're <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">invited.</em>", size: 48) %>
+
+<%= ms_lead("You've been invited to join <strong style=\"color:#f4ede0;\">#{ERB::Util.h(@organization.name)}</strong> on MySigner.") %>
+
+<%= ms_meta_row("Organization", ms_meta_pill(@organization.name)) %>
+<%= ms_meta_row("Your role", "<span class=\"ms-primary\" style=\"color:#c8a8f5; font-style:italic; font-size:18px;\">#{ERB::Util.h(@invite.role.humanize)}</span>".html_safe) %>
+
+<%= ms_cta("Accept invitation", @url, variant: :primary, margin_top: 24, margin_bottom: 28) %>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 22) %>
+
+<%= ms_fine_print("Didn't expect this invitation? You can safely ignore the email &mdash; the link expires on its own.") %>

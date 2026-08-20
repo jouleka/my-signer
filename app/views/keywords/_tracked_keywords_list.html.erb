@@ -1,0 +1,21 @@
+<%# Keyword card list extracted into its own partial so create/destroy
+    Turbo Streams can replace the whole #tracked-keywords-list container
+    in one shot (rather than tracking every card individually).
+    Local `next_check_estimate` is computed once for the whole list and
+    passed through to each card so the "Queued" chip on freshly-added
+    keywords reflects the org's tier-specific ETA. %>
+<% next_check_estimate = Aso::NextCheckEstimator.for(organization: @organization) %>
+<div id="tracked-keywords-list">
+  <% tracked_keywords = app.tracked_keywords.includes(:tracked_keyword_countries).order(:keyword) %>
+  <% if tracked_keywords.empty? %>
+    <div class="<%= card_container_classes %> text-center py-8">
+      <i class="fa-solid fa-magnifying-glass text-2xl text-base-content/20 mb-2"></i>
+      <p class="<%= label_uppercase_classes %> mb-1">No keywords tracked yet</p>
+      <p class="text-xs text-base-content/40">Add a keyword to start monitoring its rank in the App Store.</p>
+    </div>
+  <% else %>
+    <% tracked_keywords.each do |tk| %>
+      <%= render "keywords/tracked_keyword_card", tk: tk, next_check_estimate: next_check_estimate %>
+    <% end %>
+  <% end %>
+</div>

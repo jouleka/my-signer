@@ -1,0 +1,68 @@
+<%# Connection banner for the Keywords page.
+    - Pro+ org without a successfully-connected Apple Ads credential: CTA opens
+      the connect modal (fresh credentials) or links to /edit (rotating/fixing
+      an existing-but-failing credential).
+    - Free-tier org: non-intrusive upsell pointing at the pricing page.
+    - Already connected (`last_successful?`): nothing renders.
+    Relies on @entitlements (set by KeywordsController#show) and
+    @organization.apple_ads_credential (a `has_one` association on Organization). %>
+<% cred = @organization.apple_ads_credential %>
+
+<% if @entitlements.apple_ads_integration_enabled? && !cred&.last_successful? %>
+  <div class="<%= sn_info_classes %>">
+    <div class="flex items-start gap-2.5 p-1">
+      <div class="<%= sn_icon_info_classes %>">
+        <i class="fa-brands fa-apple text-[0.65rem]"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs text-base-content/80 leading-relaxed">
+          <strong class="text-base-content/90">Connect Apple Search Ads</strong>
+          to unlock keyword popularity data and Apple's keyword recommendations.
+          Requires an Apple Search Ads Advanced account &mdash; no ad spend needed.
+        </p>
+        <% if cred&.last_error.present? %>
+          <p class="text-[0.7rem] text-warning/80 mt-1">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+            Last attempt failed: <%= cred.last_error %>
+          </p>
+        <% end %>
+      </div>
+      <div class="shrink-0">
+        <% if cred&.persisted? %>
+          <%# Credential exists but failed verification — edit page lets the user
+              rotate fields without re-uploading the PEM. Keep as a page link. %>
+          <%= link_to "Fix connection \u2192",
+                      edit_organization_apple_ads_credential_path(@organization),
+                      class: btn_primary_sm_classes %>
+        <% else %>
+          <%# Fresh connection — open the modal. %>
+          <button type="button"
+                  data-controller="modal"
+                  data-action="click->modal#open"
+                  data-modal-target-value="connect-apple-ads-modal"
+                  class="<%= btn_primary_sm_classes %>">
+            Connect now &rarr;
+          </button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <% unless cred&.persisted? %>
+    <%= render "apple_ads_credentials/connect_modal" %>
+  <% end %>
+<% elsif !@entitlements.apple_ads_integration_enabled? %>
+  <%# Free-tier upsell — muted, non-intrusive. %>
+  <div class="<%= sn_neutral_classes %>">
+    <div class="flex items-center gap-2.5 p-1">
+      <div class="<%= sn_icon_neutral_classes %>">
+        <i class="fa-solid fa-lock text-[0.55rem]"></i>
+      </div>
+      <p class="text-xs text-base-content/55 flex-1">
+        Keyword popularity data and Apple recommendations are available on
+        <strong class="text-base-content/75">Pro</strong> and above.
+        <%= link_to "See plans \u2192", pricing_path, class: "text-primary/80 hover:text-primary underline ml-0.5" %>
+      </p>
+    </div>
+  </div>
+<% end %>

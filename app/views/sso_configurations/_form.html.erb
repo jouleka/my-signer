@@ -1,0 +1,359 @@
+<%# SSO configuration form.
+
+    Design notes:
+    - SINGULAR resource, so we pass url/method explicitly (Rails would else
+      try to pluralize the path helper).
+    - Two-column layout: IdP form on the left, SP details ("give this to
+      your IdP") on the right as a sticky sidecar. This mirrors the actual
+      human workflow: copy SP values -> go to IdP admin console -> paste
+      IdP values back here.
+    - Preset shortcut row lets users auto-select sensible defaults for
+      their IdP (Okta, Azure, Google Workspace, generic).
+    - Certificate textarea has a live validity indicator (client-side
+      sniff + server-side OpenSSL on submit).
+    - Enforce SSO has a prominent warning card that reveals when checked.
+    - Smart "Back" link replaces the ambiguous "Cancel" button:
+      - Creating -> go to the org page (exit the flow entirely)
+      - Editing  -> go to the SSO show page (abort the edit, keep config)
+%>
+<%= form_with model: @config,
+    scope: :sso_configuration,
+    url: organization_sso_configuration_path(@organization),
+    method: (@config.persisted? ? :patch : :post),
+    local: true,
+    data: { controller: "sso-form" },
+    class: "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6" do |f| %>
+
+  <%# ════════════════════════════════════════════════════════════ %>
+  <%# LEFT COLUMN: the actual form                                 %>
+  <%# ════════════════════════════════════════════════════════════ %>
+  <div class="space-y-5 min-w-0">
+    <% if @config.errors.any? %>
+      <div class="<%= sn_error_classes %>">
+        <div class="flex items-start gap-2.5 p-1">
+          <div class="<%= sn_icon_error_classes %>"><i class="fa-solid fa-circle-exclamation text-[0.6rem]"></i></div>
+          <div class="text-sm flex-1 min-w-0">
+            <strong class="text-error">We couldn't save this config.</strong>
+            <ul class="mt-1 list-disc list-inside space-y-0.5 text-error/80">
+              <% @config.errors.full_messages.each do |msg| %>
+                <li><%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# ── Preset shortcuts ─────────────────────────────────────── %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+        <span class="<%= card_title_classes %>">Quick start</span>
+      </div>
+      <div class="<%= card_body_classes %>">
+        <p class="<%= hint_text_classes %> mb-3">
+          Select your identity provider to pre-fill sensible defaults. You can still tweak anything below.
+        </p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <% [
+            { key: "okta",   label: "Okta",              icon: "fa-brands fa-octopus-deploy" },
+            { key: "azure",  label: "Microsoft Entra",   icon: "fa-brands fa-microsoft" },
+            { key: "google", label: "Google Workspace",  icon: "fa-brands fa-google" },
+            { key: "custom", label: "Generic SAML 2.0",  icon: "fa-solid fa-cubes" }
+          ].each do |preset| %>
+            <button type="button"
+                    data-preset="<%= preset[:key] %>"
+                    data-action="click->sso-form#applyPreset"
+                    class="group flex flex-col items-center justify-center gap-1.5 px-3 py-3 rounded-[0.625rem] border border-base-content/[0.08] bg-base-100 text-base-content/70 hover:border-primary/30 hover:text-base-content/95 transition-all">
+              <i class="<%= preset[:icon] %> text-base"></i>
+              <span class="text-[0.6875rem] font-semibold tracking-[-0.005em]"><%= preset[:label] %></span>
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# ── Identity section ─────────────────────────────────────── %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>"><i class="fa-solid fa-id-badge"></i></div>
+        <span class="<%= card_title_classes %>">Your identity provider</span>
+      </div>
+      <div class="<%= card_body_classes %> space-y-4">
+
+        <div>
+          <%= f.label :idp_entity_id, "IdP Entity ID", class: label_form_classes %>
+          <%= f.text_field :idp_entity_id,
+              class: "mt-1 input input-bordered w-full",
+              placeholder: "https://idp.example.com/metadata",
+              autocomplete: "off",
+              spellcheck: "false" %>
+          <p class="<%= hint_text_classes %> mt-1.5">
+            Also called <strong class="text-base-content/60">Issuer</strong> in some IdPs.
+            Usually a URL like <code class="text-[0.7rem] bg-base-200/60 px-1.5 py-0.5 rounded">http://www.okta.com/abc123</code>.
+          </p>
+        </div>
+
+        <div>
+          <%= f.label :idp_sso_target_url, "IdP SSO URL", class: label_form_classes %>
+          <%= f.url_field :idp_sso_target_url,
+              class: "mt-1 input input-bordered w-full font-mono text-xs",
+              placeholder: "https://yourcompany.okta.com/app/.../sso/saml",
+              autocomplete: "off",
+              spellcheck: "false" %>
+          <p class="<%= hint_text_classes %> mt-1.5">
+            The URL your IdP displays as <strong class="text-base-content/60">Single Sign-On URL</strong> or <strong class="text-base-content/60">Login URL</strong>.
+          </p>
+        </div>
+
+        <div>
+          <%= f.label :idp_slo_target_url, class: label_form_classes do %>
+            IdP Single Logout URL
+            <span class="<%= muted_badge_classes %> ml-1">optional</span>
+            <span class="<%= muted_badge_classes %> ml-1">coming soon</span>
+          <% end %>
+          <%= f.url_field :idp_slo_target_url,
+              class: "mt-1 input input-bordered w-full font-mono text-xs",
+              placeholder: "https://yourcompany.okta.com/app/.../slo/saml",
+              autocomplete: "off",
+              spellcheck: "false" %>
+          <p class="<%= hint_text_classes %> mt-1.5">
+            <strong class="text-base-content/70">Coming soon — Single Logout endpoint not yet active.</strong>
+            You can save the URL now, but it isn't dispatched anywhere yet. Local session destruction
+            handles sign-out today; IdP-initiated SLO will ship in a follow-up.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <%# ── Trust section (certificate) ──────────────────────────── %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>"><i class="fa-solid fa-shield-halved"></i></div>
+        <span class="<%= card_title_classes %>">Trust &amp; signing</span>
+      </div>
+      <div class="<%= card_body_classes %> space-y-3">
+        <div>
+          <%= f.label :idp_cert, "IdP x509 Certificate (PEM)", class: label_form_classes %>
+          <%= f.text_area :idp_cert,
+              data: {
+                "sso-form-target": "certArea",
+                "action": "input->sso-form#checkCert blur->sso-form#checkCert"
+              },
+              class: "mt-1 textarea textarea-bordered w-full font-mono text-[0.7rem] leading-relaxed",
+              rows: 9,
+              spellcheck: "false",
+              autocomplete: "off",
+              placeholder: "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----" %>
+          <div class="mt-2 flex items-start gap-3 justify-between">
+            <span data-sso-form-target="certStatus" class="text-xs text-base-content/40">Waiting for certificate paste…</span>
+            <span class="<%= muted_badge_classes %> shrink-0">Encrypted at rest</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# ── User provisioning ────────────────────────────────────── %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>"><i class="fa-solid fa-user-plus"></i></div>
+        <span class="<%= card_title_classes %>">User provisioning</span>
+      </div>
+      <div class="<%= card_body_classes %> space-y-4">
+        <div>
+          <%= f.label :name_identifier_format, "Name identifier format", class: label_form_classes %>
+          <%= f.select :name_identifier_format,
+              [
+                ["Email address (recommended)", "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"],
+                ["Persistent identifier",       "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"],
+                ["Unspecified",                 "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"]
+              ],
+              {},
+              data: { "sso-form-target": "nameIdSelect" },
+              class: "mt-1 select select-bordered w-full" %>
+          <p data-sso-form-target="emailHint" class="<%= hint_text_classes %> mt-1.5">
+            Most IdPs send the user's email in the Name ID. Choose <em>Persistent identifier</em> only
+            if your IdP rotates email addresses or uses opaque IDs.
+          </p>
+        </div>
+
+        <div>
+          <%= f.label :jit_default_role, "Default role for new SSO users", class: label_form_classes %>
+          <%= f.select :jit_default_role,
+              SsoConfiguration::JIT_ROLES.keys.map { |k| [k.to_s.titleize, k] },
+              {},
+              class: "mt-1 select select-bordered w-full" %>
+          <p class="<%= hint_text_classes %> mt-1.5">
+            First-time SSO users are auto-provisioned into this org with this role. You can change
+            individual roles later on the <strong class="text-base-content/60">Permissions</strong> page.
+          </p>
+        </div>
+
+        <div>
+          <%= f.label :verified_domains_text, "Verified email domains", class: label_form_classes %>
+          <%# Let the form builder bind the value from the model's
+              verified_domains_text reader so Rails' usual params-on-validation-
+              failure round-trip works if an admin submits an invalid domain. %>
+          <%= f.text_area :verified_domains_text,
+              id: "sso-verified-domains",
+              rows: 3,
+              class: "mt-1 textarea textarea-bordered w-full font-mono text-xs",
+              placeholder: "acme.com\nacme.io",
+              spellcheck: "false",
+              autocomplete: "off" %>
+          <p class="<%= hint_text_classes %> mt-1.5">
+            One domain per line. Example: <code class="text-[0.7rem] bg-base-200/60 px-1.5 py-0.5 rounded">acme.com</code>.
+            Controls which <strong class="text-base-content/60">existing</strong> MySigner users can be auto-linked via
+            SAML email claims. If empty, existing-user auto-linking is refused (brand-new SSO users are still provisioned).
+            This is an anti-impersonation guard: without it, any org's IdP could claim another user's email.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <%# ── Activation ───────────────────────────────────────────── %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>"><i class="fa-solid fa-toggle-on"></i></div>
+        <span class="<%= card_title_classes %>">Activation</span>
+      </div>
+      <div class="<%= card_body_classes %> space-y-4">
+        <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-base-content/[0.08] hover:border-primary/25 transition-colors">
+          <%= f.check_box :enabled, class: "checkbox checkbox-primary mt-0.5 shrink-0" %>
+          <div class="flex-1 min-w-0">
+            <span class="block text-sm font-semibold text-base-content/85">Enable SSO</span>
+            <span class="block text-xs text-base-content/50 mt-0.5">
+              Members can sign in at <code class="text-[0.7rem] bg-base-200/60 px-1 rounded">/auth/sso?slug=<%= @organization.slug %></code>
+              once you save. Keep this off while testing the config.
+            </span>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-base-content/[0.08] hover:border-primary/25 transition-colors">
+          <%= f.check_box :enforced,
+              data: { "sso-form-target": "enforceInput", "action": "change->sso-form#checkEnforce" },
+              class: "checkbox checkbox-warning mt-0.5 shrink-0" %>
+          <div class="flex-1 min-w-0">
+            <span class="block text-sm font-semibold text-base-content/85">Enforce SSO for all org members</span>
+            <span class="block text-xs text-base-content/50 mt-0.5">
+              Blocks password / Google / GitHub / Apple login for everyone in this org.
+              <strong class="text-base-content/70">The owner can always fall back to password login</strong>
+              as break-glass recovery if your IdP misconfigures.
+            </span>
+          </div>
+        </label>
+
+        <%# Warning banner that appears only when "enforced" is checked %>
+        <div data-sso-form-target="enforceWarning" class="hidden <%= sn_warning_classes %>">
+          <div class="flex items-start gap-2.5 p-1">
+            <div class="<%= sn_icon_warning_classes %>"><i class="fa-solid fa-triangle-exclamation text-[0.6rem]"></i></div>
+            <div class="text-xs text-warning/90 leading-relaxed">
+              <strong>Heads up:</strong> once enforcement is active, a broken IdP config can lock out every
+              admin except the owner. We strongly recommend toggling <em>Enable SSO</em> first, testing the flow
+              end-to-end (see the right column), and only then enabling enforcement.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# ── Actions ──────────────────────────────────────────────── %>
+    <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+      <%# Smart back link. No ambiguous "Cancel" -- tells the user exactly
+          where they're going. %>
+      <% back_path = @config.persisted? ? organization_sso_configuration_path(@organization) : organization_path(@organization) %>
+      <% back_label = @config.persisted? ? "Discard changes" : "Back to organization" %>
+      <%= link_to back_path, class: "text-sm text-base-content/50 hover:text-base-content/85 inline-flex items-center gap-1.5 transition-colors" do %>
+        <i class="fa-solid fa-arrow-left text-xs"></i> <%= back_label %>
+      <% end %>
+
+      <div class="flex items-center gap-2">
+        <%= f.submit (@config.persisted? ? "Save changes" : "Save configuration"),
+            class: btn_primary_classes %>
+      </div>
+    </div>
+  </div>
+
+  <%# ════════════════════════════════════════════════════════════ %>
+  <%# RIGHT COLUMN: Service-provider details (sticky sidecar)      %>
+  <%# ════════════════════════════════════════════════════════════ %>
+  <aside class="space-y-4 lg:sticky lg:top-4 self-start">
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+        <span class="<%= card_title_classes %>">Give these to your IdP</span>
+      </div>
+      <div class="<%= card_body_classes %> space-y-4">
+        <% sp_entity_id = @config.persisted? ? @config.sp_entity_id : "#{Rails.application.config.x.base_url}/saml/metadata/#{@organization.slug}" %>
+        <% acs_url      = @config.persisted? ? @config.acs_url       : "#{Rails.application.config.x.base_url}/users/auth/saml/callback" %>
+
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <label class="<%= label_uppercase_classes %>">SP Entity ID / Metadata URL</label>
+            <button type="button"
+                    class="<%= icon_btn_sm_classes %>"
+                    data-controller="clipboard"
+                    data-clipboard-content-value="<%= sp_entity_id %>"
+                    data-action="click->clipboard#copy"
+                    title="Copy">
+              <i class="fa-solid fa-copy text-[0.65rem]"></i>
+            </button>
+          </div>
+          <div class="text-[0.7rem] font-mono break-all p-2.5 rounded-lg bg-base-content/[0.04] border border-base-content/[0.05] text-base-content/80">
+            <%= sp_entity_id %>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <label class="<%= label_uppercase_classes %>">ACS URL</label>
+            <button type="button"
+                    class="<%= icon_btn_sm_classes %>"
+                    data-controller="clipboard"
+                    data-clipboard-content-value="<%= acs_url %>"
+                    data-action="click->clipboard#copy"
+                    title="Copy">
+              <i class="fa-solid fa-copy text-[0.65rem]"></i>
+            </button>
+          </div>
+          <div class="text-[0.7rem] font-mono break-all p-2.5 rounded-lg bg-base-content/[0.04] border border-base-content/[0.05] text-base-content/80">
+            <%= acs_url %>
+          </div>
+        </div>
+
+        <div>
+          <label class="<%= label_uppercase_classes %>">Name ID format</label>
+          <div class="text-xs text-base-content/70 mt-1">Email address (recommended)</div>
+        </div>
+
+        <div>
+          <label class="<%= label_uppercase_classes %>">Required attributes</label>
+          <ul class="text-xs text-base-content/70 mt-1 space-y-0.5">
+            <li><code class="text-[0.7rem] bg-base-200/60 px-1.5 py-0.5 rounded">email</code> (primary)</li>
+            <li><code class="text-[0.7rem] bg-base-200/60 px-1.5 py-0.5 rounded">name</code> (optional)</li>
+          </ul>
+        </div>
+
+        <div class="pt-3 border-t border-base-content/[0.06]">
+          <a href="/docs/sso-setup-guide" target="_blank" class="text-xs text-primary/80 hover:text-primary inline-flex items-center gap-1.5">
+            <i class="fa-solid fa-book-open text-[0.65rem]"></i>
+            Step-by-step setup guide
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <%# Testing tip card %>
+    <div class="<%= sn_info_classes %>">
+      <div class="flex items-start gap-2.5 p-2">
+        <div class="<%= sn_icon_info_classes %>"><i class="fa-solid fa-flask text-[0.6rem]"></i></div>
+        <div class="text-xs text-base-content/75 leading-relaxed min-w-0">
+          <strong class="text-base-content/90 block mb-1">How to test</strong>
+          After saving with <em>Enable SSO</em> on (but enforcement off), open an incognito window
+          and visit <code class="text-[0.65rem] bg-base-200/80 px-1 rounded break-all">/auth/sso?slug=<%= @organization.slug %></code>.
+          You should be redirected to your IdP, sign in, and land back on the dashboard.
+        </div>
+      </div>
+    </div>
+  </aside>
+<% end %>

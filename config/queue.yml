@@ -1,0 +1,47 @@
+default: &default
+  dispatchers:
+    - polling_interval: 1
+      batch_size: 500
+  workers:
+    - queues: "*"
+      threads: <%= ENV.fetch("JOB_THREADS", 8) %>
+      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      polling_interval: 0.1
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  dispatchers:
+    - polling_interval: 1
+      batch_size: 500
+  workers:
+    # 4 threads sized to the actual default-queue workload on a 2-vCPU box:
+    # scheduled syncs (every 30 min, 30-60s each, I/O-bound on Apple/Google
+    # APIs), user-triggered OpenAI translate/rewrite bursts (~5 jobs, 5-15s
+    # each), and lightweight notification jobs. Jobs are I/O-bound, so 4
+    # parallel slots drain the typical queue in seconds — more threads don't
+    # help (GVL-bound Ruby can't benefit) and they compete for the queue DB
+    # pool. See config/deploy.yml QUEUE_DB_POOL for the pool sizing.
+    - queues: "*"
+      threads: <%= ENV.fetch("JOB_THREADS", 4) %>
+      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      polling_interval: 0.1
+    - queues:
+        - screenshot_uploads
+      threads: 2
+      processes: 1
+      polling_interval: 0.5
+    # Dedicated worker for ASO scraping. List order gives aso_scraping_priority
+    # (Team tier) dispatch priority over aso_scraping (Free/Pro). threads: 1
+    # means at most one outbound MZStore request at a time from this worker,
+    # which combined with Aso::RateLimiter enforces 15 req/min.
+    - queues:
+        - aso_scraping_priority
+        - aso_scraping
+      threads: 1
+      processes: 1
+      polling_interval: 0.5

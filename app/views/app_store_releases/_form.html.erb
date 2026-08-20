@@ -1,0 +1,293 @@
+<%= form_with model: app_store_release, url: url, method: method, local: true, class: "space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden" do |f| %>
+  <%= f.hidden_field :apple_bundle_id_id, value: app_store_release.apple_bundle_id_id %>
+
+  <%# Error Messages %>
+  <% if app_store_release.errors.any? %>
+    <div class="alert alert-error overflow-hidden">
+      <i class="fa-solid fa-circle-exclamation shrink-0"></i>
+      <div class="min-w-0">
+        <h3 class="font-bold text-sm">Please fix the following errors:</h3>
+        <ul class="text-sm mt-1 space-y-0.5">
+          <% app_store_release.errors.full_messages.each do |message| %>
+            <li class="break-words">• <%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+
+  <%# CLI-only purpose banner %>
+  <div class="bg-info/5 border border-info/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-start gap-3 overflow-hidden">
+    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-info/10 flex items-center justify-center shrink-0">
+      <i class="fa-solid fa-terminal text-info text-sm sm:text-base"></i>
+    </div>
+    <div class="min-w-0 flex-1">
+      <h3 class="font-bold text-sm sm:text-base">Defaults for <code class="text-xs sm:text-sm bg-base-200 px-1 py-0.5 rounded">mysigner ship appstore</code></h3>
+      <p class="text-xs sm:text-sm text-base-content/70 mt-0.5">
+        These defaults are used only for unattended CI/CD submissions via the CLI.
+        The web UI submits from the
+        <% if @apple_app %>
+          <%= link_to "Submission tab", organization_release_path(@organization, "apple_app_#{@apple_app.id}", tab: "submission"), class: "link link-info font-medium" %>
+        <% else %>
+          <strong>Submission tab</strong>
+        <% end %>
+        instead and ignores these values.
+      </p>
+      <p class="text-xs text-base-content/60 mt-2">
+        Release notes, promotional text, and store URLs are managed in
+        <%= link_to "Releases", organization_releases_path(@organization), class: "link link-info font-medium" %>.
+      </p>
+    </div>
+  </div>
+
+  <%# Section 1: Version & Build %>
+  <div class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden">
+    <input type="checkbox" checked="checked" />
+    <div class="collapse-title px-3 sm:px-4">
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-violet-500/25 shrink-0">
+          <i class="fa-solid fa-code-branch text-sm sm:text-base"></i>
+        </div>
+        <div class="min-w-0">
+          <h3 class="font-bold text-sm sm:text-base">Version & Build</h3>
+          <p class="text-xs text-base-content/60 font-normal">Control which version and builds to use</p>
+        </div>
+      </div>
+    </div>
+    <div class="collapse-content px-3 sm:px-4">
+      <div class="space-y-4 sm:space-y-5 pt-2">
+        <div class="grid sm:grid-cols-2 gap-3 sm:gap-4">
+          <div class="form-control">
+            <label class="label pb-1">
+              <span class="label-text font-medium text-sm">Version String</span>
+              <span class="label-text-alt badge badge-ghost badge-sm">Optional</span>
+            </label>
+            <%= f.text_field :version_string,
+                class: "input input-bordered input-sm sm:input-md focus:input-primary font-mono",
+                placeholder: "2.0.0" %>
+            <label class="label pt-1">
+              <span class="label-text-alt text-base-content/50 text-xs">App Store version (e.g., 2.0.0)</span>
+            </label>
+          </div>
+
+          <div class="form-control">
+            <label class="label pb-1">
+              <span class="label-text font-medium text-sm">Minimum Build Number</span>
+              <span class="label-text-alt badge badge-ghost badge-sm">Optional</span>
+            </label>
+            <%= f.number_field :build_number,
+                class: "input input-bordered input-sm sm:input-md focus:input-primary font-mono",
+                placeholder: "100",
+                min: 1 %>
+            <label class="label pt-1">
+              <span class="label-text-alt text-base-content/50 text-xs">CLI ignores builds below this</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="bg-base-200/50 rounded-lg sm:rounded-xl p-3 sm:p-4 flex items-start gap-2.5 sm:gap-3 overflow-hidden">
+          <i class="fa-solid fa-lightbulb text-warning mt-0.5 shrink-0"></i>
+          <div class="text-xs sm:text-sm text-base-content/70 min-w-0 break-words">
+            <strong class="text-base-content">Pro tip:</strong> Leave version empty to use your Xcode project's version automatically. Set a minimum build number to prevent accidental submission of older builds.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Section 2: Release Strategy %>
+  <div class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden" data-controller="release-type">
+    <input type="checkbox" checked="checked" />
+    <div class="collapse-title px-3 sm:px-4">
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/25 shrink-0">
+          <i class="fa-solid fa-rocket text-sm sm:text-base"></i>
+        </div>
+        <div class="min-w-0">
+          <h3 class="font-bold text-sm sm:text-base">Release Strategy</h3>
+          <p class="text-xs text-base-content/60 font-normal">When and how your app goes live</p>
+        </div>
+      </div>
+    </div>
+    <div class="collapse-content px-3 sm:px-4">
+      <div class="space-y-4 sm:space-y-5 pt-2">
+        <%# Release Type Selection %>
+        <div class="space-y-2">
+          <label class="label pb-0">
+            <span class="label-text font-medium text-sm">Release Timing</span>
+          </label>
+
+          <%# Mobile: compact horizontal rows %>
+          <div class="sm:hidden space-y-2">
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-base-200 bg-base-100 cursor-pointer hover:border-primary/50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
+              <%= f.radio_button :release_type, "AFTER_APPROVAL",
+                  class: "radio radio-primary radio-sm shrink-0",
+                  data: { release_type_target: "radio", action: "change->release-type#toggle" } %>
+              <div class="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center shrink-0 group-has-[:checked]:bg-success/20">
+                <i class="fa-solid fa-rocket text-success text-sm"></i>
+              </div>
+              <div class="min-w-0">
+                <span class="font-semibold text-sm">Automatic</span>
+                <p class="text-xs text-base-content/60">Goes live after approval</p>
+              </div>
+            </label>
+
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-base-200 bg-base-100 cursor-pointer hover:border-primary/50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
+              <%= f.radio_button :release_type, "MANUAL",
+                  class: "radio radio-primary radio-sm shrink-0",
+                  data: { release_type_target: "radio", action: "change->release-type#toggle" } %>
+              <div class="w-8 h-8 rounded-full bg-info/10 flex items-center justify-center shrink-0 group-has-[:checked]:bg-info/20">
+                <i class="fa-solid fa-hand text-info text-sm"></i>
+              </div>
+              <div class="min-w-0">
+                <span class="font-semibold text-sm">Manual</span>
+                <p class="text-xs text-base-content/60">You release when ready</p>
+              </div>
+            </label>
+
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-base-200 bg-base-100 cursor-pointer hover:border-primary/50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
+              <%= f.radio_button :release_type, "SCHEDULED",
+                  class: "radio radio-primary radio-sm shrink-0",
+                  data: { release_type_target: "radio", action: "change->release-type#toggle" } %>
+              <div class="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center shrink-0 group-has-[:checked]:bg-warning/20">
+                <i class="fa-solid fa-calendar-check text-warning text-sm"></i>
+              </div>
+              <div class="min-w-0">
+                <span class="font-semibold text-sm">Scheduled</span>
+                <p class="text-xs text-base-content/60">Release at specific date</p>
+              </div>
+            </label>
+          </div>
+
+          <%# Desktop: card grid %>
+          <div class="hidden sm:grid sm:grid-cols-3 gap-3">
+            <label class="relative flex flex-col items-center p-4 rounded-xl border-2 border-base-200 bg-base-100 cursor-pointer hover:border-primary/50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
+              <%= f.radio_button :release_type, "AFTER_APPROVAL",
+                  class: "sr-only",
+                  data: { release_type_target: "radio", action: "change->release-type#toggle" } %>
+              <div class="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mb-3 group-has-[:checked]:bg-success/20">
+                <i class="fa-solid fa-rocket text-success text-lg"></i>
+              </div>
+              <span class="font-semibold text-sm text-center">Automatic</span>
+              <span class="text-xs text-base-content/60 text-center mt-1">Goes live after approval</span>
+            </label>
+
+            <label class="relative flex flex-col items-center p-4 rounded-xl border-2 border-base-200 bg-base-100 cursor-pointer hover:border-primary/50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
+              <%= f.radio_button :release_type, "MANUAL",
+                  class: "sr-only",
+                  data: { release_type_target: "radio", action: "change->release-type#toggle" } %>
+              <div class="w-12 h-12 rounded-full bg-info/10 flex items-center justify-center mb-3 group-has-[:checked]:bg-info/20">
+                <i class="fa-solid fa-hand text-info text-lg"></i>
+              </div>
+              <span class="font-semibold text-sm text-center">Manual</span>
+              <span class="text-xs text-base-content/60 text-center mt-1">You release when ready</span>
+            </label>
+
+            <label class="relative flex flex-col items-center p-4 rounded-xl border-2 border-base-200 bg-base-100 cursor-pointer hover:border-primary/50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
+              <%= f.radio_button :release_type, "SCHEDULED",
+                  class: "sr-only",
+                  data: { release_type_target: "radio", action: "change->release-type#toggle" } %>
+              <div class="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center mb-3 group-has-[:checked]:bg-warning/20">
+                <i class="fa-solid fa-calendar-check text-warning text-lg"></i>
+              </div>
+              <span class="font-semibold text-sm text-center">Scheduled</span>
+              <span class="text-xs text-base-content/60 text-center mt-1">Release at specific date</span>
+            </label>
+          </div>
+        </div>
+
+        <%# Scheduled Date (conditionally shown) %>
+        <div class="hidden" data-release-type-target="scheduledFields">
+          <div class="bg-warning/5 border border-warning/20 rounded-lg sm:rounded-xl p-3 sm:p-4" data-controller="datetime-split">
+            <label class="label pb-1">
+              <span class="label-text font-medium flex items-center gap-2 text-sm">
+                <i class="fa-solid fa-clock text-warning"></i>
+                Release Date & Time
+              </span>
+            </label>
+            <%= f.hidden_field :earliest_release_date, data: { datetime_split_target: "hidden" } %>
+            <div class="grid grid-cols-2 gap-2 sm:gap-3">
+              <div class="form-control">
+                <label class="label pb-1 pt-0">
+                  <span class="label-text text-xs">Date</span>
+                </label>
+                <input type="date"
+                       class="input input-bordered input-sm sm:input-md focus:input-warning bg-base-100 w-full"
+                       data-datetime-split-target="date"
+                       data-action="change->datetime-split#sync" />
+              </div>
+              <div class="form-control">
+                <label class="label pb-1 pt-0">
+                  <span class="label-text text-xs">Time</span>
+                </label>
+                <input type="time"
+                       class="input input-bordered input-sm sm:input-md focus:input-warning bg-base-100 w-full"
+                       data-datetime-split-target="time"
+                       data-action="change->datetime-split#sync" />
+              </div>
+            </div>
+            <label class="label pt-1">
+              <span class="label-text-alt text-base-content/60 text-xs">Must be at least 1 hour after expected approval</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="divider my-1 sm:my-2"></div>
+
+        <%# Additional Options %>
+        <div class="space-y-2 sm:space-y-3">
+          <label class="label pb-0">
+            <span class="label-text font-medium text-sm">Additional Options</span>
+          </label>
+
+          <label class="flex items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-base-200 bg-base-50 cursor-pointer hover:border-primary/30 transition-all has-[:checked]:border-primary/50 has-[:checked]:bg-primary/5">
+            <%= f.check_box :auto_submit, class: "checkbox checkbox-primary checkbox-sm mt-0.5 sm:mt-0 shrink-0" %>
+            <div class="flex-1 min-w-0">
+              <span class="font-medium text-sm">Auto-submit for review</span>
+              <p class="text-xs text-base-content/60 mt-0.5 break-words">
+                Automatically submit when using <code class="bg-base-200 px-1 rounded text-xs">mysigner ship appstore</code>
+              </p>
+            </div>
+            <div class="badge badge-primary badge-outline badge-sm shrink-0 hidden sm:flex">CI/CD</div>
+          </label>
+
+          <label class="flex items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-base-200 bg-base-50 cursor-pointer hover:border-primary/30 transition-all has-[:checked]:border-primary/50 has-[:checked]:bg-primary/5">
+            <%= f.check_box :phased_release, class: "checkbox checkbox-primary checkbox-sm mt-0.5 sm:mt-0 shrink-0" %>
+            <div class="flex-1 min-w-0">
+              <span class="font-medium text-sm">Phased release</span>
+              <p class="text-xs text-base-content/60 mt-0.5 break-words">
+                Gradual rollout over 7 days to catch issues early
+              </p>
+            </div>
+            <div class="badge badge-warning badge-outline badge-sm shrink-0 hidden sm:flex">Recommended</div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Submit Section %>
+  <div class="flex flex-col gap-3 sm:gap-4 pt-2 sm:pt-4 min-w-0 overflow-hidden">
+    <p class="text-xs text-base-content/50 flex items-center gap-2 sm:hidden min-w-0">
+      <i class="fa-solid fa-terminal text-primary/50 shrink-0"></i>
+      <span class="truncate">CLI: <code class="bg-base-200 px-1 py-0.5 rounded">mysigner ship appstore</code></span>
+    </p>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
+      <p class="hidden sm:flex text-sm text-base-content/50 items-center gap-2">
+        <i class="fa-solid fa-terminal text-primary/50 shrink-0"></i>
+        <span>Used when you run <code class="bg-base-200 px-1.5 py-0.5 rounded text-xs">mysigner ship appstore</code></span>
+      </p>
+      <% cancel_path = @apple_app ? organization_apple_app_path(@organization, @apple_app) : organization_apple_apps_path(@organization) %>
+      <%# Mobile: stacked full-width buttons %>
+      <div class="flex flex-col gap-2 sm:hidden">
+        <%= f.submit submit_label, class: "btn btn-primary btn-sm w-full" %>
+        <%= link_to "Cancel", cancel_path, class: "btn btn-ghost btn-sm w-full" %>
+      </div>
+      <%# Desktop: inline buttons %>
+      <div class="hidden sm:flex sm:items-center gap-3">
+        <%= link_to "Cancel", cancel_path, class: "btn btn-ghost btn-md" %>
+        <%= f.submit submit_label, class: "btn btn-primary btn-md gap-2 px-8" %>
+      </div>
+    </div>
+  </div>
+<% end %>

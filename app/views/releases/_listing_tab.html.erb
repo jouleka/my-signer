@@ -1,0 +1,383 @@
+<%# ── Listing Tab ──
+    Edits the StoreListing for the current locale.
+    The whats_new field is read-only here — it's owned by the What's New tab. %>
+
+<% paired_divider = "text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-base-content/35 pt-5 pb-2 border-t border-base-content/[0.06] mt-1 first-of-type:border-t-0 first-of-type:mt-0 first-of-type:pt-2" %>
+
+<%# Live-refresh subscription: when StoreListingTranslationJob completes and
+    calls trigger_live_refresh on this listing, the page morphs so the
+    "Translating…" pill reverts to the AI Translate button and the translated
+    fields below appear with their new values. %>
+<% if @store_listing %>
+  <%= turbo_stream_from @store_listing %>
+<% end %>
+
+<% if @store_listing.nil? %>
+  <%# ── Empty state: no store listings exist for this app yet ── %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_body_classes %>">
+      <div class="<%= empty_state_classes %>">
+        <div class="<%= empty_state_icon_classes %>">
+          <i class="fa-solid fa-tag text-2xl"></i>
+        </div>
+        <h2 class="<%= empty_state_title_classes %>">No store listing yet</h2>
+        <p class="<%= empty_state_text_classes %>">
+          Create an initial draft listing for the primary locale, then sync from the store
+          to import existing metadata or start from scratch.
+        </p>
+        <%= button_to create_listing_organization_release_path(@organization, params[:id], locale: @primary_locale),
+            method: :post, class: btn_primary_classes,
+            form: { class: "inline" } do %>
+          <i class="fa-solid fa-plus"></i> Create Initial Listing
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <% base_listing = @listings_by_locale[@primary_locale] %>
+  <% has_reference = base_listing && base_listing.id != @store_listing.id %>
+
+  <section class="flex flex-col gap-6" data-controller="store-listing-editor">
+
+    <%# ── Locale switcher + Add Locale ── %>
+    <div class="flex items-end gap-3">
+      <div class="flex gap-[0.125rem] border-b border-base-content/[0.06] overflow-x-auto flex-1 scrollbar-none">
+        <% @locales.each do |locale| %>
+          <% listing = @listings_by_locale[locale] %>
+          <% is_active = locale == @current_locale %>
+          <% locale_tab_classes = is_active ? "text-primary border-primary font-semibold" : "text-base-content/40 border-transparent hover:text-base-content/70 font-medium" %>
+          <%= link_to organization_release_path(@organization, params[:id], tab: "listing", locale: locale),
+              class: "inline-flex items-center gap-1.5 px-3 py-2 text-[0.8125rem] border-b-2 -mb-px whitespace-nowrap transition-colors #{locale_tab_classes}",
+              title: (listing&.translation_status == "needs_review" ? "AI-translated — review and save to mark approved" : nil) do %>
+            <%= locale %>
+            <% if listing&.translation_status == "needs_review" %>
+              <span class="inline-block w-1.5 h-1.5 rounded-full ml-1 bg-warning"
+                    aria-label="AI-translated, needs review"></span>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <%= render "releases/ai_translate_listing_button", has_reference: has_reference %>
+
+        <div class="dropdown dropdown-end">
+          <div tabindex="0" role="button" class="<%= btn_ghost_sm_classes %>">
+            <i class="fa-solid fa-plus"></i> Add Locale
+          </div>
+          <div tabindex="0" class="dropdown-content z-20 bg-base-100 border border-base-200 rounded-xl shadow-2xl p-4 w-72 mt-2">
+            <%= form_with url: add_locale_organization_release_path(@organization, params[:id]),
+                method: :post, class: "space-y-3" do |f| %>
+              <label class="<%= label_form_classes %>">Select locale to add</label>
+              <select name="locale" class="<%= input_field_classes %>">
+                <option value="">Choose locale...</option>
+                <% available_locales = (defined?(ScreenshotProject::APP_STORE_LOCALES) ? ScreenshotProject::APP_STORE_LOCALES : []) - @locales %>
+                <% available_locales.each do |loc| %>
+                  <option value="<%= loc %>"><%= loc %></option>
+                <% end %>
+              </select>
+              <button type="submit" class="<%= btn_primary_classes %> w-full justify-center">
+                <i class="fa-solid fa-globe"></i> Add Locale
+              </button>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Sync state strip — shows the persistent state of THIS locale's listing
+        (synced / modified / draft / conflict). Push state (pushing / failed /
+        success) is rendered separately by the store-listing-sync Stimulus
+        controller into #sync-status at the top of the page, so we don't show
+        push banners here to avoid duplicate notifications. %>
+    <% unless @store_listing.push_status == "pushing" %>
+      <%= render "releases/listing_sync_status",
+          status: @store_listing.sync_status,
+          store_listing: @store_listing %>
+    <% end %>
+
+    <%# ── Main layout: editor + sticky preview ── %>
+    <div class="flex items-start gap-8">
+      <%# Left: Editor content %>
+      <div class="flex-1 min-w-0 flex flex-col gap-5">
+
+        <%# iOS field editability notice %>
+        <% if @store_listing.ios? && @entitlements.paid? %>
+          <div class="<%= sn_info_classes %>">
+            <div class="flex items-start gap-3">
+              <div class="<%= sn_icon_info_classes %> mt-0.5">
+                <i class="fa-solid fa-info text-[0.625rem]"></i>
+              </div>
+              <p class="text-xs text-base-content/50 leading-relaxed">
+                <strong class="text-base-content/70">App Store field restrictions:</strong>
+                When pushing, <strong class="text-base-content/60">Promotional Text</strong> can always be updated.
+                All other fields can only be pushed when the app version is in
+                <em class="text-base-content/60">Prepare for Submission</em> or similar editable states.
+                Fields locked by Apple will be skipped automatically.
+              </p>
+            </div>
+          </div>
+        <% end %>
+
+        <%= form_with(model: @store_listing,
+              url: organization_release_path(@organization, params[:id], locale: @current_locale),
+              method: :patch, class: "flex flex-col",
+              data: {
+                store_listing_editor_target: "form",
+                action: "input->store-listing-editor#scheduleAutosave focusout->store-listing-editor#flushOnBlur"
+              }) do |f| %>
+
+          <% if has_reference %>
+            <%# ═══ PAIRED LAYOUT: reference + edit side-by-side ═══ %>
+            <div class="flex flex-col">
+
+              <%# Column headers %>
+              <div class="grid grid-cols-2 gap-8 items-start py-[0.625rem] pt-2.5 pb-3 mb-1 border-b border-base-content/[0.06] max-lg:grid-cols-1 max-lg:gap-3">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="<%= panel_title_classes %>">
+                    <i class="fa-solid fa-eye text-xs opacity-50"></i>
+                    Reference: <%= base_listing.locale %>
+                  </div>
+                  <span class="<%= muted_badge_classes %>">read-only</span>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <div class="<%= panel_title_classes %>">
+                    <i class="fa-solid fa-pen text-xs opacity-50"></i>
+                    Editing: <%= @store_listing.locale %>
+                  </div>
+                  <%# Autosave indicator — flips Unsaved → Saving… → Saved as
+                      the user types. Saving is debounced 900ms via the
+                      store-listing-editor controller. %>
+                  <span data-store-listing-editor-target="savingIndicator"
+                        class="inline-flex items-center gap-1.5 text-[0.625rem] text-success/80">
+                    <i class="fa-regular fa-circle-check"></i>
+                    <span>Saved</span>
+                  </span>
+                </div>
+              </div>
+
+              <%# ── App Metadata ── %>
+              <div class="<%= paired_divider %>">App Metadata</div>
+
+              <%= render "releases/field_pair", f: f, field: :app_name, label: "App Name",
+                  base_listing: base_listing, listing: @store_listing, type: :input %>
+
+              <% if @store_listing.ios? %>
+                <%= render "releases/field_pair", f: f, field: :subtitle, label: "Subtitle",
+                    base_listing: base_listing, listing: @store_listing, type: :input %>
+                <%# Keywords: 100-char comma-separated string. Rendered as a
+                    textarea so long content wraps instead of scrolling off the
+                    edge of a single-line input (same behavior as the base
+                    locale reference on the left). %>
+                <%= render "releases/field_pair", f: f, field: :keywords, label: "Keywords",
+                    base_listing: base_listing, listing: @store_listing, type: :textarea, rows: 3,
+                    hint: "Comma-separated. Don't repeat words from app name or subtitle." %>
+                <%= render "releases/field_pair", f: f, field: :promotional_text, label: "Promotional Text",
+                    base_listing: base_listing, listing: @store_listing, type: :textarea, rows: 3 %>
+              <% end %>
+
+              <% if @store_listing.android? %>
+                <%= render "releases/field_pair", f: f, field: :short_description, label: "Short Description",
+                    base_listing: base_listing, listing: @store_listing, type: :textarea, rows: 2 %>
+              <% end %>
+
+              <%# ── Content ── %>
+              <div class="<%= paired_divider %>">Content</div>
+
+              <%= render "releases/field_pair", f: f, field: :description, label: "Description",
+                  base_listing: base_listing, listing: @store_listing, type: :textarea, rows: 8, multiline: true %>
+
+              <%# ── What's New (READ-ONLY on both sides — edited in the
+                  What's New tab) ── Mirrors the field_pair shape: matching
+                  readonly textareas so heights align with the rows above. %>
+              <%
+                wn_limit    = base_listing.char_limit_for(:whats_new)
+                wn_base_val = base_listing.whats_new.to_s
+                wn_base_len = wn_base_val.length
+                wn_edit_val = @store_listing.whats_new.to_s
+                wn_edit_len = wn_edit_val.length
+                wn_pct_base = wn_limit ? (wn_base_len.to_f / wn_limit * 100).clamp(0, 100) : 0
+                wn_pct_edit = wn_limit ? (wn_edit_len.to_f / wn_limit * 100).clamp(0, 100) : 0
+              %>
+              <div class="grid grid-cols-2 gap-6 items-start py-2 max-lg:grid-cols-1 max-lg:gap-3">
+                <%# Reference (base locale) %>
+                <div class="min-w-0">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <label class="<%= label_form_classes %> flex items-center gap-1.5">
+                      <i class="fa-solid fa-eye text-[0.625rem] text-base-content/35"></i>
+                      <span>What's New</span>
+                    </label>
+                    <% if wn_limit %>
+                      <span class="<%= char_badge_classes(wn_base_len, wn_limit) %>">
+                        <%= wn_base_len %>/<%= wn_limit %>
+                      </span>
+                    <% end %>
+                  </div>
+                  <textarea readonly tabindex="-1" rows="6"
+                            class="<%= textarea_field_classes %> opacity-70 cursor-default select-text resize-none"
+                            aria-label="What's New (reference, read-only)"><%= wn_base_val %></textarea>
+                  <% if wn_limit %>
+                    <div class="<%= progress_track_classes %> mt-2">
+                      <div class="<%= progress_fill_classes(wn_base_len, wn_limit) %>" style="width: <%= wn_pct_base %>%"></div>
+                    </div>
+                  <% end %>
+                </div>
+                <%# Current locale — also read-only here; editable via What's New tab %>
+                <div class="min-w-0">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <label class="<%= label_form_classes %> flex items-center gap-1.5">
+                      <i class="fa-solid fa-pen text-[0.625rem] text-base-content/35"></i>
+                      <span>What's New</span>
+                    </label>
+                    <div class="flex items-center gap-2">
+                      <span class="<%= muted_badge_classes %>">edited in What's New tab</span>
+                      <% if wn_limit %>
+                        <span class="<%= char_badge_classes(wn_edit_len, wn_limit) %>">
+                          <%= wn_edit_len %>/<%= wn_limit %>
+                        </span>
+                      <% end %>
+                    </div>
+                  </div>
+                  <textarea readonly tabindex="-1" rows="6"
+                            class="<%= textarea_field_classes %> opacity-70 cursor-default select-text resize-none"
+                            aria-label="What's New (read-only here)"><%= wn_edit_val %></textarea>
+                  <% if wn_limit %>
+                    <div class="<%= progress_track_classes %> mt-2">
+                      <div class="<%= progress_fill_classes(wn_edit_len, wn_limit) %>" style="width: <%= wn_pct_edit %>%"></div>
+                    </div>
+                  <% end %>
+                  <p class="<%= hint_text_classes %> mt-2">
+                    <i class="fa-solid fa-arrow-right text-[0.6rem] opacity-50"></i>
+                    <%= link_to "Edit this field in the What's New tab",
+                        organization_release_path(@organization, params[:id], tab: "whats_new"),
+                        class: "underline decoration-dotted hover:no-underline" %>
+                  </p>
+                </div>
+              </div>
+
+              <%# ── Links (edit-only, full width) ── %>
+              <div class="<%= paired_divider %>">Links</div>
+
+              <div class="grid grid-cols-2 gap-8 items-start py-1.5 max-lg:grid-cols-1 max-lg:gap-3">
+                <div class="px-3 py-2 border-l-2 border-primary/[0.12] rounded-r-md bg-base-content/[0.015] min-w-0">
+                  <%= render "releases/field_display", label: "Support URL", value: base_listing.support_url, compact: true %>
+                </div>
+                <div class="min-w-0">
+                  <%= render "releases/form_field", f: f, field: :support_url, label: "Support URL",
+                      listing: @store_listing, type: :input %>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-8 items-start py-1.5 max-lg:grid-cols-1 max-lg:gap-3">
+                <div class="px-3 py-2 border-l-2 border-primary/[0.12] rounded-r-md bg-base-content/[0.015] min-w-0">
+                  <%= render "releases/field_display", label: "Marketing URL", value: base_listing.marketing_url, compact: true %>
+                </div>
+                <div class="min-w-0">
+                  <%= render "releases/form_field", f: f, field: :marketing_url, label: "Marketing URL",
+                      listing: @store_listing, type: :input %>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-8 items-start py-1.5 max-lg:grid-cols-1 max-lg:gap-3">
+                <div class="px-3 py-2 border-l-2 border-primary/[0.12] rounded-r-md bg-base-content/[0.015] min-w-0">
+                  <%= render "releases/field_display", label: "Privacy Policy URL", value: base_listing.privacy_policy_url, compact: true %>
+                </div>
+                <div class="min-w-0">
+                  <%= render "releases/form_field", f: f, field: :privacy_policy_url, label: "Privacy Policy URL",
+                      listing: @store_listing, type: :input %>
+                </div>
+              </div>
+
+            </div>
+
+          <% else %>
+            <%# ═══ SINGLE-COLUMN LAYOUT: no reference, full-width form ═══ %>
+            <div class="py-5 [&+&]:border-t [&+&]:border-base-content/[0.06] first:pt-0">
+              <h3 class="<%= label_uppercase_classes %> mb-4">App Metadata</h3>
+              <%= render "releases/form_field", f: f, field: :app_name, label: "App Name",
+                  listing: @store_listing, type: :input %>
+              <% if @store_listing.ios? %>
+                <%= render "releases/form_field", f: f, field: :subtitle, label: "Subtitle",
+                    listing: @store_listing, type: :input %>
+                <%= render "releases/form_field", f: f, field: :keywords, label: "Keywords",
+                    listing: @store_listing, type: :input,
+                    hint: "Comma-separated. Don't repeat words from app name or subtitle." %>
+                <%= render "releases/form_field", f: f, field: :promotional_text, label: "Promotional Text",
+                    listing: @store_listing, type: :textarea, rows: 3 %>
+              <% end %>
+              <% if @store_listing.android? %>
+                <%= render "releases/form_field", f: f, field: :short_description, label: "Short Description",
+                    listing: @store_listing, type: :textarea, rows: 2 %>
+              <% end %>
+            </div>
+
+            <div class="py-5 border-t border-base-content/[0.06]">
+              <h3 class="<%= label_uppercase_classes %> mb-4">Content</h3>
+              <%= render "releases/form_field", f: f, field: :description, label: "Description",
+                  listing: @store_listing, type: :textarea, rows: 8 %>
+
+              <%# What's New — READ-ONLY here %>
+              <div class="group">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="<%= label_uppercase_classes %>">What's New</span>
+                  <span class="<%= muted_badge_classes %>">edited in What's New tab</span>
+                </div>
+                <% if @store_listing.whats_new.present? %>
+                  <div class="<%= field_text_classes %> whitespace-pre-line max-h-40 overflow-hidden relative"><%= @store_listing.whats_new %></div>
+                <% else %>
+                  <div class="<%= empty_inline_classes %>">
+                    <i class="fa-solid fa-minus text-[0.5rem] opacity-30"></i>
+                    <span>Not set</span>
+                  </div>
+                <% end %>
+                <p class="<%= hint_text_classes %> mt-2">
+                  <i class="fa-solid fa-arrow-right text-[0.6rem] opacity-50"></i>
+                  <%= link_to "Edit this field in the What's New tab",
+                      organization_release_path(@organization, params[:id], tab: "whats_new"),
+                      class: "underline decoration-dotted hover:no-underline" %>
+                </p>
+              </div>
+            </div>
+
+            <div class="py-5 border-t border-base-content/[0.06]">
+              <h3 class="<%= label_uppercase_classes %> mb-4">Links</h3>
+              <%= render "releases/form_field", f: f, field: :support_url, label: "Support URL",
+                  listing: @store_listing, type: :input %>
+              <%= render "releases/form_field", f: f, field: :marketing_url, label: "Marketing URL",
+                  listing: @store_listing, type: :input %>
+              <%= render "releases/form_field", f: f, field: :privacy_policy_url, label: "Privacy Policy URL",
+                  listing: @store_listing, type: :input %>
+            </div>
+          <% end %>
+
+          <% if @store_listing.errors.any? %>
+            <div class="<%= sn_error_classes %>">
+              <div class="flex items-start gap-3">
+                <div class="<%= sn_icon_error_classes %> mt-0.5">
+                  <i class="fa-solid fa-xmark text-[0.625rem]"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-base-content/90">Please fix the following errors</p>
+                  <ul class="text-xs text-base-content/50 mt-1 space-y-0.5 list-disc list-inside">
+                    <% @store_listing.errors.full_messages.each do |msg| %>
+                      <li><%= msg %></li>
+                    <% end %>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+        <% end %>
+
+      </div>
+
+      <%# Right: Sticky preview — hidden on smaller screens.
+          We pass the base (primary-locale) listing as a fallback so the
+          phone mockup can show base-locale screenshots on locales that
+          haven't uploaded their own — matches Apple's App Store behavior
+          where a locale inherits primary-locale media by default. %>
+      <div class="hidden xl:block xl:sticky xl:top-6 shrink-0">
+        <%= render "releases/listing_preview", store_listing: @store_listing, fallback_listing: base_listing %>
+      </div>
+    </div>
+  </section>
+<% end %>

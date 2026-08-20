@@ -1,0 +1,15 @@
+<%= breadcrumbs([
+  { label: "Custom Product Pages", path: organization_custom_product_pages_path(@organization) },
+  { label: "New" }
+]) %>
+
+<section class="flex flex-col gap-6 max-w-2xl">
+  <div>
+    <h1 class="text-[1.375rem] font-extrabold leading-tight tracking-[-0.02em] text-base-content/95">
+      Create Custom Product Page
+    </h1>
+    <p class="text-xs text-base-content/40 mt-1">Create a new Custom Product Page for one of your iOS apps <span class="<%= platform_badge_classes %> ml-0.5"><i class="fa-brands fa-apple"></i> iOS only</span></p>
+  </div>
+
+  <%= render "custom_product_pages/form", cpp: @cpp, new_record: true %>
+</section>

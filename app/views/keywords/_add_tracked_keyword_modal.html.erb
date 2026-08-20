@@ -1,0 +1,66 @@
+<%# DaisyUI dialog-based modal. Open via
+    data-controller="modal" data-action="click->modal#open"
+    data-modal-target-value="add-tracked-keyword-modal" on a trigger button
+    (see _tracking_tab.html.erb). Turbo Stream replaces the entire
+    dialog after a successful create so the form is reset cleanly. %>
+<dialog id="add-tracked-keyword-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box w-full max-w-lg">
+    <h3 class="<%= card_title_classes %> mb-4">Track a new keyword</h3>
+
+    <%# Target for turbo_stream.replace on validation/limit errors. %>
+    <div id="add-tracked-keyword-modal-errors"></div>
+
+    <%= form_with url: organization_apple_app_tracked_keywords_path(@organization, @app),
+                  scope: :tracked_keyword,
+                  data: {
+                    controller: "tracked-keyword-form",
+                    tracked_keyword_form_max_keywords_value: @entitlements.max_tracked_keywords_per_app,
+                    tracked_keyword_form_max_countries_value: @entitlements.max_countries_per_tracked_keyword
+                  } do |f| %>
+
+      <%= f.label :keyword, "Keyword", class: label_form_classes %>
+      <%= f.text_field :keyword,
+                       class: input_field_classes,
+                       placeholder: "e.g. photo editor",
+                       required: true,
+                       data: { tracked_keyword_form_target: "keywordInput" } %>
+
+      <p class="<%= label_uppercase_classes %> mt-4 mb-2">
+        Countries
+        <span class="text-base-content/40 font-normal">(max <%= @entitlements.max_countries_per_tracked_keyword %>)</span>
+      </p>
+      <div class="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto"
+           data-tracked-keyword-form-target="countryGrid">
+        <% Aso::Countries::SUPPORTED.sort.each do |cc| %>
+          <label class="flex items-center gap-1 text-xs cursor-pointer hover:bg-base-200/50 rounded px-1 py-0.5">
+            <%= check_box_tag "tracked_keyword[countries][]", cc, false,
+                              data: { country_checkbox: true, action: "change->tracked-keyword-form#enforceCountryLimit" } %>
+            <span><%= country_flag(cc) %></span>
+            <span class="font-mono"><%= cc.upcase %></span>
+          </label>
+        <% end %>
+      </div>
+
+      <%# Expectation-setting line: users add a keyword and expect an instant
+          rank. Timing is a scheduler quirk, so say it plainly before the CTA. %>
+      <p class="<%= rank_caption_classes %> mt-4 mb-3">
+        <i class="fa-regular fa-clock"></i>
+        <% if @entitlements.keyword_tracking_refresh_days == 1 %>
+          Rank updates daily. Your first result appears within 24 hours.
+        <% else %>
+          Rank updates weekly. Your first result appears after the next scheduled refresh.
+        <% end %>
+      </p>
+
+      <div class="modal-action">
+        <button type="button"
+                data-controller="modal"
+                data-action="click->modal#close"
+                data-modal-target-value="add-tracked-keyword-modal"
+                class="<%= btn_ghost_classes %>">Cancel</button>
+        <%= f.submit "Track keyword", class: btn_primary_classes %>
+      </div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

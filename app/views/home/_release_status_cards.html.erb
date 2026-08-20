@@ -1,0 +1,83 @@
+<%# Release Status Cards — each app with platform badge, version, and live status indicator %>
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_split_classes %>">
+    <div class="flex items-center gap-2.5">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-solid fa-rocket"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Release Status</span>
+      <% if @release_status_items.present? %>
+        <span class="<%= count_badge_classes %>"><%= @release_status_items.size %></span>
+      <% end %>
+    </div>
+    <%= link_to organization_releases_path(@organization), class: btn_ghost_xs_classes do %>
+      All Releases <i class="fa-solid fa-arrow-right text-[0.5rem]"></i>
+    <% end %>
+  </div>
+  <div class="<%= card_body_classes %>">
+    <% if @release_status_items.present? %>
+      <div class="space-y-2">
+        <% @release_status_items.each do |item| %>
+          <%= link_to item[:path],
+              class: "group flex items-center gap-3 p-3 rounded-lg border border-base-content/[0.05] hover:border-primary/[0.15] hover:bg-primary/[0.02] transition-all" do %>
+            <%# Status dot — pulsing green for live, static amber for review, red for rejected %>
+            <div class="relative shrink-0">
+              <div class="<%= card_icon_classes %>">
+                <i class="<%= release_status_icon(item[:platform]) %>"></i>
+              </div>
+              <% if item[:computed_status] == "live" %>
+                <span class="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-cat-new)] opacity-50"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--color-cat-new)]"></span>
+                </span>
+              <% elsif item[:computed_status] == "in_review" || item[:computed_status] == "submitted" %>
+                <span class="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[var(--color-cat-fixed)] border-2 border-base-100"></span>
+              <% elsif item[:computed_status] == "rejected" %>
+                <span class="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-error border-2 border-base-100"></span>
+              <% end %>
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-base-content/80 truncate group-hover:text-base-content/95 transition-colors"><%= item[:name] %></p>
+              <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span class="<%= platform_badge_classes %>">
+                  <i class="<%= release_status_icon(item[:platform]) %>"></i>
+                  <%= item[:platform] == :ios ? "iOS" : "Android" %>
+                </span>
+                <% if item[:version].present? %>
+                  <span class="<%= version_badge_classes %>">v<%= item[:version] %></span>
+                <% end %>
+                <% if item[:track].present? && item[:track] != "production" %>
+                  <span class="<%= muted_badge_classes %>"><%= item[:track] %></span>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="flex flex-col items-end gap-1 shrink-0">
+              <span class="<%= status_badge_classes(item[:computed_status]) %>">
+                <%= item[:computed_status]&.to_s&.titleize || "Unknown" %>
+              </span>
+              <% if item[:user_fraction].present? && item[:user_fraction].to_f < 1.0 %>
+                <span class="<%= meta_text_classes %>">
+                  <i class="fa-solid fa-chart-line text-[0.5rem]"></i>
+                  <%= (item[:user_fraction].to_f * 100).round %>% rollout
+                </span>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="flex flex-col items-center py-8 text-center">
+        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary/[0.06] text-primary/40 mb-3">
+          <i class="fa-solid fa-rocket text-lg"></i>
+        </div>
+        <p class="text-sm font-semibold text-base-content/50 mb-1">No releases yet</p>
+        <p class="<%= meta_text_classes %> max-w-[16rem] mb-3">Connect your store credentials and sync to see release status here.</p>
+        <%= link_to organization_releases_path(@organization), class: btn_primary_sm_classes do %>
+          <i class="fa-solid fa-plus"></i> Create Release
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

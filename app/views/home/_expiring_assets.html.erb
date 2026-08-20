@@ -1,0 +1,68 @@
+<%# Expiring Assets — certificates, profiles, and keystores sorted by urgency %>
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_split_classes %>">
+    <div class="flex items-center gap-2.5">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Expiring Assets</span>
+      <% if @expiring_assets.present? %>
+        <span class="<%= count_badge_classes %>"><%= @expiring_assets.size %></span>
+      <% end %>
+    </div>
+    <%= link_to organization_signing_assets_path(@organization), class: btn_ghost_xs_classes do %>
+      All Assets <i class="fa-solid fa-arrow-right text-[0.5rem]"></i>
+    <% end %>
+  </div>
+  <div class="<%= card_body_classes %>">
+    <% if @expiring_assets.present? %>
+      <div class="space-y-2">
+        <% @expiring_assets.each do |asset| %>
+          <div class="<%= expiry_banner_classes(asset[:days_remaining]) %>">
+            <div class="flex items-center gap-3 px-3 py-2.5">
+              <div class="<%= expiry_icon_classes(asset[:days_remaining]) %>">
+                <% case asset[:kind] %>
+                <% when :certificate %>
+                  <i class="fa-solid fa-certificate text-[0.625rem]"></i>
+                <% when :profile %>
+                  <i class="fa-solid fa-id-badge text-[0.625rem]"></i>
+                <% when :keystore %>
+                  <i class="fa-solid fa-key text-[0.625rem]"></i>
+                <% end %>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-base-content/80 truncate"><%= asset[:name] %></p>
+                <p class="<%= meta_text_classes %>">
+                  <%= asset[:kind].to_s.capitalize %> &middot;
+                  <% if asset[:days_remaining].to_i <= 0 %>
+                    Expired
+                  <% elsif asset[:days_remaining].to_i == 1 %>
+                    Expires tomorrow
+                  <% else %>
+                    Expires in <%= asset[:days_remaining] %> days
+                  <% end %>
+                  <% if asset[:expires_at].present? %>
+                    (<%= asset[:expires_at].to_date %>)
+                  <% end %>
+                </p>
+              </div>
+              <% if asset[:path].present? %>
+                <%= link_to asset[:path], class: btn_ghost_xs_classes do %>
+                  View
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="flex flex-col items-center py-8 text-center">
+        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-success/[0.08] text-success/50 mb-3">
+          <i class="fa-solid fa-check text-lg"></i>
+        </div>
+        <p class="text-sm font-semibold text-base-content/50 mb-1">All assets healthy</p>
+        <p class="<%= meta_text_classes %> max-w-[16rem]">No certificates, profiles, or keystores are expiring soon.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

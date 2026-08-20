@@ -1,0 +1,56 @@
+<%# Performance tab: cached performance data %>
+<div class="flex flex-col gap-5">
+  <% if @cpp.performance_available? %>
+    <%# Stats grid %>
+    <div class="stats stats-horizontal w-full border border-base-content/[0.06] bg-base-content/[0.02]">
+      <div class="stat">
+        <div class="stat-title text-xs">Impressions</div>
+        <div class="stat-value text-xl"><%= number_with_delimiter(@cpp.performance_impressions) %></div>
+        <div class="stat-desc">App Store page views</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-xs">Downloads</div>
+        <div class="stat-value text-xl"><%= number_with_delimiter(@cpp.performance_downloads) %></div>
+        <div class="stat-desc">First-time downloads</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-xs">Conversion Rate</div>
+        <div class="stat-value text-xl"><%= number_to_percentage(@cpp.performance_conversion_rate * 100, precision: 1) %></div>
+        <div class="stat-desc">Downloads / Impressions</div>
+      </div>
+    </div>
+
+    <%# Sync info %>
+    <div class="flex items-center justify-between">
+      <span class="<%= hint_text_classes %>">
+        <% if @cpp.performance_synced_at %>
+          Last updated <%= time_ago_in_words(@cpp.performance_synced_at) %> ago
+        <% else %>
+          Performance data cached
+        <% end %>
+      </span>
+      <%= button_to sync_organization_custom_product_page_path(@organization, @cpp),
+          method: :post,
+          class: btn_ghost_sm_classes do %>
+        <i class="fa-solid fa-arrows-rotate"></i> Refresh
+      <% end %>
+    </div>
+  <% else %>
+    <%# No performance data %>
+    <div class="<%= empty_state_classes %>">
+      <div class="<%= empty_state_icon_classes %>">
+        <i class="fa-solid fa-chart-line text-2xl"></i>
+      </div>
+      <h2 class="<%= empty_state_title_classes %>">No Performance Data Yet</h2>
+      <p class="<%= empty_state_text_classes %>">
+        Performance data will appear here once your Custom Product Page has been published
+        and Apple has collected enough analytics data. Sync regularly to update metrics.
+      </p>
+      <%= button_to sync_organization_custom_product_page_path(@organization, @cpp),
+          method: :post,
+          class: btn_primary_sm_classes do %>
+        <i class="fa-solid fa-arrows-rotate"></i> Sync Now
+      <% end %>
+    </div>
+  <% end %>
+</div>

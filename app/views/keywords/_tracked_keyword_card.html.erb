@@ -1,0 +1,70 @@
+<%# Card for one TrackedKeyword. The linked header lazy-loads the detail
+    partial via Turbo Frame; the Stimulus controller rotates the chevron
+    and tags the element with .is-expanded for any additional styling.
+
+    Paused states (Task 24 -- plan downgrade):
+    - If every TKC on this TK is disabled, the whole card dims and shows a
+      "Paused" badge next to the keyword -- the user has dropped below the
+      tier's per-app limit and this keyword is the excess.
+    - If some TKCs are disabled, the card renders normally but each paused
+      row shows a muted "Paused" marker in place of the rank/competition
+      metrics.
+    Re-upgrade re-enables in creation order (see Aso::PlanUpgradeReactivator). %>
+<% tkcs = tk.tracked_keyword_countries %>
+<% all_paused = tkcs.any? && tkcs.none?(&:enabled) %>
+<% next_check_estimate ||= local_assigns[:next_check_estimate] %>
+<div id="<%= dom_id(tk) %>"
+     data-controller="tracked-keyword-card"
+     class="<%= card_container_classes %> mb-3 <%= 'opacity-60' if all_paused %>">
+
+  <div class="<%= card_header_classes %>">
+    <%= link_to organization_apple_app_tracked_keyword_path(@organization, @app, tk),
+                data: { turbo_frame: "tk-detail-#{tk.id}", action: "click->tracked-keyword-card#toggle" },
+                class: "flex-1 flex items-center justify-between cursor-pointer" do %>
+      <span class="flex items-center gap-2">
+        <span class="font-semibold text-base-content/90"><%= tk.keyword %></span>
+        <% if tk.search_popularity %>
+          <%= popularity_dots(tk.search_popularity) %>
+        <% end %>
+        <% if all_paused %>
+          <span class="text-xs text-warning/80 inline-flex items-center gap-1">
+            <i class="fa-solid fa-pause"></i> Paused &mdash; upgrade to resume
+          </span>
+        <% end %>
+      </span>
+      <i class="fa-solid fa-chevron-right text-xs text-base-content/30 transition-transform"
+         data-tracked-keyword-card-target="chevron"></i>
+    <% end %>
+
+    <%= button_to organization_apple_app_tracked_keyword_path(@organization, @app, tk),
+                method: :delete,
+                class: "text-xs text-base-content/30 hover:text-error/80 ml-2",
+                form: { class: "inline" },
+                data: { turbo_confirm: "Remove tracking for \"#{tk.keyword}\"?" } do %>
+      <i class="fa-solid fa-xmark"></i>
+    <% end %>
+  </div>
+
+  <div class="<%= card_body_classes %> space-y-1">
+    <% tkcs.each do |tkc| %>
+      <div class="flex items-center justify-between text-xs py-1 <%= 'opacity-50' unless tkc.enabled %>">
+        <span class="flex items-center gap-1.5">
+          <span class="text-sm"><%= country_flag(tkc.country) %></span>
+          <span class="font-mono text-base-content/55"><%= tkc.country.upcase %></span>
+        </span>
+        <% if tkc.enabled %>
+          <%= rank_display(tkc.current_rank, last_checked_at: tkc.last_checked_at, estimate: next_check_estimate) %>
+          <%= competition_badge(tkc.competition_count) %>
+        <% else %>
+          <span class="text-xs text-warning/80 inline-flex items-center gap-1">
+            <i class="fa-solid fa-pause"></i> Paused
+          </span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Lazy-loaded detail -- Turbo handles the fetch when the header link is
+      clicked because data-turbo-frame points here. %>
+  <turbo-frame id="tk-detail-<%= tk.id %>" data-tracked-keyword-card-target="detailFrame"></turbo-frame>
+</div>

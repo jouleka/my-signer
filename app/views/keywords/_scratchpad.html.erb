@@ -1,0 +1,92 @@
+<%# Scratchpad — per-app, team-shared list of "we're considering this" keywords.
+    Locals passed from both the main page render (Suggestions tab) and the
+    Turbo Stream responses from SavedKeywordIdeasController. %>
+<%
+  saved_keyword_ideas = local_assigns.fetch(:saved_keyword_ideas, @saved_keyword_ideas || [])
+  apple_app           = local_assigns.fetch(:apple_app, @app)
+  organization        = local_assigns.fetch(:organization, @organization)
+  store_listing       = local_assigns.fetch(:store_listing, @store_listing)
+  popularity_map      = local_assigns.fetch(:popularity_map, @popularity_map || {})
+%>
+
+<div id="scratchpad" class="<%= card_container_classes %>">
+  <div class="<%= card_header_split_classes %>">
+    <div class="flex items-center gap-2.5">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-regular fa-bookmark"></i>
+      </div>
+      <div>
+        <span class="<%= card_title_classes %>">Saved ideas</span>
+        <p class="text-[0.65rem] text-base-content/45 mt-0.5">
+          Keywords your team is considering &middot; <%= pluralize(saved_keyword_ideas.size, "saved") %>
+        </p>
+      </div>
+    </div>
+    <% if saved_keyword_ideas.any? %>
+      <%= button_to clear_all_organization_apple_app_saved_keyword_ideas_path(organization, apple_app),
+                    method: :delete,
+                    data: { turbo_confirm: "Clear all saved ideas?" },
+                    form: { class: "inline" },
+                    class: btn_ghost_sm_classes do %>
+        Clear all
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="<%= card_body_classes %>">
+    <% if saved_keyword_ideas.empty? %>
+      <p class="text-xs text-base-content/40 italic">
+        No saved ideas yet. Bookmark any suggestion to save it here.
+      </p>
+    <% else %>
+      <div class="flex flex-col gap-1.5">
+        <% saved_keyword_ideas.each do |idea| %>
+          <% already = store_listing&.includes_keyword?(idea.keyword) %>
+          <% popularity = popularity_map[idea.keyword] %>
+          <div class="<%= scratchpad_row_classes %> <%= "opacity-55" if already %>">
+            <span class="flex-1 text-sm <%= already ? "line-through text-base-content/55" : "text-base-content/85" %>">
+              <%= idea.keyword %>
+            </span>
+
+            <% if popularity %>
+              <%= popularity_dots(popularity) %>
+            <% else %>
+              <span class="text-[0.65rem] text-base-content/25" title="No popularity data">&mdash;</span>
+            <% end %>
+
+            <span class="text-[0.65rem] text-base-content/35 whitespace-nowrap">
+              added <%= idea.added_by_user&.email&.first&.upcase || "?" %>
+              &middot; <%= time_ago_in_words(idea.created_at) %> ago
+            </span>
+
+            <% if already %>
+              <span class="text-[0.65rem] text-success/70 font-medium whitespace-nowrap">
+                <i class="fa-solid fa-check"></i> In keywords
+              </span>
+            <% else %>
+              <button type="button"
+                      class="<%= btn_ghost_xs_classes %>"
+                      data-action="click->keyword-editor#stageFromScratchpad"
+                      data-keyword="<%= idea.keyword %>">
+                + Stage
+              </button>
+              <%= link_to organization_keyword_path(organization, "apple_app_#{apple_app.id}",
+                                                    tab: "tracking",
+                                                    prefill_keyword: idea.keyword),
+                          class: btn_ghost_xs_classes do %>
+                Track
+              <% end %>
+            <% end %>
+
+            <%= button_to organization_apple_app_saved_keyword_idea_path(organization, apple_app, idea),
+                          method: :delete,
+                          form: { class: "inline" },
+                          class: "text-base-content/35 hover:text-warning/80 text-sm px-1" do %>
+              &times;
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

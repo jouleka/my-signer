@@ -1,0 +1,24 @@
+<% @preheader = "#{@credential_type} sync failed for #{@organization.name}. Check the error inside." %>
+
+<%= ms_eyebrow(39, "Sync · Failed") %>
+<%= ms_headline("Sync <em style=\"font-style:italic; color:#f57c97;\" class=\"ms-callout-danger-text\">failed.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_meta_row("Credential", "<span class=\"ms-ink\" style=\"color:#f4ede0;\">#{ERB::Util.h(@credential_type)}</span>".html_safe) %>
+<%= ms_meta_row("Organization", ms_meta_pill(@organization.name)) %>
+<%= ms_meta_row("Failed at", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{Time.current.strftime('%B %-d, %Y · %H:%M %Z')}</span>".html_safe) %>
+
+<%= ms_body("Here's what the upstream provider sent back:", margin_bottom: 8) %>
+
+<%= ms_token_block(ERB::Util.h(@error_message.truncate(500))) %>
+
+<%= ms_callout(
+  "Check that the credential is still valid &mdash; expired tokens, rotated certificates and revoked App-Store-Connect keys are the most common causes. If the credential is fine, retry the sync; transient provider blips usually resolve within a few minutes.",
+  variant: :danger,
+  accent_label: "What to do"
+) %>
+
+<%= ms_cta("Check credentials", organization_url(@organization), variant: :primary, margin_top: 4, margin_bottom: 22) %>
+
+<%= ms_fine_print("Sync failure receipts are sent immediately so you can intervene before CI runs depend on stale data.") %>

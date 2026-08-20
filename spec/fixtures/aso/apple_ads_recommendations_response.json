@@ -1,0 +1,9 @@
+{
+  "data": {
+    "keywords": [
+      { "text": "photo editor",  "searchPopularity": 85, "suggestedMinBidAmount": { "amount": "1.50", "currency": "USD" } },
+      { "text": "photo collage", "searchPopularity": 62, "suggestedMinBidAmount": { "amount": "0.90", "currency": "USD" } },
+      { "text": "photoshop",     "searchPopularity": 78, "suggestedMinBidAmount": { "amount": "2.10", "currency": "USD" } }
+    ]
+  }
+}

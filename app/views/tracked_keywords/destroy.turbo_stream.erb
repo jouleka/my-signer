@@ -1,0 +1,12 @@
+<%# Remove the card, then refresh the limits banner so the slot count
+    reflects the freed slots. %>
+<%= turbo_stream.remove dom_id(@tracked_keyword) %>
+
+<% usage = TrackedKeywordCountry
+             .joins(:tracked_keyword)
+             .where(tracked_keywords: { apple_app_id: @app.id, enabled: true })
+             .where(tracked_keyword_countries: { enabled: true })
+             .count %>
+<%= turbo_stream.replace "tracked-keywords-limits",
+      partial: "keywords/tracking_limits_banner",
+      locals: { app: @app, entitlements: @organization.entitlements, usage: usage } %>

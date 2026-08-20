@@ -1,0 +1,77 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  url: <%= ENV.fetch("DATABASE_URL", nil) %>
+
+development:
+  primary:
+    <<: *default
+    database: my_signer_development
+    # Sized for the dev `bin/jobs` worker process, not Puma. Each
+    # background sync_all job spins up Sync::ParallelFanout's inner
+    # thread pool (DEFAULT_MAX_THREADS=6, see
+    # app/services/sync/parallel_fanout.rb:18) and every inner thread
+    # calls `with_connection`. With the default RAILS_MAX_THREADS=5 we
+    # exhaust the pool and the iOS / Android sync errors with
+    # "could not obtain a connection from the pool within 5.000
+    # seconds; all pooled connections were in use". Production solves
+    # this with PRIMARY_DB_POOL set high in the env; dev needs the
+    # same headroom locally.
+    pool: <%= ENV.fetch("PRIMARY_DB_POOL", 15) %>
+  cache:
+    <<: *default
+    database: my_signer_development_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *default
+    database: my_signer_development_queue
+    migrations_paths: db/queue_migrate
+    # Solid Queue's dev defaults are JOB_THREADS=8 + 1 dispatcher + 1
+    # scheduler = ~10 connections needed. Bump the pool above that or
+    # the worker boots with the warning "configured to use 10 threads
+    # but the database connection pool is N" and refuses jobs.
+    pool: <%= ENV.fetch("QUEUE_DB_POOL", 12) %>
+  cable:
+    <<: *default
+    database: my_signer_development_cable
+    migrations_paths: db/cable_migrate
+
+test:
+  <<: *default
+  database: my_signer_test
+
+production:
+  primary:
+    <<: *default
+    # In production, prefer DATABASE_URL. If not set, fall back to explicit config.
+    database: my_signer_production
+    # Pool sized for Puma threads (3) + Sync::ParallelFanout's inner thread
+    # pool (up to 6 by default, see app/services/sync/parallel_fanout.rb:18).
+    # Each fanout thread calls `with_connection`, so inheriting
+    # RAILS_MAX_THREADS (3) here would raise ConnectionTimeoutError on any
+    # sync_all call. Defaults to 5 locally (uncovered by fanout in dev).
+    pool: <%= ENV.fetch("PRIMARY_DB_POOL", 5) %>
+    url: <%= ENV["DATABASE_URL"] %>
+  cache:
+    <<: *default
+    database: my_signer_cache
+    migrations_paths: db/cache_migrate
+    url: <%= URI.parse(ENV["DATABASE_URL"]).tap { |url| url.path += "_cache" } if ENV["DATABASE_URL"] %>
+  queue:
+    <<: *default
+    database: my_signer_queue
+    migrations_paths: db/queue_migrate
+    # Pool sized for Solid Queue worker threads, independent of RAILS_MAX_THREADS
+    # (which controls Puma). Biggest worker process in config/queue.yml is the
+    # `*` queue with 4 threads; QUEUE_DB_POOL=6 gives headroom for internal
+    # Solid Queue bookkeeping queries. Without this override the queue pool
+    # inherits RAILS_MAX_THREADS (3), and Solid Queue refuses to boot —
+    # taking Puma down too because SOLID_QUEUE_IN_PUMA=true.
+    pool: <%= ENV.fetch("QUEUE_DB_POOL", 5) %>
+    url: <%= URI.parse(ENV["DATABASE_URL"]).tap { |url| url.path += "_queue" } if ENV["DATABASE_URL"] %>
+  cable:
+    <<: *default
+    database: my_signer_cable
+    migrations_paths: db/cable_migrate
+    url: <%= URI.parse(ENV["DATABASE_URL"]).tap { |url| url.path += "_cable" } if ENV["DATABASE_URL"] %>

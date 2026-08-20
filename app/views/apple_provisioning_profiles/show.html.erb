@@ -1,0 +1,463 @@
+<%= render "shared/ios_breadcrumbs", organization: @organization, active_tab: :profiles %>
+
+<%
+  expires_at = @profile.expires_at
+  days = expires_at.present? ? (expires_at.to_date - Date.current).to_i : nil
+  expiry_info = if days.nil?
+    { badge: "badge-ghost", icon: nil, text: "Unknown", status: "unknown" }
+  elsif days <= 0
+    { badge: "badge-error", icon: "fa-circle-exclamation", text: "Expired", status: "expired" }
+  elsif days <= 30
+    { badge: "badge-warning", icon: "fa-triangle-exclamation", text: "#{days} days", status: "warning" }
+  elsif days <= 90
+    { badge: "badge-info", icon: "fa-clock", text: "#{days} days", status: "info" }
+  else
+    { badge: "badge-success", icon: "fa-check", text: "#{days} days", status: "healthy" }
+  end
+%>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: @profile.name,
+             description: @profile.bundle_id_identifier,
+             gradient: "from-blue-500/10 via-base-100 to-indigo-500/10",
+             badge_icon: "fa-solid fa-id-card",
+             badge_text: @profile.profile_type,
+             stats: (capture do %>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">State</div>
+          <div class="stat-value text-xl sm:text-2xl">
+            <% if @profile.state == "ACTIVE" %>
+              <span class="text-success">Active</span>
+            <% else %>
+              <span class="text-warning"><%= @profile.state %></span>
+            <% end %>
+          </div>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Expires In</div>
+          <div class="stat-value text-xl sm:text-2xl <%= expiry_info[:status] == 'expired' ? 'text-error' : expiry_info[:status] == 'warning' ? 'text-warning' : '' %>">
+            <%= expiry_info[:text] %>
+          </div>
+          <% if expires_at.present? %>
+            <div class="stat-desc"><%= expires_at.strftime("%b %d, %Y") %></div>
+          <% end %>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Devices</div>
+          <div class="stat-value text-xl sm:text-2xl"><%= @included_devices.size %></div>
+          <div class="stat-desc">included</div>
+        </div>
+             <% end),
+             actions: (capture do %>
+      <%= link_to download_organization_apple_provisioning_profile_path(@organization, @profile), class: "btn btn-primary btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-download"></i>
+        Download
+      <% end %>
+      <button type="button" class="btn btn-ghost btn-sm sm:btn-md gap-2" data-controller="modal" data-action="click->modal#open" data-modal-target-value="regenerate-modal">
+        <i class="fa-solid fa-arrows-rotate"></i>
+        <span class="hidden sm:inline">Regenerate</span>
+        <span class="sm:hidden">Regen</span>
+      </button>
+      <%= button_to organization_apple_provisioning_profile_path(@organization, @profile),
+                   method: :delete,
+                   class: "btn btn-ghost btn-sm sm:btn-md text-error gap-2",
+                   data: { turbo_confirm: "Delete this profile? This action cannot be undone." } do %>
+        <i class="fa-solid fa-trash"></i>
+        Delete
+      <% end %>
+      <%= link_to organization_apple_provisioning_profiles_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        Back
+      <% end %>
+             <% end) %>
+
+  <%# Profile Information %>
+  <div class="card border border-base-200 shadow-sm overflow-hidden">
+    <div class="card-body p-3 sm:p-6">
+      <h2 class="card-title text-base sm:text-lg mb-3 sm:mb-4">
+        <i class="fa-solid fa-circle-info text-blue-500"></i>
+        Profile Details
+      </h2>
+      <div class="grid gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4 min-w-0">
+          <div class="text-xs text-base-content/60 mb-1">UUID</div>
+          <div class="font-mono text-xs sm:text-sm flex items-center gap-2 min-w-0">
+            <span class="truncate"><%= @profile.uuid || "-" %></span>
+            <% if @profile.uuid.present? %>
+              <button type="button" class="btn btn-ghost btn-xs btn-square shrink-0"
+                      data-controller="copy"
+                      data-action="click->copy#copy"
+                      data-copy-text-value="<%= @profile.uuid %>">
+                <i class="fa-solid fa-copy text-base-content/50"></i>
+              </button>
+            <% end %>
+          </div>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Type</div>
+          <span class="badge badge-ghost"><%= @profile.profile_type %></span>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Platform</div>
+          <span class="badge badge-outline gap-1.5">
+            <% if @profile.platform == "IOS" %>
+              <i class="fa-brands fa-apple text-[10px]"></i>
+            <% elsif @profile.platform == "MAC_OS" %>
+              <i class="fa-solid fa-laptop text-[10px]"></i>
+            <% end %>
+            <%= @profile.platform %>
+          </span>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">State</div>
+          <% if @profile.state == "ACTIVE" %>
+            <span class="badge badge-success gap-1.5">
+              <i class="fa-solid fa-check text-[10px]"></i>
+              Active
+            </span>
+          <% else %>
+            <span class="badge badge-warning gap-1.5">
+              <i class="fa-solid fa-exclamation text-[10px]"></i>
+              <%= @profile.state %>
+            </span>
+          <% end %>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Expires</div>
+          <% if expires_at.present? %>
+            <span class="badge <%= expiry_info[:badge] %> gap-1.5">
+              <% if expiry_info[:icon] %>
+                <i class="fa-solid <%= expiry_info[:icon] %> text-[10px]"></i>
+              <% end %>
+              <%= expires_at.strftime("%B %d, %Y") %>
+            </span>
+          <% else %>
+            <span class="text-base-content/50">Unknown</span>
+          <% end %>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Team ID</div>
+          <% if @profile.team_id.present? %>
+            <code class="text-xs sm:text-sm"><%= @profile.team_id %></code>
+          <% else %>
+            <span class="text-base-content/50">Not set</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Bundle ID %>
+  <div class="card border border-base-200 shadow-sm overflow-hidden">
+    <div class="card-body p-3 sm:p-6">
+      <h2 class="card-title text-base sm:text-lg mb-3 sm:mb-4">
+        <i class="fa-solid fa-fingerprint text-purple-500"></i>
+        Bundle ID
+      </h2>
+      <% if @bundle_id.present? %>
+        <div class="flex items-center justify-between gap-2 p-3 sm:p-4 rounded-xl border border-base-200 bg-base-100 min-w-0">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-indigo-500/20 flex items-center justify-center shrink-0">
+              <i class="fa-solid <%= @bundle_id.platform_icon %> text-purple-600"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="font-medium text-sm sm:text-base truncate"><%= @bundle_id.name %></div>
+              <code class="text-xs text-base-content/60 truncate block"><%= @bundle_id.identifier %></code>
+            </div>
+          </div>
+          <%= link_to organization_apple_bundle_id_path(@organization, @bundle_id), class: "btn btn-ghost btn-xs sm:btn-sm gap-1.5 shrink-0" do %>
+            <i class="fa-solid fa-arrow-right"></i>
+            View
+          <% end %>
+        </div>
+      <% elsif @bundle_id_info.present? %>
+        <div class="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-base-200 bg-base-100 min-w-0">
+          <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-indigo-500/20 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-fingerprint text-purple-600"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="font-medium text-sm sm:text-base truncate"><%= @bundle_id_info[:name] %></div>
+            <code class="text-xs text-base-content/60 truncate block"><%= @bundle_id_info[:identifier] %></code>
+          </div>
+        </div>
+      <% else %>
+        <div class="text-center py-4 text-base-content/60">
+          <code class="text-xs sm:text-sm break-all"><%= @profile.bundle_id_identifier %></code>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Certificates %>
+  <div class="card border border-base-200 shadow-sm overflow-hidden">
+    <div class="card-body p-3 sm:p-6">
+      <h2 class="card-title text-base sm:text-lg mb-3 sm:mb-4">
+        <i class="fa-solid fa-certificate text-pink-500"></i>
+        <span class="hidden sm:inline">Included Certificates</span>
+        <span class="sm:hidden">Certificates</span>
+        <span class="badge badge-ghost ml-2"><%= @included_certificates.size %></span>
+      </h2>
+      <% if @included_certificates.any? %>
+        <%# Desktop Table %>
+        <div class="hidden md:block overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr class="text-xs uppercase text-base-content/60">
+                <th>Name</th>
+                <th>Type</th>
+                <th>Serial Number</th>
+                <th>Expires</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @included_certificates.each do |cert| %>
+                <tr class="hover:bg-base-200/30">
+                  <td class="font-medium"><%= cert[:name] || "-" %></td>
+                  <td><span class="badge badge-ghost badge-sm"><%= cert[:type] || "-" %></span></td>
+                  <td><code class="text-xs"><%= cert[:serial_number]&.truncate(12) || "-" %></code></td>
+                  <td>
+                    <% if cert[:expires_at].present? %>
+                      <% cert_expires = Time.parse(cert[:expires_at]) rescue nil %>
+                      <% if cert_expires %>
+                        <span class="text-sm"><%= cert_expires.strftime("%b %d, %Y") %></span>
+                      <% else %>
+                        <span class="text-base-content/50">-</span>
+                      <% end %>
+                    <% else %>
+                      <span class="text-base-content/50">-</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <%# Mobile Cards %>
+        <div class="md:hidden space-y-2">
+          <% @included_certificates.each do |cert| %>
+            <div class="rounded-xl border border-base-200 p-3 space-y-2 min-w-0">
+              <div class="font-medium text-sm truncate"><%= cert[:name] || "-" %></div>
+              <div class="grid gap-1.5 text-xs">
+                <div class="flex justify-between items-center">
+                  <span class="text-base-content/60">Type</span>
+                  <span class="badge badge-ghost badge-xs"><%= cert[:type] || "-" %></span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-base-content/60">Serial</span>
+                  <code class="text-xs truncate max-w-[140px]"><%= cert[:serial_number] || "-" %></code>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-base-content/60">Expires</span>
+                  <% if cert[:expires_at].present? %>
+                    <% cert_expires = Time.parse(cert[:expires_at]) rescue nil %>
+                    <span><%= cert_expires ? cert_expires.strftime("%b %d, %Y") : "-" %></span>
+                  <% else %>
+                    <span class="text-base-content/50">-</span>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-6 sm:py-8 text-base-content/60">
+          <i class="fa-solid fa-certificate text-xl sm:text-2xl mb-2 opacity-30"></i>
+          <p class="text-sm">No certificate information available.</p>
+          <p class="text-xs mt-1">Certificate details will be loaded on next sync.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Devices %>
+  <% if @profile.profile_type&.include?("DEVELOPMENT") || @profile.profile_type&.include?("ADHOC") %>
+    <div class="card border border-base-200 shadow-sm overflow-hidden">
+      <div class="card-body p-3 sm:p-6">
+        <h2 class="card-title text-base sm:text-lg mb-3 sm:mb-4">
+          <i class="fa-solid fa-mobile-screen-button text-cyan-500"></i>
+          <span class="hidden sm:inline">Included Devices</span>
+          <span class="sm:hidden">Devices</span>
+          <span class="badge badge-ghost ml-2"><%= @included_devices.size %></span>
+        </h2>
+        <% if @included_devices.any? %>
+          <%# Desktop Table %>
+          <div class="hidden md:block overflow-x-auto">
+            <table class="table table-sm">
+              <thead>
+                <tr class="text-xs uppercase text-base-content/60">
+                  <th>Name</th>
+                  <th>UDID</th>
+                  <th>Platform</th>
+                  <th>Class</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @included_devices.each do |device| %>
+                  <tr class="hover:bg-base-200/30">
+                    <td class="font-medium"><%= device[:name] || "-" %></td>
+                    <td>
+                      <div class="flex items-center gap-1">
+                        <code class="text-xs"><%= device[:udid]&.truncate(20) || "-" %></code>
+                        <% if device[:udid].present? %>
+                          <button type="button" class="btn btn-ghost btn-xs btn-square"
+                                  data-controller="copy"
+                                  data-action="click->copy#copy"
+                                  data-copy-text-value="<%= device[:udid] %>">
+                            <i class="fa-solid fa-copy text-base-content/50 text-[10px]"></i>
+                          </button>
+                        <% end %>
+                      </div>
+                    </td>
+                    <td><span class="badge badge-outline badge-sm"><%= device[:platform] || "-" %></span></td>
+                    <td><span class="badge badge-ghost badge-sm"><%= device[:device_class] || "-" %></span></td>
+                    <td>
+                      <% if device[:status] == "ENABLED" %>
+                        <span class="badge badge-success badge-sm">Enabled</span>
+                      <% else %>
+                        <span class="badge badge-error badge-sm"><%= device[:status] || "-" %></span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <%# Mobile Cards %>
+          <div class="md:hidden space-y-2">
+            <% @included_devices.each do |device| %>
+              <div class="rounded-xl border border-base-200 p-3 space-y-2 min-w-0">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="font-medium text-sm truncate"><%= device[:name] || "-" %></div>
+                  <% if device[:status] == "ENABLED" %>
+                    <span class="badge badge-success badge-sm shrink-0">On</span>
+                  <% else %>
+                    <span class="badge badge-error badge-sm shrink-0"><%= device[:status] || "-" %></span>
+                  <% end %>
+                </div>
+                <div class="grid gap-1.5 text-xs">
+                  <div class="flex justify-between items-center">
+                    <span class="text-base-content/60">UDID</span>
+                    <div class="flex items-center gap-1">
+                      <code class="text-xs truncate max-w-[140px]"><%= device[:udid] || "-" %></code>
+                      <% if device[:udid].present? %>
+                        <button type="button" class="btn btn-ghost btn-xs btn-square"
+                                data-controller="copy"
+                                data-action="click->copy#copy"
+                                data-copy-text-value="<%= device[:udid] %>">
+                          <i class="fa-solid fa-copy text-base-content/50 text-[10px]"></i>
+                        </button>
+                      <% end %>
+                    </div>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-base-content/60">Platform</span>
+                    <span class="badge badge-outline badge-xs"><%= device[:platform] || "-" %></span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-base-content/60">Class</span>
+                    <span class="badge badge-ghost badge-xs"><%= device[:device_class] || "-" %></span>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center py-6 sm:py-8 text-base-content/60">
+            <i class="fa-solid fa-mobile-screen-button text-xl sm:text-2xl mb-2 opacity-30"></i>
+            <p class="text-sm">No device information available.</p>
+            <p class="text-xs mt-1">Device details will be loaded on next sync.</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Raw JSON %>
+  <div class="flex justify-end">
+    <button type="button" class="btn btn-ghost btn-sm gap-1.5"
+            data-controller="raw-json"
+            data-action="click->raw-json#show"
+            data-raw-json-content-value="<%= @profile.raw_json %>"
+            data-raw-json-title-value="Profile: <%= @profile.name %>">
+      <i class="fa-solid fa-code"></i>
+      View Raw JSON
+    </button>
+  </div>
+</section>
+
+<%# Regenerate Profile Modal %>
+<dialog id="regenerate-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box w-full max-w-lg overflow-hidden">
+    <div class="flex items-start gap-3 sm:gap-4 mb-6">
+      <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center shrink-0">
+        <i class="fa-solid fa-arrows-rotate text-blue-600 sm:text-lg"></i>
+      </div>
+      <div class="min-w-0">
+        <h3 class="text-lg sm:text-xl font-bold">Regenerate Profile</h3>
+        <p class="text-sm text-base-content/60 mt-1 truncate">
+          <%= @profile.name %>
+        </p>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <p class="text-base-content/80">
+        This will delete the current profile and create a new one with:
+      </p>
+
+      <div class="bg-base-200/50 rounded-xl p-4 space-y-3">
+        <div class="flex items-start gap-3">
+          <i class="fa-solid fa-check text-success mt-0.5"></i>
+          <div>
+            <div class="font-medium text-sm">Same configuration</div>
+            <div class="text-xs text-base-content/60">Profile name, type, certificates, and devices</div>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <i class="fa-solid fa-check text-success mt-0.5"></i>
+          <div>
+            <div class="font-medium text-sm">Updated capabilities</div>
+            <div class="text-xs text-base-content/60">Any new capabilities added to the bundle ID will be included</div>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <i class="fa-solid fa-check text-success mt-0.5"></i>
+          <div>
+            <div class="font-medium text-sm">Fresh expiration date</div>
+            <div class="text-xs text-base-content/60">New profile will be valid for 1 year from today</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-warning/10 border border-warning/20 rounded-xl p-4">
+        <div class="flex items-start gap-3">
+          <i class="fa-solid fa-triangle-exclamation text-warning mt-0.5"></i>
+          <div class="text-sm">
+            <div class="font-medium text-warning">When to regenerate</div>
+            <div class="text-base-content/70 mt-1">
+              Regenerate when you've added new capabilities (like Push Notifications, App Groups, etc.)
+              to your bundle ID and need to update the profile to include them.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-action pt-6 border-t border-base-200 mt-6">
+      <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#close" data-modal-target-value="regenerate-modal">Cancel</button>
+      <%= button_to regenerate_organization_apple_provisioning_profile_path(@organization, @profile),
+                   method: :post,
+                   class: "btn btn-primary gap-2" do %>
+        <i class="fa-solid fa-arrows-rotate"></i>
+        Regenerate Profile
+      <% end %>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

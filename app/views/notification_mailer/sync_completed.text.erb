@@ -1,0 +1,15 @@
+Sync Completed
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+Sync completed for "<%= @organization.name %>" with the following changes:
+
+<% @changes_summary.each do |change| %>
+- <%= change %>
+<% end %>
+
+View organization: <%= organization_url(@organization) %>
+
+Thanks,
+My Signer Team

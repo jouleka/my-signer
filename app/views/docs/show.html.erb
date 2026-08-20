@@ -1,0 +1,169 @@
+<% seo_title = @category_slug == "commands" ? "#{@title} Command" : @title %>
+<% content_for(:title) { "#{seo_title} — #{@category[:title]}" } %>
+<% content_for(:description) { @frontmatter["description"].presence || "#{@title} — MySigner #{@category[:title].downcase} documentation for iOS and Android app signing." } %>
+<% content_for(:json_ld) do %>
+  <%= breadcrumb_json_ld([
+    { name: "Home", url: "/" },
+    { name: "Documentation", url: "/docs" },
+    { name: @category[:title], url: "/docs/#{@category_slug}" },
+    { name: @title }
+  ]) %>
+  <%= tech_article_json_ld(
+    title: "#{@title} — #{@category[:title]} | MySigner",
+    description: @frontmatter["description"].presence || "#{@title} — MySigner #{@category[:title].downcase} documentation.",
+    url: "/docs/#{@category_slug}/#{@slug}",
+    category: @category[:title],
+    date_modified: @file_mtime
+  ) %>
+<% end %>
+
+<%= breadcrumbs(docs_breadcrumbs(@category, @title)) %>
+
+<div data-controller="docs-mobile" class="relative">
+  <!-- Mobile Navigation Bar -->
+  <div class="lg:hidden flex items-center justify-between gap-2 mb-6 -mt-2">
+    <button type="button" 
+            class="btn btn-ghost btn-sm gap-2"
+            data-action="click->docs-mobile#toggleSidebar">
+      <i class="fa-solid fa-bars"></i>
+      <span>Menu</span>
+    </button>
+    
+    <div class="flex items-center gap-2">
+      <%= render "docs/search_modal" %>
+      
+      <% if @toc.any? %>
+        <button type="button" 
+                class="btn btn-ghost btn-sm gap-2 xl:hidden"
+                data-action="click->docs-mobile#toggleToc">
+          <i class="fa-solid fa-list"></i>
+          <span class="hidden sm:inline">Contents</span>
+        </button>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Desktop Search (shown alongside breadcrumbs area) -->
+  <div class="hidden lg:flex justify-end -mt-4 mb-4">
+    <%= render "docs/search_modal" %>
+  </div>
+
+  <div class="flex flex-col lg:flex-row gap-8">
+    <!-- Mobile Sidebar Overlay -->
+    <div data-docs-mobile-target="sidebarOverlay" 
+         data-action="click->docs-mobile#closeSidebar"
+         class="hidden fixed inset-0 z-40 bg-base-300/80 backdrop-blur-sm lg:hidden"></div>
+    
+    <!-- Sidebar (Desktop: static, Mobile: drawer) -->
+    <aside data-docs-mobile-target="sidebar"
+           class="fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-64 bg-base-100 lg:bg-transparent 
+                  transform translate-x-[-100%] lg:translate-x-0 transition-transform duration-300 ease-in-out
+                  lg:shrink-0 overflow-y-auto lg:overflow-visible shadow-2xl lg:shadow-none">
+      <div class="p-6 lg:p-0">
+        <!-- Mobile close button -->
+        <div class="flex items-center justify-between mb-6 lg:hidden">
+          <span class="font-semibold">Documentation</span>
+          <button type="button" 
+                  class="btn btn-ghost btn-sm btn-square"
+                  data-action="click->docs-mobile#closeSidebar">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <%= render "docs/sidebar", categories: DocsController::CATEGORIES, current_category: @category_slug, pages: @pages, current_slug: @slug %>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 min-w-0">
+      <article class="prose prose-sm sm:prose-base max-w-none">
+        <!-- Title -->
+        <header class="not-prose mb-8 pb-6 border-b border-base-200">
+          <div class="flex items-center gap-2 text-sm text-base-content/60 mb-2">
+            <%= link_to category_docs_path(@category_slug), class: "hover:text-primary" do %>
+              <i class="<%= @category[:icon] %> mr-1"></i>
+              <%= @category[:title] %>
+            <% end %>
+          </div>
+          <h1 class="text-3xl font-bold"><%= @title %></h1>
+          <% if @frontmatter["description"] %>
+            <p class="text-lg text-base-content/70 mt-2"><%= @frontmatter["description"] %></p>
+          <% end %>
+          <% if @file_mtime %>
+            <time datetime="<%= @file_mtime.strftime('%Y-%m-%d') %>" class="text-xs text-base-content/40 mt-2 block">
+              Last updated <%= @file_mtime.strftime('%B %d, %Y') %>
+            </time>
+          <% end %>
+        </header>
+
+        <!-- Content -->
+        <div class="doc-content">
+          <%= @content %>
+        </div>
+
+        <!-- Related Documentation (cross-category internal links for SEO) -->
+        <% if @related_pages.any? %>
+          <div class="not-prose mt-10 pt-6 border-t border-base-200">
+            <h3 class="text-sm font-semibold text-base-content/60 mb-3">Related Documentation</h3>
+            <div class="grid gap-2 sm:grid-cols-3">
+              <% @related_pages.each do |rp| %>
+                <%= link_to page_docs_path(rp[:category_slug], rp[:slug]), class: "flex flex-col gap-1 p-3 rounded-lg bg-base-200/30 hover:bg-base-200/60 transition-colors" do %>
+                  <span class="text-xs text-base-content/50"><%= rp[:category_title] %></span>
+                  <span class="text-sm font-medium"><%= rp[:title] %></span>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Prev/Next Navigation -->
+        <nav class="not-prose mt-12 pt-6 border-t border-base-200">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <% if @prev_page %>
+              <%= link_to page_docs_path(@category_slug, @prev_page[:slug]), class: "flex items-center gap-2 text-sm hover:text-primary transition-colors p-3 sm:p-0 rounded-lg sm:rounded-none bg-base-200/50 sm:bg-transparent" do %>
+                <i class="fa-solid fa-arrow-left"></i>
+                <span class="text-base-content/60">Previous:</span>
+                <span class="font-medium truncate"><%= @prev_page[:title] %></span>
+              <% end %>
+            <% else %>
+              <div></div>
+            <% end %>
+
+            <% if @next_page %>
+              <%= link_to page_docs_path(@category_slug, @next_page[:slug]), class: "flex items-center justify-end gap-2 text-sm hover:text-primary transition-colors p-3 sm:p-0 rounded-lg sm:rounded-none bg-base-200/50 sm:bg-transparent" do %>
+                <span class="font-medium truncate"><%= @next_page[:title] %></span>
+                <span class="text-base-content/60">:Next</span>
+                <i class="fa-solid fa-arrow-right"></i>
+              <% end %>
+            <% end %>
+          </div>
+        </nav>
+      </article>
+    </main>
+
+    <!-- Mobile TOC Overlay -->
+    <% if @toc.any? %>
+      <div data-docs-mobile-target="tocOverlay" 
+           data-action="click->docs-mobile#closeToc"
+           class="hidden fixed inset-0 z-40 bg-base-300/80 backdrop-blur-sm xl:hidden"></div>
+      
+      <!-- TOC (Desktop: static, Mobile: drawer) -->
+      <aside data-docs-mobile-target="toc"
+             class="fixed xl:static inset-y-0 right-0 z-50 w-72 xl:w-56 bg-base-100 xl:bg-transparent
+                    transform translate-x-full xl:translate-x-0 transition-transform duration-300 ease-in-out
+                    xl:shrink-0 overflow-y-auto xl:overflow-visible shadow-2xl xl:shadow-none">
+        <div class="p-6 xl:p-0">
+          <!-- Mobile close button -->
+          <div class="flex items-center justify-between mb-6 xl:hidden">
+            <span class="font-semibold">On this page</span>
+            <button type="button" 
+                    class="btn btn-ghost btn-sm btn-square"
+                    data-action="click->docs-mobile#closeToc">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <%= render "docs/toc", toc: @toc %>
+        </div>
+      </aside>
+    <% end %>
+  </div>
+</div>

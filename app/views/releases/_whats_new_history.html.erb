@@ -1,0 +1,52 @@
+<%# What's New history — all release notes for this app, ordered by version. %>
+<% notes = @organization.release_notes.for_app(@app).by_version %>
+
+<% if notes.any? %>
+  <div class="relative pl-8 before:absolute before:top-0 before:bottom-0 before:left-2 before:w-[2px] before:bg-base-content/[0.08] before:rounded-[1px]" data-controller="release-timeline">
+    <% notes.each do |note| %>
+      <div class="relative pb-6 last:pb-0" data-release-timeline-target="entry">
+        <div class="absolute left-[-1.625rem] top-1.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-base-100 z-[1]"></div>
+        <div>
+          <div class="flex items-center gap-2 cursor-pointer py-1 hover:opacity-80 flex-wrap" data-action="click->release-timeline#toggle">
+            <i class="fa-solid fa-chevron-right text-[0.65rem] opacity-40 transition-transform duration-200" data-timeline-chevron></i>
+            <span class="<%= version_badge_classes %>">v<%= note.version_string.presence || "—" %></span>
+            <span class="<%= status_badge_classes(note.status) %>">
+              <%= note.status.tr("_", " ").titleize %>
+            </span>
+            <span class="<%= meta_text_classes %>">
+              <i class="fa-solid fa-calendar text-[0.6rem] opacity-50"></i>
+              <%= note.created_at.strftime("%b %d, %Y") %>
+            </span>
+            <% if note.locale.present? %>
+              <span class="<%= locale_badge_classes %>"><%= note.locale %></span>
+            <% end %>
+            <%= link_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id),
+                class: "#{btn_ghost_xs_classes} ml-auto" do %>
+              <i class="fa-solid fa-pen"></i> Open
+            <% end %>
+          </div>
+          <div class="hidden mt-2 p-3 rounded-lg bg-base-content/[0.02] border border-base-content/[0.06]" data-timeline-detail>
+            <% if note.rendered_text.present? %>
+              <pre class="text-xs text-base-content/60 whitespace-pre-line leading-relaxed"><%= note.rendered_text.truncate(500) %></pre>
+            <% else %>
+              <p class="text-xs text-base-content/30 italic">Empty release note.</p>
+            <% end %>
+            <% if note.translations.is_a?(Hash) && note.translations.any? %>
+              <p class="<%= meta_text_classes %> mt-2">
+                <i class="fa-solid fa-language opacity-60"></i>
+                Translated to <%= note.translations.keys.size %> additional locale<%= note.translations.keys.size == 1 ? "" : "s" %>
+              </p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="<%= empty_state_classes %>">
+    <div class="<%= empty_state_icon_classes %>">
+      <i class="fa-solid fa-clock-rotate-left text-2xl"></i>
+    </div>
+    <p class="<%= empty_state_text_classes %>">No release notes yet for this app.</p>
+  </div>
+<% end %>

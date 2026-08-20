@@ -1,0 +1,23 @@
+<% @preheader = "An API token was revoked in #{@organization.name}. Integrations using it will lose access." %>
+
+<%= ms_eyebrow(31, "Security · Token revoked") %>
+
+<%= ms_stamp("Revoked") %>
+
+<%= ms_headline("Token <em style=\"font-style:italic; color:#f57c97;\" class=\"ms-callout-danger-text\">revoked.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_meta_row("Token", ms_meta_pill(@token_name)) %>
+<%= ms_meta_row("Organization", ms_meta_pill(@organization.name)) %>
+<%= ms_meta_row("Revoked by", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{ERB::Util.h(@revoker_name)}</span>".html_safe) %>
+
+<%= ms_callout(
+  "Any integration using this token has lost access immediately. If you didn't expect the revocation, review the rest of your tokens straight away.",
+  variant: :danger,
+  accent_label: "Effective immediately"
+) %>
+
+<%= ms_cta("Review tokens", organization_api_tokens_url(@organization), variant: :primary, margin_top: 4, margin_bottom: 24) %>
+
+<%= ms_fine_print("Issue a new token from <em>Settings → API tokens</em> if you need to restore access for a CI / deployment integration.") %>

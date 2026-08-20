@@ -1,0 +1,82 @@
+<% current_label = case active_tab
+when :apps then "Apps"
+when :testflight then "TestFlight"
+when :bundle_ids then "Bundle IDs"
+when :profiles then "Provisioning Profiles"
+when :devices then "Devices"
+else "Certificates"
+end %>
+
+<% items = [
+  { label: "Organizations", path: organizations_path },
+  { label: organization.name, path: organization_path(organization) },
+  { label: "iOS" },
+  { label: current_label }
+] %>
+
+<% tabs = [
+  { label: "Apps", path: organization_apple_apps_path(organization), active: active_tab == :apps },
+  { label: "TestFlight", path: organization_testflight_beta_groups_path(organization), active: active_tab == :testflight },
+  { label: "Bundle IDs", path: organization_apple_bundle_ids_path(organization), active: active_tab == :bundle_ids },
+  { label: "Certificates", path: organization_apple_certificates_path(organization), active: active_tab == :certificates },
+  { label: "Devices", path: organization_apple_devices_path(organization), active: active_tab == :devices },
+  { label: "Profiles", path: organization_apple_provisioning_profiles_path(organization), active: active_tab == :profiles }
+] %>
+
+<%= breadcrumbs(items, tabs: tabs) %>
+
+<% teams = organization.app_store_connect_credentials.where.not(team_id: nil).pluck(:team_id, :name).uniq %>
+<% if teams.size > 1 %>
+  <% selected_team = params[:team_id] || session[:ios_team_id] %>
+  <% 
+    display_name = if selected_team.blank?
+      "All Teams"
+    else
+      teams.find { |t| t[0] == selected_team }&.last || teams.first.last
+    end
+    display_badge = selected_team.presence
+  %>
+  <div class="flex items-center gap-2 mb-4 px-1">
+    <span class="text-sm opacity-70 hidden sm:inline">Team:</span>
+    <div class="dropdown">
+      <div tabindex="0" role="button" class="btn btn-xs sm:btn-sm btn-ghost gap-1.5 sm:gap-2 border border-base-300">
+        <i class="fa-brands fa-apple opacity-60"></i>
+        <span class="font-medium truncate max-w-[120px] sm:max-w-none"><%= display_name %></span>
+        <% if display_badge %>
+          <span class="badge badge-ghost badge-sm hidden sm:inline-flex"><%= display_badge %></span>
+        <% end %>
+        <i class="fa-solid fa-chevron-down text-xs"></i>
+      </div>
+      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-64 sm:w-72 p-2 shadow-lg border border-base-300 mt-1">
+        <li>
+          <%= link_to url_for(params.permit!.merge(team_id: '')), class: "justify-between" do %>
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-globe w-4 text-sm opacity-60"></i>
+              <span>All Teams</span>
+            </span>
+            <% if selected_team.blank? %>
+              <span class="badge badge-primary badge-sm">Active</span>
+            <% end %>
+          <% end %>
+        </li>
+        <li class="divider my-0"></li>
+        <% teams.each do |team_id, team_name| %>
+          <li>
+            <%= link_to url_for(params.permit!.merge(team_id: team_id)), class: "justify-between" do %>
+              <span class="flex items-center gap-2">
+                <i class="fa-solid fa-building w-4 text-sm opacity-60"></i>
+                <span><%= team_name %></span>
+              </span>
+              <% if team_id == selected_team %>
+                <span class="badge badge-primary badge-sm">Active</span>
+              <% else %>
+                <span class="badge badge-ghost badge-sm font-mono text-xs"><%= team_id %></span>
+              <% end %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </div>
+<% end %>
+

@@ -1,0 +1,83 @@
+<%= breadcrumbs([
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "Keywords & ASO" }
+]) %>
+
+<section class="flex flex-col gap-6">
+  <%# Header %>
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-[1.375rem] font-extrabold leading-tight tracking-[-0.02em] text-base-content/95">
+        <i class="fa-solid fa-key text-primary/50 mr-1"></i>
+        Keywords & ASO
+      </h1>
+      <p class="text-xs text-base-content/40 mt-1">Manage App Store keyword strategy across your iOS apps</p>
+    </div>
+  </div>
+
+  <%# Read-only info banner for free plan users %>
+  <% if @entitlements.keyword_editor_read_only? %>
+    <div class="<%= sn_info_classes %>">
+      <div class="flex items-center gap-2">
+        <div class="<%= sn_icon_info_classes %>">
+          <i class="fa-solid fa-eye text-[0.5rem]"></i>
+        </div>
+        <p class="text-xs text-base-content/60">
+          You're on the <strong class="text-base-content/80">Free</strong> plan — keyword data is read-only.
+          <%= link_to "Upgrade to Pro", pricing_path, class: "text-primary/80 hover:text-primary underline" %> to edit keywords and track up to 50 per app.
+        </p>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @apple_apps.empty? %>
+    <div class="<%= empty_state_classes %>">
+      <div class="<%= empty_state_icon_classes %>">
+        <i class="fa-solid fa-magnifying-glass text-2xl"></i>
+      </div>
+      <h2 class="<%= empty_state_title_classes %>">No iOS apps found</h2>
+      <p class="<%= empty_state_text_classes %>">
+        Connect your App Store Connect credentials and sync your apps to manage keywords.
+      </p>
+      <%= link_to organization_path(@organization), class: btn_primary_classes do %>
+        <i class="fa-solid fa-gear"></i> Go to Organization Settings
+      <% end %>
+    </div>
+  <% else %>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <% @apple_apps.each do |app| %>
+        <% listings = app.store_listings %>
+        <% primary_listing = listings.find { |l| l.locale == (app.primary_locale || "en-US") } || listings.first %>
+        <% keywords_str = primary_listing&.keywords %>
+        <% locale_count = listings.size %>
+        <% tracked_count = app.tracked_keywords.size %>
+
+        <%= link_to organization_keyword_path(@organization, "apple_app_#{app.id}"),
+            class: "#{card_container_classes} block transition-colors hover:border-primary/[0.12]" do %>
+          <div class="<%= card_header_split_classes %>">
+            <div class="flex items-center gap-2.5">
+              <div class="<%= card_icon_classes %>">
+                <i class="fa-brands fa-apple"></i>
+              </div>
+              <span class="<%= card_title_classes %>"><%= app.name.presence || app.bundle_id %></span>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-base-content/30"></i>
+          </div>
+          <div class="<%= card_body_classes %>">
+            <% if keywords_str.present? %>
+              <p class="text-xs text-base-content/50 leading-relaxed mb-3 line-clamp-2"><%= keywords_str.truncate(120) %></p>
+            <% else %>
+              <p class="text-xs text-base-content/30 italic mb-3">No keywords set</p>
+            <% end %>
+            <div class="flex items-center gap-3">
+              <span class="<%= locale_badge_classes %>"><%= locale_count %> locale<%= "s" if locale_count != 1 %></span>
+              <% if tracked_count > 0 %>
+                <span class="<%= muted_badge_classes %>"><%= tracked_count %> tracked</span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</section>

@@ -1,0 +1,101 @@
+<% items = [
+  { label: "Organizations", path: organizations_path },
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "iOS" },
+  { label: "Apps", path: organization_apple_apps_path(@organization) },
+  { label: @app.name.presence || @app.bundle_id, path: organization_apple_app_path(@organization, @app) },
+  { label: "Version History" }
+] %>
+<%= breadcrumbs(items) %>
+
+<% live_count = @versions.count { |v| v.app_store_state == "READY_FOR_SALE" } %>
+
+<%
+  # Common App Store states for filtering
+  app_store_states = [
+    { value: "READY_FOR_SALE", label: "Live", icon: "fa-circle-check" },
+    { value: "PENDING_DEVELOPER_RELEASE", label: "Pending Release", icon: "fa-clock" },
+    { value: "IN_REVIEW", label: "In Review", icon: "fa-hourglass-half" },
+    { value: "WAITING_FOR_REVIEW", label: "Waiting for Review", icon: "fa-hourglass-start" },
+    { value: "PREPARE_FOR_SUBMISSION", label: "Draft", icon: "fa-file-pen" },
+    { value: "REJECTED", label: "Rejected", icon: "fa-circle-xmark" },
+    { value: "DEVELOPER_REJECTED", label: "Developer Rejected", icon: "fa-rotate-left" }
+  ]
+%>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "Version History",
+             description: "Chronological view of all App Store versions for this app.",
+             gradient: "from-indigo-500/10 via-base-100 to-purple-500/10",
+             badge_icon: "fa-brands fa-apple",
+             badge_text: @app.name.presence || @app.bundle_id,
+             stats: (capture do %>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Total</div>
+          <div class="stat-value text-xl sm:text-2xl"><%= @versions.size %></div>
+          <div class="stat-desc">versions</div>
+        </div>
+        <% if live_count > 0 %>
+          <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+            <div class="stat-title text-xs">Live</div>
+            <div class="stat-value text-xl sm:text-2xl text-success"><%= live_count %></div>
+            <div class="stat-desc">published</div>
+          </div>
+        <% end %>
+             <% end),
+             actions: (capture do %>
+      <%= link_to organization_apple_app_path(@organization, @app), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back to App</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+             <% end) %>
+
+  <%# Filters %>
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 p-3 sm:p-4 bg-base-100 border border-base-200 rounded-xl sm:rounded-2xl shadow overflow-hidden">
+    <span class="font-medium text-sm flex items-center gap-2 shrink-0">
+      <i class="fa-solid fa-filter text-base-content/50"></i>
+      Filter:
+    </span>
+
+    <div class="flex flex-wrap items-center gap-2 sm:gap-3 flex-1 min-w-0">
+      <%# State Filter %>
+      <div class="dropdown dropdown-hover">
+        <label tabindex="0" class="btn btn-sm btn-outline gap-2">
+          <i class="fa-solid fa-flag"></i>
+          <span class="truncate max-w-[7rem]"><%= @state_filter.present? ? app_store_states.find { |s| s[:value] == @state_filter }&.dig(:label) || @state_filter.titleize : "All States" %></span>
+          <i class="fa-solid fa-chevron-down text-xs"></i>
+        </label>
+        <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-xl z-[1] w-52 p-2 shadow-lg border border-base-200">
+          <li>
+            <%= link_to releases_organization_apple_app_path(@organization, @app), class: "gap-2 #{'font-bold bg-primary/10' if @state_filter.blank?}" do %>
+              <i class="fa-solid fa-list text-xs w-4"></i>
+              All States
+            <% end %>
+          </li>
+          <% app_store_states.each do |state| %>
+            <li>
+              <%= link_to releases_organization_apple_app_path(@organization, @app, state: state[:value]), class: "gap-2 #{'font-bold bg-primary/10' if @state_filter == state[:value]}" do %>
+                <i class="fa-solid <%= state[:icon] %> text-xs w-4"></i>
+                <%= state[:label] %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+
+      <% if @state_filter.present? %>
+        <%= link_to releases_organization_apple_app_path(@organization, @app), class: "btn btn-sm btn-ghost gap-2" do %>
+          <i class="fa-solid fa-xmark"></i>
+          Clear
+        <% end %>
+      <% end %>
+    </div>
+
+    <span class="badge badge-ghost shrink-0"><%= @versions.size %> versions</span>
+  </div>
+
+  <%# Timeline %>
+  <%= render partial: "version_history", locals: { versions: @versions, show_view_all: false } %>
+</section>

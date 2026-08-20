@@ -1,0 +1,84 @@
+<%# Release note preview — phone-style card showing the rendered text.
+    Accepts:
+      release_note (required)
+      locale        — which locale this preview is for (defaults to note.locale)
+      is_base       — true when rendering the base-locale preview (gets the
+                      release-note-editor targets that drive live updates from
+                      the template/freeform editor). For translation locales,
+                      live updates come from the locale_switcher controller.
+      text          — override the text to display (optional) %>
+<% note = local_assigns[:release_note] || @release_note %>
+<% return unless note %>
+<% locale   = local_assigns[:locale] || note.locale %>
+<% is_base  = local_assigns.fetch(:is_base, locale == note.locale) %>
+<% text     = local_assigns[:text] %>
+<% text     = (note.translations || {})[locale].to_s if text.nil? && !is_base %>
+<% text     = note.rendered_text.to_s if text.nil? %>
+<% text     = text.to_s %>
+
+<% device_base         = "relative w-[300px] h-[620px] bg-base-100 border-[3px] border-base-content/[0.12] overflow-hidden shadow-[0_0_0_1px_oklch(var(--color-base-content)/0.04),0_20px_60px_-15px_oklch(0_0_0/0.2)]" %>
+<% device_radius       = note.ios? ? "rounded-[2.5rem]" : "rounded-3xl" %>
+<% device_section_title = "text-[0.625rem] font-bold uppercase tracking-[0.05em] text-base-content/40 mb-1.5" %>
+<% length              = text.length %>
+<% char_count_classes  = char_badge_classes(length, note.char_limit) %>
+<% bar_fill_classes    = progress_fill_classes(length, note.char_limit) %>
+
+<div class="w-full">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-base-content/45">
+      <i class="fa-solid fa-mobile-screen"></i>
+      Preview
+    </h2>
+    <div class="flex items-center gap-1.5">
+      <% unless is_base %>
+        <span class="<%= locale_badge_classes %>"><%= locale %></span>
+      <% end %>
+      <span class="<%= muted_badge_classes %>"><%= note.ios? ? "iOS" : "Android" %></span>
+    </div>
+  </div>
+
+  <div class="flex justify-center">
+    <div class="<%= device_base %> <%= device_radius %>" data-device="<%= note.ios? ? 'ios' : 'android' %>">
+      <% if note.ios? %>
+        <div class="absolute top-2 left-1/2 -translate-x-1/2 w-[5.5rem] h-[1.375rem] bg-base-content/[0.12] rounded-full z-10"></div>
+      <% else %>
+        <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-base-content/[0.12] rounded-full z-10"></div>
+      <% end %>
+
+      <div class="h-11 flex items-end justify-between px-6 pb-1 text-[0.6875rem] font-semibold text-base-content/45">
+        <span>9:41</span>
+        <div class="flex gap-1">
+          <i class="fa-solid fa-signal text-[0.55rem]"></i>
+          <i class="fa-solid fa-wifi text-[0.55rem]"></i>
+          <i class="fa-solid fa-battery-full text-[0.55rem]"></i>
+        </div>
+      </div>
+
+      <div class="overflow-y-auto px-4 pt-2 pb-6 h-[calc(100%-2.75rem)]">
+        <p class="<%= device_section_title %>">What's New<% if note.version_string.present? %> &middot; v<%= note.version_string %><% end %></p>
+        <p class="text-[0.7rem] text-base-content/75 whitespace-pre-line leading-relaxed <%= 'opacity-30 italic' if text.blank? %>"
+           <% if is_base %>data-release-note-editor-target="preview"<% end %>
+           data-locale-switcher-target="translationPreview"
+           data-locale="<%= locale %>">
+          <%= text.presence || "Release notes will appear here..." %>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-3 px-3 py-2 border-t border-base-content/5">
+    <div class="flex items-center justify-between text-xs">
+      <span class="<%= meta_text_classes %>">Character usage</span>
+      <span class="<%= char_count_classes %>"
+            <% if is_base %>data-release-note-editor-target="charCount"<% end %>>
+        <%= length %>/<%= note.char_limit %>
+      </span>
+    </div>
+    <% pct = (length.to_f / note.char_limit * 100).clamp(0, 100) %>
+    <div class="<%= progress_track_classes %> mt-1.5">
+      <div class="<%= bar_fill_classes %>"
+           <% if is_base %>data-release-note-editor-target="charBar"<% end %>
+           style="width: <%= pct %>%"></div>
+    </div>
+  </div>
+</div>

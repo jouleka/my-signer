@@ -1,0 +1,124 @@
+<%# Editorial onboarding wizard wrapper — sticky topbar with brand,
+    step rail and skip button, thin progress bar, optional sidebar of
+    chapters under lg, animated step body. Same visual system as the
+    auth shell. The data-controller="onboarding" stays for any JS hooks
+    (progress bar updates, confetti on complete). %>
+<%# Disable Turbo's cache preview on the wizard. Without this, Turbo
+    paints a cached snapshot of the destination on rail navigation and
+    then replaces it with the fresh response, so the .step-animate
+    keyframe runs twice and the user sees a split-second flash. %>
+<% content_for :head do %>
+  <meta name="turbo-cache-control" content="no-preview">
+<% end %>
+<%
+  steps = [
+    { id: "organization",   num: "I",   label: "Organization" },
+    { id: "cli",            num: "II",  label: "Install CLI" },
+    { id: "token",          num: "III", label: "API Token" },
+    { id: "token_created",  num: "IV",  label: "Save Token" },
+    { id: "connect",        num: "V",   label: "Connect Platform" },
+    { id: "complete",       num: "VI",  label: "Ready" }
+  ]
+  # Map current @step (which can include the synthetic "token_created")
+  # into a 0-based index across the 6-step rail. The controller's
+  # STEP_NUMBERS doesn't have a slot for token_created since it's a
+  # post-action render, so we resolve it manually here.
+  current_idx = steps.index { |s| s[:id] == @step } || 0
+%>
+
+<div class="onboarding-shell min-h-screen flex flex-col bg-base-100"
+     data-controller="onboarding"
+     data-onboarding-step-value="<%= current_idx %>"
+     data-onboarding-total-steps-value="<%= steps.size - 1 %>">
+
+  <header class="topbar">
+    <div class="topbar-row">
+      <%# Brand — same icon + wordmark used across the rest of the app. %>
+      <div class="brand flex items-center gap-2.5 flex-shrink-0">
+        <img src="/icon.svg" alt="" class="h-7 w-7" aria-hidden="true">
+        <span class="font-semibold text-[13.5px] tracking-tight">MySigner</span>
+      </div>
+
+      <%# Step rail — clickable for jumps to already-completed steps. %>
+      <nav class="steprail" aria-label="Setup steps">
+        <% steps.each_with_index do |s, i| %>
+          <%
+            state =
+              if i < current_idx then "is-done"
+              elsif i == current_idx then "is-current"
+              end
+            jumpable = i < current_idx && @step != "complete" && s[:id] != "token_created"
+          %>
+          <% if jumpable %>
+            <%= button_to onboarding_advance_path, params: { step: s[:id] }, method: :post,
+                  form: { class: "inline-flex" },
+                  class: "step #{state}" do %>
+              <span class="step-num"><%= s[:num] %></span>
+              <span><%= s[:label] %></span>
+            <% end %>
+          <% else %>
+            <span class="step <%= state %>">
+              <span class="step-num"><%= s[:num] %></span>
+              <span><%= s[:label] %></span>
+            </span>
+          <% end %>
+          <% if i < steps.size - 1 %>
+            <span class="sep"></span>
+          <% end %>
+        <% end %>
+      </nav>
+
+      <%# Skip — quiet trailing affordance, hidden once we're done. %>
+      <% unless @step == "complete" %>
+        <%= button_to "Skip setup", onboarding_skip_path, method: :post,
+              class: "skip-btn",
+              form: { data: { turbo_confirm: "Are you sure? You can finish setup later from the dashboard." } } %>
+      <% end %>
+    </div>
+
+    <%# Editorial progress bar — fills from 0 to 100% across the wizard. %>
+    <div class="progress-track">
+      <div class="progress-fill"
+           data-onboarding-target="progressBar"
+           style="width: <%= ((current_idx.to_f / (steps.size - 1)) * 100).round %>%"></div>
+    </div>
+  </header>
+
+  <main class="canvas">
+    <%# Chapters sidebar — under lg only. The full step rail is in the
+        topbar; this is the secondary navigation surface for desktop. %>
+    <aside class="chapters" aria-label="Chapters">
+      <div class="chapters-label">The Setup</div>
+      <% steps.each_with_index do |s, i| %>
+        <%
+          state =
+            if i < current_idx then "is-done"
+            elsif i == current_idx then "is-current"
+            end
+        %>
+        <% if i < current_idx && @step != "complete" %>
+          <%= button_to onboarding_advance_path, params: { step: s[:id] }, method: :post,
+                form: { class: "block" },
+                class: "chapter #{state}" do %>
+            <span class="num"><%= s[:num].downcase %>.</span>
+            <span><%= s[:label] %></span>
+          <% end %>
+        <% else %>
+          <div class="chapter <%= state %>">
+            <span class="num"><%= s[:num].downcase %>.</span>
+            <span><%= s[:label] %></span>
+          </div>
+        <% end %>
+      <% end %>
+    </aside>
+
+    <section data-onboarding-content>
+      <%= yield %>
+    </section>
+  </main>
+
+  <%# Confetti canvas — kept for the complete-step celebration if the
+      onboarding stimulus controller wires it up. %>
+  <canvas data-onboarding-target="confettiCanvas"
+          class="hidden fixed inset-0 z-50 pointer-events-none"></canvas>
+</div>

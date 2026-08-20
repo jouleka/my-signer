@@ -1,0 +1,42 @@
+<%# Screenshot Studio CTA — prominent gradient when zero projects, compact when existing %>
+<% if @screenshot_projects_count.to_i == 0 %>
+  <%# First-time CTA: eye-catching gradient card %>
+  <div class="relative overflow-hidden rounded-[0.875rem] border border-primary/[0.15] bg-gradient-to-r from-violet-500/[0.06] via-base-100 to-fuchsia-500/[0.06]">
+    <div class="p-5">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 shrink-0">
+          <i class="fa-solid fa-images text-xl text-violet-500"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold text-base-content/85 mb-0.5">Screenshot Studio</p>
+          <p class="<%= meta_text_classes %>">
+            Generate polished App Store and Play Store screenshots with captions,
+            backgrounds, and device frames &mdash; no design tool required.
+          </p>
+        </div>
+        <%= link_to new_organization_screenshot_project_path(@organization), class: btn_primary_sm_classes + " shrink-0" do %>
+          <i class="fa-solid fa-plus"></i>
+          Create Project
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <%# Returning user: compact inline card %>
+  <div class="<%= card_container_classes %>">
+    <div class="flex items-center gap-3 px-5 py-3">
+      <div class="flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-violet-500/15 to-fuchsia-500/15 shrink-0">
+        <i class="fa-solid fa-images text-xs text-violet-500"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <span class="<%= card_title_classes %>">Screenshot Studio</span>
+        <span class="<%= meta_text_classes %> ml-2">
+          <%= @screenshot_projects_count %> <%= "project".pluralize(@screenshot_projects_count) %>
+        </span>
+      </div>
+      <%= link_to organization_screenshot_projects_path(@organization), class: btn_ghost_xs_classes do %>
+        Open Studio <i class="fa-solid fa-arrow-right text-[0.5rem]"></i>
+      <% end %>
+    </div>
+  </div>
+<% end %>

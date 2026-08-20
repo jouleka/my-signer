@@ -1,0 +1,266 @@
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%# Header %>
+  <header class="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="min-w-0">
+      <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Organizations</h1>
+      <p class="text-xs sm:text-sm text-base-content/60 mt-1">Manage your teams and their signing credentials</p>
+    </div>
+    <% if @has_organizations %>
+      <div class="flex flex-wrap gap-2 items-center shrink-0">
+        <%= render "shared/search_field",
+                    url: organizations_path,
+                    value: @q,
+                    placeholder: "Search organizations...",
+                    aria_label: "Search organizations" %>
+        <button type="button"
+                class="btn btn-primary btn-sm gap-2"
+                title="Create a new organization"
+                data-controller="modal"
+                data-action="click->modal#open"
+                data-modal-target-value="create-org-modal">
+          <i class="fa-solid fa-plus" aria-hidden="true"></i>
+          New
+        </button>
+      </div>
+    <% end %>
+  </header>
+
+  <% if @organizations.any? %>
+    <%# Organizations Grid %>
+    <div class="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3" role="list" aria-label="Organizations list">
+      <% @organizations.each do |org| %>
+        <% creds = org.app_store_connect_credentials %>
+        <% active_creds = creds.respond_to?(:active) ? creds.active.count : creds.count %>
+        <% last_sync = creds.order(last_synced_at: :desc).first&.last_synced_at %>
+
+        <article class="card bg-base-100 border border-base-200 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all overflow-hidden"
+                 role="listitem"
+                 aria-labelledby="org-<%= org.id %>-name">
+          <div class="card-body p-3 sm:p-5 min-w-0">
+            <%# Header %>
+            <div class="flex items-start gap-3">
+              <div class="avatar avatar-placeholder shrink-0">
+                <div class="bg-primary/10 text-primary rounded-xl w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center text-base sm:text-lg font-semibold">
+                  <%= org.name.to_s.first&.upcase || "?" %>
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h2 id="org-<%= org.id %>-name" class="font-bold text-base sm:text-lg truncate" title="<%= org.name %>">
+                  <%= org.name %>
+                </h2>
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="text-[10px] sm:text-xs text-base-content/50 truncate" title="Owner: <%= org.owner.email %>">
+                    <i class="fa-solid fa-crown text-primary/60" aria-hidden="true"></i>
+                    <%= org.owner.email %>
+                  </p>
+                  <% if org.blocked_by_plan? %>
+                    <span class="badge badge-warning badge-xs">Blocked by plan</span>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+
+            <%# Stats Row %>
+            <div class="flex gap-3 sm:gap-4 mt-3 text-xs sm:text-sm">
+              <div title="<%= org.memberships_count %> team members">
+                <span class="font-semibold text-base-content"><%= org.memberships_count %></span>
+                <span class="text-base-content/50 ml-1">members</span>
+              </div>
+              <div title="<%= active_creds %>/<%= creds.count %> active credentials">
+                <span class="font-semibold <%= active_creds.positive? ? 'text-success' : 'text-base-content/50' %>"><%= active_creds %></span>
+                <span class="text-base-content/50 ml-1">creds</span>
+              </div>
+              <% if last_sync %>
+                <div class="text-base-content/50 truncate" title="Last synced <%= last_sync.to_fs(:short) %>">
+                  <i class="fa-solid fa-sync text-[10px] sm:text-xs" aria-hidden="true"></i>
+                  <%= time_ago_in_words(last_sync) %>
+                </div>
+              <% end %>
+            </div>
+
+            <%# Actions %>
+            <div class="flex gap-2 mt-3 sm:mt-4 pt-3 border-t border-base-200">
+              <% if org.accessible? %>
+                <%= link_to authenticated_root_path(org_id: org.id),
+                            class: "btn btn-primary btn-xs sm:btn-sm flex-1 gap-1.5 sm:gap-2",
+                            title: "Open #{org.name} dashboard" do %>
+                  <i class="fa-solid fa-gauge" aria-hidden="true"></i>
+                  Dashboard
+                <% end %>
+                <%= link_to organization_path(org),
+                            class: "btn btn-ghost btn-xs sm:btn-sm gap-1.5 sm:gap-2",
+                            title: "Members, credentials, and settings" do %>
+                  <i class="fa-solid fa-users-gear" aria-hidden="true"></i>
+                  Manage
+                <% end %>
+              <% else %>
+                <%= link_to pricing_path,
+                            class: "btn btn-warning btn-xs sm:btn-sm flex-1 gap-1.5 sm:gap-2",
+                            title: "Upgrade to restore access to #{org.name}" do %>
+                  <i class="fa-solid fa-unlock" aria-hidden="true"></i>
+                  Upgrade
+                <% end %>
+                <% if policy(org).destroy? %>
+                  <%= button_to organization_path(org),
+                                method: :delete,
+                                class: "btn btn-ghost btn-xs sm:btn-sm gap-1.5 sm:gap-2",
+                                form: { data: { turbo_confirm: "Delete #{org.name} permanently?" } } do %>
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                    Delete
+                  <% end %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </article>
+      <% end %>
+    </div>
+
+  <% elsif @has_organizations %>
+    <div class="flex items-center justify-center py-12 sm:py-16">
+      <div class="w-full max-w-lg rounded-3xl border border-base-200 bg-base-100 px-6 py-10 text-center shadow-lg">
+        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-base-200 text-base-content/60">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </div>
+        <h2 class="mt-4 text-lg font-semibold">No organizations match this search</h2>
+        <p class="mt-2 text-sm text-base-content/60">
+          Try a different name or clear the search to see all of your organizations.
+        </p>
+        <div class="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+          <%= link_to organizations_path, class: "btn btn-ghost" do %>
+            Clear Search
+          <% end %>
+          <button type="button"
+                  class="btn btn-primary"
+                  data-controller="modal"
+                  data-action="click->modal#open"
+                  data-modal-target-value="create-org-modal">
+            New Organization
+          </button>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <%# Empty State — Inline Creation %>
+    <div class="flex items-center justify-center py-8 sm:py-16">
+      <div class="w-full max-w-sm">
+        <div class="rounded-2xl border border-base-200 bg-base-100 p-0 overflow-hidden shadow-sm">
+          <%# Header %>
+          <div class="px-6 pt-6 pb-0">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                <i class="fa-solid fa-building text-sm text-primary" aria-hidden="true"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-semibold">Create an organization</h2>
+                <p class="text-xs text-base-content/45">Credentials, devices, and team in one place.</p>
+              </div>
+            </div>
+          </div>
+
+          <%# Form %>
+          <div class="px-6 py-5">
+            <%= form_with model: (@organization || Organization.new),
+                          data: {
+                            controller: "upgrade-gate",
+                            action: "submit->upgrade-gate#intercept",
+                            upgrade_gate_blocked_value: @organization_create_gate[:blocked],
+                            upgrade_gate_prompt_value: json_escape(@organization_create_gate[:prompt].to_json)
+                          } do |f| %>
+              <% if @organization&.errors&.any? %>
+                <div class="flex items-center gap-2 rounded-lg bg-error/5 border border-error/15 px-3 py-2 text-sm mb-4">
+                  <i class="fa-solid fa-circle-exclamation text-error text-xs shrink-0"></i>
+                  <span class="text-base-content/70 text-xs"><%= @organization.errors.full_messages.to_sentence %></span>
+                </div>
+              <% end %>
+
+              <div class="form-control">
+                <label class="text-xs font-medium text-base-content/50 mb-1.5" for="org-name-field">Organization name</label>
+                <%= f.text_field :name,
+                                 id: "org-name-field",
+                                 class: "input input-bordered w-full input-sm",
+                                 placeholder: "e.g. My Company",
+                                 autofocus: true,
+                                 required: true %>
+              </div>
+
+              <div class="mt-4">
+                <%= f.submit "Create Organization", class: "btn btn-primary btn-sm w-full" %>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Footer hint %>
+          <div class="border-t border-base-200 px-6 py-3">
+            <p class="text-[11px] text-base-content/35 text-center">
+              You can invite members and add credentials after creating.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @has_organizations %>
+    <dialog id="create-org-modal" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box w-full max-w-sm border border-base-200 bg-base-100 p-0 overflow-hidden">
+        <%# Header %>
+        <div class="flex items-center justify-between border-b border-base-200 px-5 py-3.5">
+          <h3 class="text-sm font-semibold">New organization</h3>
+          <button type="button" class="btn btn-sm btn-circle btn-ghost -mr-1" data-controller="modal" data-action="click->modal#close" data-modal-target-value="create-org-modal">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+
+        <%= form_with model: (@organization || Organization.new),
+                      data: {
+                        controller: "upgrade-gate",
+                        action: "submit->upgrade-gate#intercept",
+                        upgrade_gate_blocked_value: @organization_create_gate[:blocked],
+                        upgrade_gate_prompt_value: json_escape(@organization_create_gate[:prompt].to_json),
+                        upgrade_gate_close_nearest_dialog_value: @organization_create_gate[:closeNearestDialog]
+                      } do |f| %>
+          <div class="px-5 py-4">
+            <% if @organization&.errors&.any? %>
+              <div class="flex items-center gap-2 rounded-lg bg-error/5 border border-error/15 px-3 py-2 text-xs mb-4">
+                <i class="fa-solid fa-circle-exclamation text-error text-xs shrink-0"></i>
+                <span class="text-base-content/70"><%= @organization.errors.full_messages.to_sentence %></span>
+              </div>
+            <% end %>
+
+            <div class="form-control">
+              <label class="text-xs font-medium text-base-content/50 mb-1.5">Organization name</label>
+              <%= f.text_field :name,
+                               class: "input input-bordered w-full input-sm",
+                               placeholder: "e.g. My Company",
+                               autofocus: true,
+                               required: true %>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2 border-t border-base-200 px-5 py-4 sm:flex-row-reverse">
+            <%= f.submit "Create", class: "btn btn-primary btn-sm flex-1" %>
+            <button type="button" class="btn btn-ghost btn-sm flex-1" data-controller="modal" data-action="click->modal#close" data-modal-target-value="create-org-modal">Cancel</button>
+          </div>
+        <% end %>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+
+    <% if @organization&.errors&.any? %>
+      <%= javascript_tag nonce: true do %>
+        document.addEventListener("turbo:load", function handler() {
+          var modal = document.getElementById("create-org-modal");
+          if (modal && typeof modal.showModal === "function") { modal.showModal(); }
+          document.removeEventListener("turbo:load", handler);
+        });
+        (function() {
+          var modal = document.getElementById("create-org-modal");
+          if (modal && typeof modal.showModal === "function") { modal.showModal(); }
+        })();
+      <% end %>
+    <% end %>
+  <% end %>
+</section>

@@ -1,0 +1,31 @@
+<%# app/views/pricing/_plan_card_capability.html.erb
+    Locals:
+      tier: String — "free" / "pro" / "team"
+      viewer_context: Pricing::ViewerContext
+    Always renders iconified capability highlights — the 3-4 top features
+    for the tier pulled from Pricing::PlanPayload.capability_highlights.
+    Usage bars were removed because showing low usage on the current plan
+    can inadvertently encourage downgrades.
+%>
+
+<% accent = pricing_tier_accent_classes(tier) %>
+<% is_highlighted = begin
+     current = viewer_context.current_tier
+     highlight_tier = (current.present? && current != "free") ? current : "pro"
+     tier == highlight_tier
+   end %>
+
+<% highlights = Pricing::PlanPayload.capability_highlights(tier) %>
+<ul class="flex flex-col gap-3 list-none" role="list">
+  <% highlights.each do |h| %>
+    <li class="flex items-start gap-3">
+      <span class="flex items-center justify-center w-8 h-8 rounded-lg shrink-0 <%= is_highlighted ? accent[:accent_bg] : 'bg-base-content/[0.06]' %> <%= is_highlighted ? accent[:accent_text] : 'text-base-content/50' %>">
+        <i class="fa-solid <%= h[:icon] %> text-sm" aria-hidden="true"></i>
+      </span>
+      <div class="flex flex-col gap-0.5 min-w-0">
+        <span class="text-sm font-semibold text-base-content/85"><%= h[:label] %></span>
+        <span class="text-xs text-base-content/50"><%= h[:description] %></span>
+      </div>
+    </li>
+  <% end %>
+</ul>

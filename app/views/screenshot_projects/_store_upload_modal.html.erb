@@ -1,0 +1,404 @@
+<%# locals: (project:, apple_apps:, android_apps:, editable_versions:, has_asc_credentials:, has_gp_credentials:, custom_product_pages: []) %>
+<% locale_options = (project.locales.presence || [project.default_locale]).map(&:to_s).map(&:strip).reject(&:blank?).uniq %>
+<dialog id="store_upload_modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box max-w-2xl" data-screenshot-store-upload-target="modal">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center">
+        <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i>
+      </div>
+      <div>
+        <h3 class="text-lg font-bold">Upload to Store</h3>
+        <p class="text-sm text-base-content/60">Upload screenshots directly to App Store Connect or Google Play</p>
+      </div>
+    </div>
+
+    <div class="tabs tabs-boxed mb-4">
+      <% if project.platform != "android" %>
+        <button type="button" class="tab tab-active" data-tab="asc" data-action="click->screenshot-store-upload#switchTab">
+          <i class="fa-brands fa-apple mr-1"></i> App Store Connect
+        </button>
+      <% end %>
+      <% if project.platform != "ios" %>
+        <button type="button" class="tab <%= "tab-active" if project.platform == "android" %>" data-tab="gp" data-action="click->screenshot-store-upload#switchTab">
+          <i class="fa-brands fa-google-play mr-1"></i> Google Play
+        </button>
+      <% end %>
+      <% if project.platform != "android" && has_asc_credentials && custom_product_pages.any? %>
+        <button type="button" class="tab" data-tab="cpp" data-action="click->screenshot-store-upload#switchTab">
+          <i class="fa-solid fa-palette mr-1"></i> Custom Product Page
+        </button>
+      <% end %>
+    </div>
+
+    <% if project.platform != "android" %>
+      <div data-screenshot-store-upload-target="tabContent" data-tab-name="asc">
+        <% if has_asc_credentials %>
+          <div class="space-y-3">
+            <div>
+              <label class="text-sm font-medium">App & Version</label>
+              <% if editable_versions.any? %>
+                <select class="select select-bordered select-sm w-full mt-1"
+                        data-screenshot-store-upload-target="ascVersionSelect">
+                  <% editable_versions.each do |v| %>
+                    <option value="<%= v.version_id %>"><%= v.apple_app&.name || v.apple_app&.bundle_id %> &mdash; v<%= v.version_string %> (<%= v.app_store_state.humanize %>)</option>
+                  <% end %>
+                </select>
+              <% else %>
+                <div class="bg-base-200/30 rounded-lg p-3 mt-1">
+                  <p class="text-sm text-base-content/60">No editable versions found. Create a version in App Store Connect first, then sync your organization.</p>
+                </div>
+              <% end %>
+            </div>
+
+            <div>
+              <label class="text-sm font-medium">Locale</label>
+              <% if locale_options.size > 1 %>
+                <label class="flex items-center gap-2 mt-1 mb-1 cursor-pointer">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                         data-screenshot-store-upload-target="ascAllLocalesCheckbox"
+                         data-action="change->screenshot-store-upload#toggleAllLocales">
+                  <span class="text-sm">Upload all locales (<%= locale_options.size %>)</span>
+                </label>
+              <% end %>
+              <select class="select select-bordered select-sm w-full mt-1"
+                      data-screenshot-store-upload-target="ascLocaleInput">
+                <% locale_options.each do |locale| %>
+                  <option value="<%= locale %>" <%= "selected" if locale == project.default_locale %>><%= locale %></option>
+                <% end %>
+              </select>
+            </div>
+
+            <%# Current Store Screenshots Preview (ASC) %>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium">Current Store Screenshots</label>
+                <button type="button" class="btn btn-ghost btn-xs gap-1"
+                        data-action="click->screenshot-store-upload#fetchCurrentScreenshots"
+                        data-fetch-target="app_store_connect"
+                        data-screenshot-store-upload-target="ascFetchButton">
+                  <i class="fa-solid fa-eye text-xs"></i>
+                  <span>Preview Live</span>
+                </button>
+              </div>
+              <div data-screenshot-store-upload-target="ascScreenshotPreview" class="hidden">
+                <div data-screenshot-store-upload-target="ascScreenshotLoading" class="flex items-center gap-2 py-3">
+                  <span class="loading loading-spinner loading-xs text-primary"></span>
+                  <span class="text-xs text-base-content/60">Fetching current screenshots...</span>
+                </div>
+                <div data-screenshot-store-upload-target="ascScreenshotGrid"
+                     class="hidden bg-base-200/30 rounded-xl p-3 border border-base-200">
+                  <div data-screenshot-store-upload-target="ascScreenshotEmpty"
+                       class="hidden text-center py-4">
+                    <i class="fa-regular fa-image text-base-content/30 text-xl mb-1"></i>
+                    <p class="text-xs text-base-content/50">No screenshots currently in this version/locale</p>
+                  </div>
+                  <div data-screenshot-store-upload-target="ascScreenshotImages"
+                       class="space-y-3">
+                  </div>
+                  <p data-screenshot-store-upload-target="ascScreenshotCount"
+                     class="text-xs text-base-content/50 mt-2 hidden"></p>
+                </div>
+                <div data-screenshot-store-upload-target="ascScreenshotError"
+                     class="hidden bg-error/10 rounded-lg p-2">
+                  <p class="text-xs text-error"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Screenshot Sizes</label>
+              <div class="bg-base-200/30 rounded-xl p-3 space-y-2 border border-base-200">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                         data-screenshot-store-upload-target="ascPresetCheckbox" data-preset="ios_required" checked>
+                  <div>
+                    <span class="text-sm font-medium">Required Sizes</span>
+                    <span class="text-xs text-base-content/50 block">6.9", 6.7", 6.5"</span>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                         data-screenshot-store-upload-target="ascPresetCheckbox" data-preset="ios_optional">
+                  <div>
+                    <span class="text-sm font-medium">iPhone 5.5"</span>
+                    <span class="text-xs text-base-content/50 block">1242x2208</span>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                         data-screenshot-store-upload-target="ascPresetCheckbox" data-preset="ios_ipad">
+                  <div>
+                    <span class="text-sm font-medium">iPad Sizes</span>
+                    <span class="text-xs text-base-content/50 block">12.9", 11"</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-sm font-medium">Replace existing screenshots</span>
+              <input type="checkbox" class="toggle toggle-primary toggle-sm"
+                     data-screenshot-store-upload-target="replaceExisting">
+            </label>
+
+            <div class="flex items-center gap-2">
+              <button class="btn btn-primary btn-sm flex-1 gap-2 min-w-0"
+                      data-action="click->screenshot-store-upload#startUpload"
+                      data-upload-target="app_store_connect"
+                      data-screenshot-store-upload-target="uploadButton">
+                <i class="fa-brands fa-apple shrink-0"></i>
+                <span class="truncate">Upload to App Store Connect</span>
+              </button>
+              <form method="dialog" class="shrink-0">
+                <button class="btn btn-ghost btn-sm px-4">Cancel</button>
+              </form>
+            </div>
+          </div>
+        <% else %>
+          <div class="text-center py-8">
+            <div class="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center mx-auto mb-3">
+              <i class="fa-solid fa-key text-warning"></i>
+            </div>
+            <h4 class="font-semibold mb-1">No App Store Connect Credentials</h4>
+            <p class="text-sm text-base-content/60 mb-3">Add your API key in organization settings to enable uploads.</p>
+            <%= link_to "Go to Settings", organization_app_store_connect_credentials_path(project.organization), class: "btn btn-sm btn-outline" %>
+            <form method="dialog" class="mt-4">
+              <button class="btn btn-ghost btn-sm">Cancel</button>
+            </form>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if project.platform != "ios" %>
+      <div data-screenshot-store-upload-target="tabContent" data-tab-name="gp" class="<%= "hidden" unless project.platform == "android" %>">
+        <% if has_gp_credentials %>
+          <div class="space-y-3">
+            <div>
+              <label class="text-sm font-medium">App</label>
+              <% if android_apps.any? %>
+                <select class="select select-bordered select-sm w-full mt-1"
+                        data-screenshot-store-upload-target="gpAppSelect">
+                  <% android_apps.each do |app| %>
+                    <option value="<%= app.package_name %>"><%= app.name || app.package_name %></option>
+                  <% end %>
+                </select>
+              <% else %>
+                <input type="text" class="input input-bordered input-sm w-full mt-1"
+                       placeholder="com.example.app"
+                       data-screenshot-store-upload-target="gpAppSelect">
+              <% end %>
+            </div>
+
+            <div>
+              <label class="text-sm font-medium">Language</label>
+              <% if locale_options.size > 1 %>
+                <label class="flex items-center gap-2 mt-1 mb-1 cursor-pointer">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                         data-screenshot-store-upload-target="gpAllLocalesCheckbox"
+                         data-action="change->screenshot-store-upload#toggleAllLocales">
+                  <span class="text-sm">Upload all locales (<%= locale_options.size %>)</span>
+                </label>
+              <% end %>
+              <select class="select select-bordered select-sm w-full mt-1"
+                      data-screenshot-store-upload-target="gpLanguageInput">
+                <% locale_options.each do |locale| %>
+                  <option value="<%= locale %>" <%= "selected" if locale == project.default_locale %>><%= locale %></option>
+                <% end %>
+              </select>
+            </div>
+
+            <%# Current Store Screenshots Preview (GP) %>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium">Current Store Screenshots</label>
+                <button type="button" class="btn btn-ghost btn-xs gap-1"
+                        data-action="click->screenshot-store-upload#fetchCurrentScreenshots"
+                        data-fetch-target="google_play"
+                        data-screenshot-store-upload-target="gpFetchButton">
+                  <i class="fa-solid fa-eye text-xs"></i>
+                  <span>Preview Live</span>
+                </button>
+              </div>
+              <div data-screenshot-store-upload-target="gpScreenshotPreview" class="hidden">
+                <div data-screenshot-store-upload-target="gpScreenshotLoading" class="flex items-center gap-2 py-3">
+                  <span class="loading loading-spinner loading-xs text-primary"></span>
+                  <span class="text-xs text-base-content/60">Fetching current screenshots...</span>
+                </div>
+                <div data-screenshot-store-upload-target="gpScreenshotGrid"
+                     class="hidden bg-base-200/30 rounded-xl p-3 border border-base-200">
+                  <div data-screenshot-store-upload-target="gpScreenshotEmpty"
+                       class="hidden text-center py-4">
+                    <i class="fa-regular fa-image text-base-content/30 text-xl mb-1"></i>
+                    <p class="text-xs text-base-content/50">No screenshots currently in this listing/language</p>
+                  </div>
+                  <div data-screenshot-store-upload-target="gpScreenshotImages"
+                       class="space-y-3">
+                  </div>
+                  <p data-screenshot-store-upload-target="gpScreenshotCount"
+                     class="text-xs text-base-content/50 mt-2 hidden"></p>
+                </div>
+                <div data-screenshot-store-upload-target="gpScreenshotError"
+                     class="hidden bg-error/10 rounded-lg p-2">
+                  <p class="text-xs text-error"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Screenshot Sizes</label>
+              <div class="bg-base-200/30 rounded-xl p-3 space-y-2 border border-base-200">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                         data-screenshot-store-upload-target="gpPresetCheckbox" data-preset="android_phone" checked>
+                  <div>
+                    <span class="text-sm font-medium">Phone</span>
+                    <span class="text-xs text-base-content/50 block">1080x1920</span>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                         data-screenshot-store-upload-target="gpPresetCheckbox" data-preset="android_tablet_7">
+                  <div>
+                    <span class="text-sm font-medium">7" Tablet</span>
+                    <span class="text-xs text-base-content/50 block">1200x1920</span>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                         data-screenshot-store-upload-target="gpPresetCheckbox" data-preset="android_tablet_10">
+                  <div>
+                    <span class="text-sm font-medium">10" Tablet</span>
+                    <span class="text-xs text-base-content/50 block">1600x2560</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-sm font-medium">Replace existing screenshots</span>
+              <input type="checkbox" class="toggle toggle-primary toggle-sm"
+                     data-screenshot-store-upload-target="replaceExisting">
+            </label>
+
+            <div class="flex items-center gap-2">
+              <button class="btn btn-primary btn-sm flex-1 gap-2 min-w-0"
+                      data-action="click->screenshot-store-upload#startUpload"
+                      data-upload-target="google_play"
+                      data-screenshot-store-upload-target="uploadButton">
+                <i class="fa-brands fa-google-play shrink-0"></i>
+                <span class="truncate">Upload to Google Play</span>
+              </button>
+              <form method="dialog" class="shrink-0">
+                <button class="btn btn-ghost btn-sm px-4">Cancel</button>
+              </form>
+            </div>
+          </div>
+        <% else %>
+          <div class="text-center py-8">
+            <div class="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center mx-auto mb-3">
+              <i class="fa-solid fa-key text-warning"></i>
+            </div>
+            <h4 class="font-semibold mb-1">No Google Play Credentials</h4>
+            <p class="text-sm text-base-content/60 mb-3">Add your service account in organization settings to enable uploads.</p>
+            <%= link_to "Go to Settings", organization_google_play_credentials_path(project.organization), class: "btn btn-sm btn-outline" %>
+            <form method="dialog" class="mt-4">
+              <button class="btn btn-ghost btn-sm">Cancel</button>
+            </form>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if project.platform != "android" && has_asc_credentials && custom_product_pages.any? %>
+      <div data-screenshot-store-upload-target="tabContent" data-tab-name="cpp" class="hidden">
+        <div class="space-y-3">
+          <div>
+            <label class="text-sm font-medium">Custom Product Page</label>
+            <select class="select select-bordered select-sm w-full mt-1"
+                    data-screenshot-store-upload-target="cppSelect"
+                    data-action="change->screenshot-store-upload#onCppSelect">
+              <% custom_product_pages.each do |cpp| %>
+                <% locs = cpp.custom_product_page_versions.flat_map { |v| v.custom_product_page_localizations.map { |l| { id: l.id, locale: l.locale, remote_id: l.remote_id } } }.uniq { |l| l[:locale] } %>
+                <option value="<%= cpp.id %>"
+                        data-localizations="<%= json_escape(locs.to_json) %>">
+                  <%= cpp.name %> &mdash; <%= cpp.apple_app&.name || cpp.apple_app&.bundle_id %>
+                </option>
+              <% end %>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-sm font-medium">Locale</label>
+            <select class="select select-bordered select-sm w-full mt-1"
+                    data-screenshot-store-upload-target="cppLocaleSelect">
+              <%# Populated dynamically via onCppSelect %>
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Screenshot Sizes</label>
+            <div class="bg-base-200/30 rounded-xl p-3 space-y-2 border border-base-200">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                       data-screenshot-store-upload-target="cppPresetCheckbox" data-preset="ios_required" checked>
+                <div>
+                  <span class="text-sm font-medium">Required Sizes</span>
+                  <span class="text-xs text-base-content/50 block">6.9", 6.7", 6.5"</span>
+                </div>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                       data-screenshot-store-upload-target="cppPresetCheckbox" data-preset="ios_optional">
+                <div>
+                  <span class="text-sm font-medium">iPhone 5.5"</span>
+                  <span class="text-xs text-base-content/50 block">1242x2208</span>
+                </div>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                       data-screenshot-store-upload-target="cppPresetCheckbox" data-preset="ios_ipad">
+                <div>
+                  <span class="text-sm font-medium">iPad Sizes</span>
+                  <span class="text-xs text-base-content/50 block">12.9", 11"</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-sm font-medium">Replace existing screenshots</span>
+            <input type="checkbox" class="toggle toggle-primary toggle-sm"
+                   data-screenshot-store-upload-target="cppReplaceExisting">
+          </label>
+
+          <div class="flex items-center gap-2">
+            <button class="btn btn-primary btn-sm flex-1 gap-2 min-w-0"
+                    data-action="click->screenshot-store-upload#startUpload"
+                    data-upload-target="custom_product_page"
+                    data-screenshot-store-upload-target="uploadButton">
+              <i class="fa-solid fa-palette shrink-0"></i>
+              <span class="truncate">Upload to Custom Product Page</span>
+            </button>
+            <form method="dialog" class="shrink-0">
+              <button class="btn btn-ghost btn-sm px-4">Cancel</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="hidden mt-4" data-screenshot-store-upload-target="progressContainer">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="loading loading-spinner loading-sm text-primary" data-screenshot-store-upload-target="progressSpinner"></span>
+        <span class="hidden text-success" data-screenshot-store-upload-target="successIcon"><i class="fa-solid fa-circle-check"></i></span>
+        <span class="hidden text-error" data-screenshot-store-upload-target="errorIcon"><i class="fa-solid fa-circle-xmark"></i></span>
+        <span class="text-sm font-medium" data-screenshot-store-upload-target="progressText">Preparing...</span>
+      </div>
+      <progress class="progress progress-primary w-full" value="0" max="100" data-screenshot-store-upload-target="progressBar"></progress>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

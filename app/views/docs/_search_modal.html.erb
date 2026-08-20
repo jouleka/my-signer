@@ -1,0 +1,63 @@
+<%# Documentation search modal %>
+<div data-controller="docs-search" data-docs-search-pages-value="<%= all_docs_pages_for_search.to_json %>">
+  <!-- Search trigger button -->
+  <button type="button" 
+          class="btn btn-ghost btn-sm gap-2 text-base-content/70 hover:text-base-content"
+          data-action="click->docs-search#open">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="hidden sm:inline">Search docs...</span>
+    <kbd class="kbd kbd-xs hidden sm:inline-flex">⌘K</kbd>
+  </button>
+
+  <!-- Search overlay/modal -->
+  <div data-docs-search-target="overlay" 
+       data-action="click->docs-search#clickOverlay"
+       class="hidden fixed inset-0 z-[100] bg-base-300/80 backdrop-blur-sm items-start justify-center pt-20 sm:pt-32">
+    <div class="w-full max-w-xl mx-4 bg-base-100 rounded-xl shadow-2xl border border-base-200 overflow-hidden">
+      <!-- Search input -->
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-base-200">
+        <i class="fa-solid fa-magnifying-glass text-base-content/50"></i>
+        <input type="text" 
+               placeholder="Search documentation..."
+               class="flex-1 bg-transparent outline-none text-lg"
+               data-docs-search-target="input"
+               data-action="input->docs-search#search keydown->docs-search#navigate"
+               autocomplete="off"
+               spellcheck="false">
+        <button type="button" 
+                class="btn btn-ghost btn-xs btn-square"
+                data-action="click->docs-search#close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <!-- Search results -->
+      <div data-docs-search-target="results" 
+           class="max-h-80 overflow-y-auto divide-y divide-base-200">
+        <div class="p-6 text-center text-base-content/50">
+          <p class="text-sm">Start typing to search documentation...</p>
+          <p class="text-xs mt-2 opacity-60">Press <kbd class="kbd kbd-xs">↵</kbd> to select, <kbd class="kbd kbd-xs">esc</kbd> to close</p>
+        </div>
+      </div>
+
+      <!-- Footer hints (desktop only — keyboard shortcuts are irrelevant on touch) -->
+      <div class="hidden sm:flex px-4 py-2 bg-base-200/50 border-t border-base-200 items-center justify-between text-xs text-base-content/50">
+        <div class="flex items-center gap-3">
+          <span class="flex items-center gap-1">
+            <kbd class="kbd kbd-xs">↑</kbd>
+            <kbd class="kbd kbd-xs">↓</kbd>
+            navigate
+          </span>
+          <span class="flex items-center gap-1">
+            <kbd class="kbd kbd-xs">↵</kbd>
+            select
+          </span>
+        </div>
+        <span class="flex items-center gap-1">
+          <kbd class="kbd kbd-xs">esc</kbd>
+          close
+        </span>
+      </div>
+    </div>
+  </div>
+</div>

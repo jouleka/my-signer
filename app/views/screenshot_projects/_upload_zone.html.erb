@@ -1,0 +1,27 @@
+<%# locals: (organization:, project:) %>
+<div data-controller="screenshot-upload"
+     data-screenshot-upload-url-value="<%= organization_screenshot_project_screenshot_scenes_path(organization, project) %>">
+  <%= form_with url: organization_screenshot_project_screenshot_scenes_path(organization, project),
+                method: :post,
+                multipart: true,
+                local: true,
+                data: { screenshot_upload_target: "form" } do |f| %>
+    <div class="flex-shrink-0 w-20 sm:w-24">
+      <div class="relative rounded-2xl overflow-hidden border-2 border-dashed border-base-300 hover:border-primary/50 transition-all cursor-pointer group"
+           data-screenshot-upload-target="dropZone"
+           data-action="dragover->screenshot-upload#dragOver dragleave->screenshot-upload#dragLeave drop->screenshot-upload#drop click->screenshot-upload#browse">
+        <div class="aspect-[9/16] flex flex-col items-center justify-center gap-1 bg-base-200/60 group-hover:bg-primary/10 transition-colors">
+          <i class="fa-solid fa-plus text-base-content/30 group-hover:text-primary transition-colors"></i>
+          <span class="text-[10px] text-base-content/70 group-hover:text-primary transition-colors">Add</span>
+        </div>
+      </div>
+    </div>
+    <input type="file"
+           name="screenshot_scene[files][]"
+           multiple
+           accept="image/png,image/jpeg"
+           class="hidden"
+           data-screenshot-upload-target="fileInput"
+           data-action="change->screenshot-upload#filesSelected">
+  <% end %>
+</div>

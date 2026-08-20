@@ -1,0 +1,203 @@
+<%# № 04 — Screenshot Studio close-up.
+    Every claim cross-checked against:
+      ScreenshotProject::DEVICE_FRAMES         (iPhone 16 Pro Max → 1320×2868, plus iPad Pro / Pixel 9 / generic Android tablet)
+      ScreenshotProject::APP_STORE_LOCALES     (44 locales)
+      ScreenshotProject::GOOGLE_FONTS          (~131 caption fonts; default = "Playfair Display")
+      PERSPECTIVE_PRESETS                      (12 entries)
+      MESH_PRESETS                             (12 entries — sunset/ocean/aurora/lavender/coral/forest/candy/midnight/neon/peach/arctic/ember)
+      sticker_library/*.svg                    (149 SVG stickers; emojis also supported)
+      screenshot_editor_controller.js          (layout_mode === "freeform" supports freeform tilt)
+      screenshot_scene.rb#locale_variants      (per-locale captions saved per scene — manually entered, not auto-translated)
+      Pricing::Entitlements                    (store_listing_push_enabled for Pro+) %>
+<%
+  # Six representative templates (a subset of MESH_PRESETS — 12 in code).
+  # Swatch gradients are sampled from the actual blob colors in
+  # app/javascript/lib/screenshot/mesh_gradient_renderer.js so the rail
+  # previews match what users see on the canvas.
+  studio_templates = [
+    { name: "Midnight", gradient: "linear-gradient(180deg, #050510, #2D2D7F)" },
+    { name: "Aurora",   gradient: "linear-gradient(180deg, #845EC2, #00C9A7)" },
+    { name: "Sunset",   gradient: "linear-gradient(180deg, #FF6B35, #D4145A)" },
+    { name: "Ocean",    gradient: "linear-gradient(180deg, #00B4D8, #023E8A)" },
+    { name: "Forest",   gradient: "linear-gradient(180deg, #52B788, #1B4332)" },
+    { name: "Lavender", gradient: "linear-gradient(180deg, #D4A5FF, #6C3483)" }
+  ]
+%>
+
+<section id="studio" class="relative">
+  <div class="mx-auto max-w-[1240px] px-4 sm:px-6 py-16 sm:py-24">
+
+    <%# Editorial header rail. %>
+    <div class="flex items-end justify-between gap-8 flex-wrap">
+      <div class="max-w-2xl">
+        <div class="flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-mute mb-4 font-mono">
+          <span class="secnum text-base normal-case tracking-normal">№ 04</span>
+          <span class="editorial-rule w-12"></span>
+          <span>Screenshot Studio · free with every account</span>
+        </div>
+        <h2 class="font-display leading-[1] tracking-tight"
+            style="font-size: clamp(40px, 5vw, 76px);">
+          App store screenshots,
+          <span class="italic" style="color: var(--color-primary);">designed in minutes.</span>
+        </h2>
+      </div>
+      <p class="text-mute text-sm max-w-sm">
+        A canvas-based editor that knows about iPhone, iPad, Pixel and Android tablets &mdash;
+        kept current per iOS / Play release. Twelve perspective presets, freeform tilt,
+        150+ stickers, 12 templates.
+      </p>
+    </div>
+
+    <%# Studio canvas mock. %>
+    <div class="mt-12 rounded-[var(--radius-box)] overflow-hidden border border-soft"
+         style="background: var(--color-base-200);">
+
+      <%# Top toolbar. %>
+      <div class="flex items-center gap-3 px-5 py-3 border-b border-soft text-[11px] flex-wrap">
+        <span class="font-mono text-mute">studio /</span>
+        <span class="font-medium">finchly · iPhone 6.9"</span>
+        <span class="pill border border-soft">en-US</span>
+        <span class="pill border border-soft text-faint">de · es-MX · ja · fr · ko +38</span>
+        <span class="ml-auto flex items-center gap-2">
+          <span class="text-faint font-mono">1320 × 2868</span>
+          <button type="button" class="btn btn-xs">Export</button>
+          <button type="button" class="btn btn-xs"
+                  style="background: var(--color-primary); color: var(--color-primary-content); border-color: var(--color-primary);">
+            Push to stores
+          </button>
+        </span>
+      </div>
+
+      <div class="grid grid-cols-12">
+
+        <%# Left rail: Templates. Six shown, six more behind "+6". %>
+        <div class="col-span-12 md:col-span-2 p-3 border-r border-soft space-y-1.5 text-[11px] hidden md:block">
+          <div class="text-faint uppercase tracking-[0.16em] text-[9px] px-2 py-1">Templates</div>
+          <% studio_templates.each_with_index do |tpl, idx| %>
+            <% if idx == 0 %>
+              <div class="rounded p-2 flex items-center gap-2"
+                   style="background: color-mix(in oklab, var(--color-primary) 14%, transparent); color: var(--color-primary);">
+                <span class="w-3 h-4 rounded-sm" style="background: <%= tpl[:gradient] %>;"></span>
+                <%= tpl[:name] %>
+              </div>
+            <% else %>
+              <div class="rounded p-2 flex items-center gap-2 text-mute">
+                <span class="w-3 h-4 rounded-sm" style="background: <%= tpl[:gradient] %>;"></span>
+                <%= tpl[:name] %>
+              </div>
+            <% end %>
+          <% end %>
+          <div class="text-faint text-[10px] pl-2 pt-1">+6 more</div>
+        </div>
+
+        <%# Center canvas: 3 phone mocks. The diagonal repeating gradient
+            evokes a designer's transparent canvas grid. %>
+        <div class="col-span-12 md:col-span-7 p-3 sm:p-6 border-r border-soft flex items-center justify-center"
+             style="background: repeating-linear-gradient(45deg, color-mix(in oklab, var(--color-base-content) 3%, transparent) 0 1px, transparent 1px 16px);">
+          <div class="grid grid-cols-3 gap-2 sm:gap-4 w-full max-w-[640px]">
+            <%# Phone 1: Midnight, no tilt %>
+            <div class="aspect-[9/16] rounded-xl overflow-hidden relative shadow-2xl"
+                 style="background: linear-gradient(160deg, #1a1a2e 0%, #16213e 30%, #0f3460 60%, #533483 100%); transform: perspective(900px) rotateY(8deg) rotateX(2deg);">
+              <div class="absolute top-0 inset-x-0 px-1 sm:px-4 pt-3 sm:pt-7 text-center">
+                <div class="font-display text-[11px] sm:text-2xl leading-tight" style="color:#fbbf24;">Celebrate every launch</div>
+                <div class="text-[10px] mt-1" style="color:#c084fc;">Your app deserves a party</div>
+              </div>
+              <div class="absolute top-3 left-3 text-base">🎉</div>
+              <div class="absolute top-12 right-3 text-xs">✨</div>
+              <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-[55%] aspect-[9/19] rounded-md border border-white/15 bg-white/5"></div>
+            </div>
+
+            <%# Phone 2: Lavender, flat %>
+            <div class="aspect-[9/16] rounded-xl overflow-hidden relative shadow-2xl"
+                 style="background: linear-gradient(135deg, #667eea, #764ba2);">
+              <div class="absolute top-0 inset-x-0 px-1 sm:px-4 pt-3 sm:pt-7 text-center text-white">
+                <div class="font-display text-[11px] sm:text-2xl leading-tight">Smart, fast,<br>yours.</div>
+                <div class="text-[10px] mt-1 opacity-80">Privacy-first by design</div>
+              </div>
+              <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-[55%] aspect-[9/19] rounded-md border border-white/20 bg-white/10"></div>
+            </div>
+
+            <%# Phone 3: Sunset, tilted right %>
+            <div class="aspect-[9/16] rounded-xl overflow-hidden relative shadow-2xl"
+                 style="background: linear-gradient(135deg, #f97316, #ec4899); transform: perspective(900px) rotateY(-8deg) rotateX(2deg);">
+              <div class="absolute top-0 inset-x-0 px-1 sm:px-4 pt-3 sm:pt-7 text-center text-white">
+                <div class="font-display text-[11px] sm:text-2xl leading-tight">Now in 44 locales.</div>
+                <div class="text-[10px] mt-1 opacity-80">Captioned per locale</div>
+              </div>
+              <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-[55%] aspect-[9/19] rounded-md border border-white/20 bg-white/10"></div>
+            </div>
+          </div>
+        </div>
+
+        <%# Right inspector. %>
+        <div class="col-span-12 md:col-span-3 p-4 text-[11px] space-y-3 hidden md:block">
+          <div>
+            <div class="text-faint uppercase tracking-[0.14em] text-[9px] mb-1.5">Caption</div>
+            <div class="rounded-md px-2.5 py-2 border border-soft" style="background: var(--color-base-100);">
+              Celebrate every launch
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <div class="text-faint uppercase tracking-[0.14em] text-[9px] mb-1.5">Title font</div>
+              <div class="rounded-md px-2 py-1.5 border border-soft text-xs truncate"
+                   style="background: var(--color-base-100);">
+                Playfair Display
+              </div>
+            </div>
+            <div>
+              <div class="text-faint uppercase tracking-[0.14em] text-[9px] mb-1.5">Weight</div>
+              <div class="rounded-md px-2 py-1.5 border border-soft text-xs"
+                   style="background: var(--color-base-100);">
+                Regular · 400
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="text-faint uppercase tracking-[0.14em] text-[9px] mb-1.5">
+              Perspective <span class="text-faint normal-case">(12 presets)</span>
+            </div>
+            <div class="grid grid-cols-6 gap-1">
+              <%# Six perspective thumbs: subtle visual previews of rotateX/Y. %>
+              <div class="aspect-square rounded border border-soft"
+                   style="background: var(--color-base-100); transform: perspective(140px) rotateY(20deg);"></div>
+              <div class="aspect-square rounded border-2"
+                   style="border-color: var(--color-primary); background: var(--color-base-100);"></div>
+              <div class="aspect-square rounded border border-soft"
+                   style="background: var(--color-base-100); transform: perspective(140px) rotateY(-20deg);"></div>
+              <div class="aspect-square rounded border border-soft"
+                   style="background: var(--color-base-100); transform: perspective(140px) rotateX(20deg);"></div>
+              <div class="aspect-square rounded border border-soft"
+                   style="background: var(--color-base-100); transform: perspective(140px) rotateX(-20deg);"></div>
+              <div class="aspect-square rounded border border-dashed border-soft text-faint flex items-center justify-center text-[9px]">+6</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="text-faint uppercase tracking-[0.14em] text-[9px] mb-1.5">Stickers</div>
+            <div class="flex gap-1 flex-wrap text-base">
+              <span aria-hidden="true">🎉</span>
+              <span aria-hidden="true">✨</span>
+              <span aria-hidden="true">⭐️</span>
+              <span aria-hidden="true">✅</span>
+              <span aria-hidden="true">🔥</span>
+              <span aria-hidden="true">🛡</span>
+              <span aria-hidden="true">➡️</span>
+              <span aria-hidden="true">🏆</span>
+              <span aria-hidden="true">💸</span>
+              <span class="text-[9px] text-faint self-center">+140</span>
+            </div>
+          </div>
+
+          <div class="rounded-md p-2 text-[10px]"
+               style="background: color-mix(in oklab, var(--color-base-content) 6%, transparent);">
+            <i class="fa-solid fa-check text-success" aria-hidden="true"></i>
+            Per-locale captions saved per scene
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

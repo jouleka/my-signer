@@ -1,0 +1,1017 @@
+/*
+ * This is a manifest file that'll be compiled into application.css.
+ *
+ * With Propshaft, assets are served efficiently without preprocessing steps. You can still include
+ * application-wide styles in this file, but keep in mind that CSS precedence will follow the standard
+ * cascading order, meaning styles declared later in the document or manifest will override earlier ones,
+ * depending on specificity.
+ *
+ * Consider organizing styles into separate files for maintainability.
+ */
+
+/* Smooth scrolling for anchor navigation */
+html {
+  scroll-behavior: smooth;
+}
+
+.command-item {
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.command-item-active {
+  background-color: color-mix(in srgb, var(--b2) 70%, transparent);
+}
+
+.command-icon {
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+}
+
+.command-icon-active {
+  background-color: color-mix(in srgb, var(--p) 12%, transparent);
+}
+
+/* Documentation Syntax Highlighting (Rouge - base16-github-inspired) */
+.doc-content .code-block {
+  position: relative;
+  background-color: var(--b2, #f6f8fa);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.doc-content .code-block .code-copy-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  z-index: 10;
+}
+
+.doc-content .code-block:hover .code-copy-btn {
+  opacity: 1;
+}
+
+/* Always show copy button on touch devices (no hover capability) */
+@media (hover: none) {
+  .doc-content .code-block .code-copy-btn {
+    opacity: 0.7;
+  }
+}
+
+.doc-content .highlight pre {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.doc-content .highlight code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Rouge Token Colors */
+.highlight .c, .highlight .c1, .highlight .cm { color: #6a737d; font-style: italic; } /* Comments */
+.highlight .k, .highlight .kd, .highlight .kn, .highlight .kp, .highlight .kr { color: #d73a49; font-weight: 600; } /* Keywords */
+.highlight .s, .highlight .s1, .highlight .s2, .highlight .sb, .highlight .sc, .highlight .sd, .highlight .sh { color: #032f62; } /* Strings */
+.highlight .n, .highlight .nb, .highlight .nc, .highlight .no, .highlight .nd, .highlight .ni, .highlight .ne, .highlight .nf, .highlight .nl, .highlight .nn, .highlight .nt, .highlight .nv { color: #6f42c1; } /* Names */
+.highlight .m, .highlight .mi, .highlight .mf, .highlight .mh, .highlight .mo { color: #005cc5; } /* Numbers */
+.highlight .o, .highlight .ow { color: #d73a49; } /* Operators */
+.highlight .p { color: #24292e; } /* Punctuation */
+.highlight .cp { color: #d73a49; } /* Preprocessor */
+.highlight .gi { color: #22863a; background-color: #f0fff4; } /* Inserted */
+.highlight .gd { color: #b31d28; background-color: #ffeef0; } /* Deleted */
+.highlight .gh { color: #005cc5; font-weight: 600; } /* Heading */
+.highlight .err { color: #b31d28; } /* Error */
+
+/* Dark theme overrides */
+[data-theme*="dark"] .doc-content .code-block {
+  background-color: #161b22;
+}
+
+[data-theme*="dark"] .highlight .c, [data-theme*="dark"] .highlight .c1, [data-theme*="dark"] .highlight .cm { color: #8b949e; }
+[data-theme*="dark"] .highlight .k, [data-theme*="dark"] .highlight .kd, [data-theme*="dark"] .highlight .kn, [data-theme*="dark"] .highlight .kp, [data-theme*="dark"] .highlight .kr { color: #ff7b72; }
+[data-theme*="dark"] .highlight .s, [data-theme*="dark"] .highlight .s1, [data-theme*="dark"] .highlight .s2, [data-theme*="dark"] .highlight .sb, [data-theme*="dark"] .highlight .sc, [data-theme*="dark"] .highlight .sd, [data-theme*="dark"] .highlight .sh { color: #a5d6ff; }
+[data-theme*="dark"] .highlight .n, [data-theme*="dark"] .highlight .nb, [data-theme*="dark"] .highlight .nc, [data-theme*="dark"] .highlight .no, [data-theme*="dark"] .highlight .nd, [data-theme*="dark"] .highlight .ni, [data-theme*="dark"] .highlight .ne, [data-theme*="dark"] .highlight .nf, [data-theme*="dark"] .highlight .nl, [data-theme*="dark"] .highlight .nn, [data-theme*="dark"] .highlight .nt, [data-theme*="dark"] .highlight .nv { color: #d2a8ff; }
+[data-theme*="dark"] .highlight .m, [data-theme*="dark"] .highlight .mi, [data-theme*="dark"] .highlight .mf, [data-theme*="dark"] .highlight .mh, [data-theme*="dark"] .highlight .mo { color: #79c0ff; }
+[data-theme*="dark"] .highlight .o, [data-theme*="dark"] .highlight .ow { color: #ff7b72; }
+[data-theme*="dark"] .highlight .p { color: #c9d1d9; }
+[data-theme*="dark"] .highlight .cp { color: #ff7b72; }
+[data-theme*="dark"] .highlight .gi { color: #aff5b4; background-color: rgba(46, 160, 67, 0.15); }
+[data-theme*="dark"] .highlight .gd { color: #ffdcd7; background-color: rgba(248, 81, 73, 0.15); }
+[data-theme*="dark"] .highlight .gh { color: #79c0ff; }
+[data-theme*="dark"] .highlight .err { color: #ffa198; }
+
+/* Prevent inline code from wrapping in tables */
+.doc-content table code {
+  white-space: nowrap;
+}
+
+/* Documentation prose styling */
+.doc-content h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--b3, #e1e4e8);
+}
+
+.doc-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.doc-content h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Documentation callout/alert styling */
+.doc-content .alert {
+  display: flex;
+  align-items: flex-start;
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.doc-content .alert > i {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.doc-content .alert > span {
+  flex: 1;
+  line-height: 1.5;
+}
+
+/* Mobile: prevent mockup-code and pre blocks from causing horizontal overflow */
+.mockup-code {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.mockup-code pre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Fix collapse-arrow vertical alignment when using reduced height */
+.collapse-arrow > summary.collapse-title::after {
+  top: 50% !important;
+}
+
+/* Ensure mockup-browser doesn't overflow on small screens */
+.mockup-browser {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Hide scrollbar for horizontal scroll containers */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * GLOBAL OVERRIDE — readability boost for small-text usage of /30 and /40.
+ *
+ * daisyUI's `.text-base-content/30` resolves to 30% opacity, which fails
+ * APCA contrast in dark mode against the muted base-100 background even
+ * for 12-14px body text. The override raises 30% -> 58% and 40% -> 66%
+ * so small captions, hint text, and decorative dividers stay legible.
+ *
+ * KNOWN TRADE-OFF: this is a *global* selector. Any decorative use of
+ * /30 or /40 (e.g. faint icons sized text-2xl+, separator em-dashes,
+ * dot-pip indicators) gets the same boost, which can blunt the visual
+ * hierarchy intended by the designer. If you spot a decorative element
+ * that now reads "too dark" relative to surrounding chrome, reach for
+ * an explicit per-element opacity (e.g., `style="opacity: 0.30"`) or
+ * a more specific custom class -- DO NOT remove this rule without
+ * auditing the ~200 small-text callsites that depend on it.
+ *
+ * Scoped via :where() so the wrapped class contributes 0 specificity
+ * (whole rule weight collapses to 0,0,0). Inline `style=""` always
+ * wins; another `:where()` rule with `!important` would tie. The
+ * `!important` here is what actually beats daisyUI's own utility
+ * declaration -- without it the override wouldn't apply at all,
+ * since :where() drops the weight to zero.
+ */
+:where(.text-base-content\/30) {
+  color: oklch(var(--bc) / 0.58) !important;
+}
+
+:where(.text-base-content\/40) {
+  color: oklch(var(--bc) / 0.66) !important;
+}
+
+/* Onboarding wizard animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out both;
+}
+
+/* Keyframe used by the auto-dismiss countdown progress bar inside notification banners
+   on the releases tab. The bar element itself is built with Tailwind utilities; only
+   the keyframe lives here because Tailwind v4 cannot define @keyframes from utilities. */
+@keyframes sn-countdown {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+/* Mobile auth forms: reduce redundant helper copy and tighten spacing. */
+@media (max-width: 639px) {
+  .auth-shell .validator-hint,
+  .auth-shell .label-text-alt {
+    display: none !important;
+  }
+
+  .auth-shell .form-control {
+    margin-top: 0.125rem;
+  }
+
+  .auth-shell .divider {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+}
+
+/* ====================================================================
+   Editorial auth shell — sign up / sign in / forgot / reset / confirm /
+   unlock. Scoped to .auth-shell so they never bleed into the rest of
+   the app. Reusable utility-level pieces (.alink, .kbd-mono, .meter,
+   .dash) live in tailwind/application.css alongside their siblings
+   (.font-display, .text-mute, .secnum, .pill, etc.); only auth-only
+   components and daisyUI overrides live here.
+   ==================================================================== */
+
+/* Right rail — radial primary + accent on base-200 paper. */
+.auth-shell .editorial-right {
+  background:
+    radial-gradient(circle at 70% 20%, color-mix(in oklab, var(--color-primary) 22%, transparent), transparent 55%),
+    radial-gradient(circle at 30% 80%, color-mix(in oklab, var(--color-accent) 16%, transparent), transparent 55%),
+    var(--color-base-200);
+  border-left: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+
+/* Token-styled field. Stronger specificity (label.input.field) so we
+   override daisyUI's .input height / padding / border / width without
+   !important. We coexist with .input.input-bordered so the
+   form_validator stimulus controller's findInputWrapper() still works.
+
+   Layout: the LABEL is a positioned block container, the icon is
+   absolutely positioned, and the INPUT is a normal block element
+   filling 100% width with left-padding to clear the icon. Avoiding
+   flex layout for the icon+input pair sidesteps the long-standing
+   issue where `<input>`'s HTML default `size="20"` attribute is
+   treated by some browsers (Safari, certain Chromium-on-macOS
+   versions) as a min-content floor that flex-grow can't override --
+   long values then visibly clipped at ~20 characters even though
+   the surrounding field had room. As a normal block, the input
+   simply takes 100% of the parent's content-box width. */
+.auth-shell label.input.field {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 2.75rem; min-height: 2.75rem;
+  padding: 0;
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 18%, transparent);
+  background: var(--color-base-100);
+  border-radius: var(--radius-field);
+  outline: none;
+  box-shadow: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.auth-shell label.input.field:focus-within {
+  border-color: color-mix(in oklab, var(--color-primary) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 18%, transparent);
+}
+.auth-shell label.input.field.input-error {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-error) 18%, transparent);
+}
+.auth-shell label.input.field input {
+  display: block;
+  background: transparent;
+  border: 0;
+  margin: 0;
+  outline: none;
+  width: 100%;
+  height: 100%;
+  /* left padding leaves room for the absolute-positioned icon; right
+     padding matches the visual rhythm of the original flex version. */
+  padding: 0 0.875rem 0 2.5rem;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--color-base-content);
+  box-sizing: border-box;
+}
+.auth-shell label.input.field input::placeholder {
+  color: color-mix(in oklab, var(--color-base-content) 38%, transparent);
+}
+/* Password fields swap to JetBrains Mono so the bullet/dot glyphs (both
+   the "••••••••••••" placeholder and the browser's masked-character
+   render) sit at the line's visual center. The system sans-serif positions
+   • (U+2022) at cap-height, which renders the dots in the upper third of
+   the field and looks asymmetric against neighboring sans-serif fields. */
+.auth-shell label.input.field input[type="password"] {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.auth-shell label.input.field .lead {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: color-mix(in oklab, var(--color-base-content) 38%, transparent);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+/* Editorial label row — label left, alt-link / hint-text right. */
+.auth-shell .label-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.auth-shell .label-row .lbl {
+  font-size: 12.5px; font-weight: 500;
+  color: var(--color-base-content);
+}
+.auth-shell .label-row .alt {
+  font-size: 11px;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+
+/* Quiet hint copy below a field. .validator-hint (toggled by the
+   form_validator stimulus controller) inherits these styles. */
+.auth-shell .hint,
+.auth-shell .form-control .validator-hint {
+  font-size: 11px;
+  margin-top: 0.5rem;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+
+/* Primary CTA — auth-shell-only because daisyUI's .btn-primary has a
+   different height/font-size system; using a dedicated class keeps the
+   two from fighting each other. */
+.auth-shell .btn-primary-ms {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  height: 2.75rem;
+  border-radius: var(--radius-field);
+  border: 1px solid var(--color-primary);
+  font-weight: 600; font-size: 13.5px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0 1rem;
+  width: 100%;
+  cursor: pointer;
+  transition: filter .15s, opacity .15s;
+}
+.auth-shell .btn-primary-ms:hover:not(:disabled) { filter: brightness(1.06); }
+.auth-shell .btn-primary-ms:disabled { opacity: .55; cursor: not-allowed; }
+
+/* OAuth tile — neutral, equal-width row of three. */
+.auth-shell .btn-oauth {
+  height: 2.5rem;
+  border-radius: var(--radius-field);
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 18%, transparent);
+  font-weight: 500; font-size: 12.5px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.625rem;
+  padding: 0 0.875rem;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  cursor: pointer;
+  width: 100%;
+  transition: background .15s, border-color .15s;
+}
+.auth-shell .btn-oauth:hover {
+  background: color-mix(in oklab, var(--color-base-content) 4%, transparent);
+  border-color: color-mix(in oklab, var(--color-base-content) 28%, transparent);
+}
+
+/* ====================================================================
+   Editorial onboarding wizard — six-step setup flow. Same visual
+   system as auth-shell (Instrument Serif, italic primary accent,
+   numbered editorial markers) but laid out as a full-screen wizard
+   with a sticky topbar (brand + step rail + skip), thin progress
+   bar, and an optional chapters sidebar. Scoped to .onboarding-shell.
+   Generic utilities (.alink, .kbd-mono, .text-mute, .secnum, etc.)
+   live in tailwind/application.css and are reused here.
+   ==================================================================== */
+
+/* Topbar — brand left, step rail center, theme/skip right. */
+.onboarding-shell .topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in oklab, var(--color-base-100) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+.onboarding-shell .topbar-row {
+  max-width: 64rem; margin: 0 auto;
+  display: flex; align-items: center; gap: 1.5rem;
+  padding: 0.875rem 1.5rem;
+}
+
+/* Step rail — editorial breadcrumb of all 6 steps. */
+.onboarding-shell .steprail {
+  flex: 1;
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 11.5px;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+  overflow: hidden; white-space: nowrap;
+}
+.onboarding-shell .steprail .step {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  background: none; border: 0; padding: 0;
+  font: inherit; cursor: pointer; color: inherit;
+}
+.onboarding-shell .steprail .step-num {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  font-size: 14px; letter-spacing: 0; text-transform: none;
+  color: color-mix(in oklab, var(--color-base-content) 35%, transparent);
+}
+.onboarding-shell .steprail .step.is-current { color: var(--color-base-content); }
+.onboarding-shell .steprail .step.is-current .step-num { color: var(--color-primary); }
+.onboarding-shell .steprail .step.is-done { color: color-mix(in oklab, var(--color-base-content) 70%, transparent); }
+.onboarding-shell .steprail .step.is-done .step-num { color: color-mix(in oklab, var(--color-base-content) 55%, transparent); }
+.onboarding-shell .steprail .sep {
+  width: 18px; height: 1px;
+  background: color-mix(in oklab, var(--color-base-content) 18%, transparent);
+}
+
+/* Skip button — quiet, top-right. */
+.onboarding-shell .skip-btn {
+  font-size: 12px;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+  background: none; border: 0; cursor: pointer;
+  padding: 6px 10px; border-radius: var(--radius-field);
+  flex-shrink: 0;
+}
+.onboarding-shell .skip-btn:hover {
+  color: var(--color-base-content);
+  background: color-mix(in oklab, var(--color-base-content) 5%, transparent);
+}
+
+/* Progress bar — thin, editorial. */
+.onboarding-shell .progress-track {
+  height: 2px;
+  background: color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+.onboarding-shell .progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Canvas + chapters sidebar. */
+.onboarding-shell .canvas {
+  flex: 1; width: 100%;
+  max-width: 64rem; margin: 0 auto;
+  padding: 4rem 1.5rem 6rem;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 3rem;
+}
+@media (min-width: 900px) {
+  .onboarding-shell .canvas {
+    grid-template-columns: 14rem minmax(0, 1fr);
+    gap: 4rem; padding-top: 5rem;
+  }
+}
+
+.onboarding-shell .chapters { display: none; }
+@media (min-width: 900px) {
+  .onboarding-shell .chapters {
+    display: block;
+    position: sticky; top: 6rem; align-self: start;
+  }
+}
+.onboarding-shell .chapters-label {
+  font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+  margin-bottom: 1rem; padding-left: 1.5rem;
+}
+.onboarding-shell .chapter {
+  display: grid; grid-template-columns: 1.5rem 1fr;
+  align-items: baseline; gap: 0.5rem;
+  padding: 0.4rem 0 0.4rem 1.5rem;
+  margin-left: -1.5rem;
+  font-size: 13px; text-align: left; width: 100%;
+  color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+  background: none; border: 0; border-left: 1px solid transparent;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.onboarding-shell .chapter:hover { color: var(--color-base-content); }
+.onboarding-shell .chapter .num {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  color: color-mix(in oklab, var(--color-base-content) 35%, transparent);
+}
+.onboarding-shell .chapter.is-current {
+  color: var(--color-base-content);
+  border-left-color: var(--color-primary);
+  font-weight: 500;
+}
+.onboarding-shell .chapter.is-current .num { color: var(--color-primary); }
+.onboarding-shell .chapter.is-done { color: color-mix(in oklab, var(--color-base-content) 50%, transparent); }
+.onboarding-shell .chapter.is-done .num::before {
+  content: "✓ "; font-style: normal; font-family: ui-sans-serif;
+  color: color-mix(in oklab, var(--color-success) 80%, var(--color-base-content));
+}
+
+/* Step body. */
+.onboarding-shell .step-body { max-width: 38rem; }
+.onboarding-shell .step-eyebrow {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.onboarding-shell .step-eyebrow .secnum { font-size: 22px; }
+.onboarding-shell .step-eyebrow-label {
+  font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+.onboarding-shell .step-eyebrow-rule {
+  flex: 1; height: 1px;
+  background: color-mix(in oklab, var(--color-base-content) 18%, transparent);
+}
+.onboarding-shell h1.step-title {
+  font-family: "Instrument Serif", "Times New Roman", serif;
+  font-weight: 400; letter-spacing: -0.015em;
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  line-height: 1.05;
+  margin: 0 0 1rem; color: var(--color-base-content);
+}
+.onboarding-shell h1.step-title em {
+  font-style: italic; color: var(--color-primary);
+}
+.onboarding-shell .step-lead {
+  font-size: 15.5px; line-height: 1.6;
+  color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+  max-width: 32rem; margin: 0 0 2.5rem;
+}
+.onboarding-shell .section-label {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+  margin-bottom: 0.75rem;
+  display: flex; align-items: baseline; gap: 0.5rem;
+}
+.onboarding-shell .section-label .num {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  font-size: 14px; letter-spacing: 0; text-transform: none;
+  color: color-mix(in oklab, var(--color-base-content) 38%, transparent);
+}
+
+/* Form scaffolding (field/label-row/hint mirror the auth-shell shapes
+   but without the daisyUI override since onboarding uses plain inputs). */
+.onboarding-shell .field-wrap { margin-bottom: 1.25rem; }
+.onboarding-shell .label-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.onboarding-shell .label-row .lbl {
+  font-size: 12.5px; font-weight: 500;
+  color: var(--color-base-content);
+}
+.onboarding-shell .label-row .alt {
+  font-size: 11px;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+.onboarding-shell .field {
+  display: block;
+  position: relative;
+  width: 100%; height: 2.75rem;
+  padding: 0;
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 18%, transparent);
+  background: var(--color-base-100);
+  border-radius: var(--radius-field);
+  transition: border-color .15s, box-shadow .15s;
+}
+.onboarding-shell .field:focus-within {
+  border-color: color-mix(in oklab, var(--color-primary) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 18%, transparent);
+}
+.onboarding-shell .field input {
+  /* See note on .auth-shell label.input.field input. Block layout
+     with absolute icon avoids browser-quirky flex + size attribute
+     interactions. */
+  display: block;
+  background: transparent; border: 0; margin: 0; outline: none;
+  width: 100%; height: 100%;
+  padding: 0 0.875rem 0 2.4rem;
+  font-size: 14px; font-family: inherit;
+  color: var(--color-base-content);
+  box-sizing: border-box;
+}
+.onboarding-shell .field input::placeholder {
+  color: color-mix(in oklab, var(--color-base-content) 38%, transparent);
+}
+.onboarding-shell .field .lead {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: color-mix(in oklab, var(--color-base-content) 38%, transparent);
+  font-size: 13px;
+  pointer-events: none;
+}
+.onboarding-shell .hint {
+  font-size: 11.5px; margin-top: 0.5rem;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+
+/* Tile picker — flat, no gradients. Used for platform + permission rows. */
+.onboarding-shell .tiles {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.625rem;
+}
+.onboarding-shell .tile {
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 14%, transparent);
+  background: var(--color-base-100);
+  border-radius: var(--radius-field);
+  padding: 1rem 0.875rem; cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  position: relative; font-family: inherit; color: inherit;
+  transition: border-color .12s, background .12s;
+}
+.onboarding-shell .tile:hover {
+  border-color: color-mix(in oklab, var(--color-base-content) 30%, transparent);
+}
+.onboarding-shell .tile.is-selected {
+  border-color: var(--color-primary);
+  background: color-mix(in oklab, var(--color-primary) 5%, var(--color-base-100));
+}
+.onboarding-shell .tile-icon {
+  font-size: 16px; width: 22px; height: 22px;
+  display: grid; place-items: center;
+  color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+}
+.onboarding-shell .tile.is-selected .tile-icon { color: var(--color-primary); }
+.onboarding-shell .tile-title {
+  font-size: 13.5px; font-weight: 500; letter-spacing: -0.005em;
+}
+.onboarding-shell .tile-sub {
+  font-size: 11.5px;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+.onboarding-shell .tile-check {
+  position: absolute; top: 10px; right: 10px;
+  font-size: 11px; color: var(--color-primary); opacity: 0;
+}
+.onboarding-shell .tile.is-selected .tile-check { opacity: 1; }
+
+/* Permission radio tiles — used by the token step. */
+.onboarding-shell .perm-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
+}
+.onboarding-shell .perm {
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 14%, transparent);
+  border-radius: var(--radius-field);
+  padding: 0.75rem 0.875rem;
+  background: var(--color-base-100);
+  display: flex; flex-direction: column; gap: 4px;
+  position: relative; cursor: pointer;
+  font-family: inherit; color: inherit; text-align: left;
+}
+.onboarding-shell .perm:hover {
+  border-color: color-mix(in oklab, var(--color-base-content) 28%, transparent);
+}
+.onboarding-shell .perm.is-selected {
+  border-color: var(--color-primary);
+  background: color-mix(in oklab, var(--color-primary) 5%, var(--color-base-100));
+}
+.onboarding-shell .perm-name {
+  font-weight: 600; font-size: 13px; letter-spacing: -0.005em;
+}
+.onboarding-shell .perm-sub {
+  font-size: 11px;
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+.onboarding-shell .perm-badge {
+  position: absolute; top: 0.625rem; right: 0.625rem;
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  font-size: 12px;
+  color: color-mix(in oklab, var(--color-base-content) 35%, transparent);
+}
+.onboarding-shell .perm.is-selected .perm-badge { color: var(--color-primary); }
+
+/* Buttons. */
+.onboarding-shell .btn-primary-ms {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  height: 2.75rem;
+  border-radius: var(--radius-field);
+  border: 1px solid var(--color-primary);
+  font-weight: 600; font-size: 13.5px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0 1.25rem;
+  cursor: pointer; font-family: inherit;
+  transition: filter .15s, opacity .15s;
+}
+.onboarding-shell .btn-primary-ms:hover { filter: brightness(1.06); }
+.onboarding-shell .btn-primary-ms.full { width: 100%; }
+.onboarding-shell .btn-ghost {
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 18%, transparent);
+  color: var(--color-base-content);
+  height: 2.75rem; border-radius: var(--radius-field);
+  font-weight: 500; font-size: 13.5px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0 1.25rem;
+  cursor: pointer; font-family: inherit;
+}
+.onboarding-shell .btn-ghost:hover {
+  background: color-mix(in oklab, var(--color-base-content) 5%, transparent);
+}
+.onboarding-shell .btn-add {
+  width: 100%; height: 2.5rem;
+  border-radius: var(--radius-field);
+  background: color-mix(in oklab, var(--color-base-content) 6%, transparent);
+  border: 1px dashed color-mix(in oklab, var(--color-base-content) 25%, transparent);
+  color: var(--color-base-content);
+  font-size: 13px; font-weight: 500; font-family: inherit;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  transition: background .15s, border-color .15s;
+}
+.onboarding-shell .btn-add:hover {
+  background: color-mix(in oklab, var(--color-primary) 8%, transparent);
+  border-color: color-mix(in oklab, var(--color-primary) 50%, transparent);
+  color: var(--color-primary);
+}
+
+/* Terminal block. */
+.onboarding-shell .terminal {
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent);
+  border-radius: var(--radius-box);
+  background: var(--color-base-200);
+  overflow: hidden;
+  position: relative;
+}
+.onboarding-shell .terminal-bar {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+  font-size: 11px;
+  color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+}
+.onboarding-shell .terminal-bar .dots {
+  display: flex; gap: 5px;
+}
+.onboarding-shell .terminal-bar .dots i {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: color-mix(in oklab, var(--color-base-content) 18%, transparent);
+}
+.onboarding-shell .terminal-bar .label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: 0.02em; margin-left: 0.25rem;
+}
+.onboarding-shell .terminal-body {
+  padding: 1rem 1.125rem;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px; line-height: 1.65;
+  color: var(--color-base-content);
+}
+.onboarding-shell .terminal-line {
+  display: flex; gap: 0.625rem; align-items: baseline;
+}
+.onboarding-shell .terminal-line .prompt {
+  color: color-mix(in oklab, var(--color-primary) 90%, var(--color-base-content));
+  font-weight: 600; user-select: none;
+}
+.onboarding-shell .terminal-line .out {
+  color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+}
+.onboarding-shell .terminal-line .comment {
+  color: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+}
+
+/* Aside — quiet inline callout, optional `.warn` variant for amber. */
+.onboarding-shell .aside {
+  display: flex; gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: color-mix(in oklab, var(--color-base-content) 3%, transparent);
+  border-left: 2px solid color-mix(in oklab, var(--color-base-content) 25%, transparent);
+  border-radius: 0 var(--radius-field) var(--radius-field) 0;
+  font-size: 12.5px; line-height: 1.55;
+  color: color-mix(in oklab, var(--color-base-content) 65%, transparent);
+}
+.onboarding-shell .aside .aside-mark {
+  font-family: "Instrument Serif", serif; font-style: italic;
+  color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+  font-size: 14px; flex-shrink: 0; line-height: 1.4;
+}
+.onboarding-shell .aside.warn {
+  border-left-color: color-mix(in oklab, var(--color-warning) 70%, var(--color-base-content));
+}
+
+/* Connection card — used on the connect step. */
+.onboarding-shell .conn-card {
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  overflow: hidden;
+}
+.onboarding-shell .conn-card.is-connected {
+  border-color: color-mix(in oklab, var(--color-success) 35%, transparent);
+}
+.onboarding-shell .conn-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; padding: 1rem 1.125rem;
+}
+.onboarding-shell .conn-title {
+  display: flex; align-items: baseline; gap: 0.625rem; flex: 1;
+}
+.onboarding-shell .conn-num {
+  font-family: "Instrument Serif", serif; font-style: italic;
+  color: color-mix(in oklab, var(--color-base-content) 38%, transparent);
+  font-size: 18px; line-height: 1;
+}
+.onboarding-shell .conn-title h3 {
+  margin: 0; font-size: 14.5px; font-weight: 600; letter-spacing: -0.005em;
+}
+.onboarding-shell .conn-title p {
+  margin: 2px 0 0; font-size: 12px;
+  color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+}
+.onboarding-shell .conn-status {
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: 999px;
+  font-weight: 600; flex-shrink: 0;
+}
+.onboarding-shell .conn-status.connected {
+  color: color-mix(in oklab, var(--color-success) 75%, var(--color-base-content));
+  background: color-mix(in oklab, var(--color-success) 12%, transparent);
+}
+.onboarding-shell .conn-status.pending {
+  color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+  background: color-mix(in oklab, var(--color-base-content) 6%, transparent);
+}
+.onboarding-shell .conn-body {
+  padding: 0 1.125rem 1.125rem;
+  border-top: 1px solid color-mix(in oklab, var(--color-base-content) 6%, transparent);
+}
+.onboarding-shell .conn-body-pad { padding-top: 1rem; }
+.onboarding-shell .requirement-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem; margin: 0.875rem 0 1rem;
+}
+.onboarding-shell .requirement-grid.two-col {
+  grid-template-columns: repeat(2, 1fr);
+}
+.onboarding-shell .req {
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+  border-radius: var(--radius-field);
+  padding: 0.625rem 0.75rem;
+  background: color-mix(in oklab, var(--color-base-content) 2%, transparent);
+}
+.onboarding-shell .req-name {
+  font-size: 11.5px; font-weight: 600; letter-spacing: -0.005em;
+}
+.onboarding-shell .req-sub {
+  font-size: 10.5px;
+  color: color-mix(in oklab, var(--color-base-content) 48%, transparent);
+  margin-top: 2px;
+}
+
+/* Token reveal — used after CLI token is generated. */
+.onboarding-shell .token-reveal {
+  border: 1px solid color-mix(in oklab, var(--color-warning) 35%, transparent);
+  background: color-mix(in oklab, var(--color-warning) 5%, transparent);
+  border-radius: var(--radius-box);
+  padding: 1rem 1.125rem;
+}
+.onboarding-shell .token-reveal-warn {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 11.5px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--color-warning) 60%, var(--color-base-content));
+  margin-bottom: 0.75rem;
+}
+.onboarding-shell .token-reveal-warn::before {
+  content: ""; display: block;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--color-warning);
+}
+.onboarding-shell .token-string-wrap { position: relative; }
+.onboarding-shell .token-string {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px; line-height: 1.5;
+  background: var(--color-base-100);
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent);
+  border-radius: var(--radius-field);
+  padding: 0.875rem 5.5rem 0.875rem 0.875rem;
+  word-break: break-all; user-select: all;
+  color: var(--color-base-content);
+}
+.onboarding-shell .token-copy {
+  position: absolute; top: 0.5rem; right: 0.5rem;
+  height: calc(100% - 1rem);
+  padding: 0 0.875rem;
+  border-radius: 5px;
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  border: 0; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.onboarding-shell .token-copy:hover { filter: brightness(1.06); }
+
+/* Login prompt list — what appears after `mysigner login`. */
+.onboarding-shell .prompt-list {
+  margin: 0.875rem 0 0;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+  border-radius: var(--radius-field);
+  background: color-mix(in oklab, var(--color-base-content) 2%, transparent);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px; line-height: 1.7;
+}
+.onboarding-shell .prompt-list .row { display: block; }
+.onboarding-shell .prompt-list .key {
+  color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+.onboarding-shell .prompt-list .val { color: var(--color-base-content); }
+.onboarding-shell .prompt-list .val.user { color: var(--color-primary); }
+.onboarding-shell .prompt-list .hintline {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  color: color-mix(in oklab, var(--color-base-content) 42%, transparent);
+  display: block; margin-top: 1px;
+  padding-left: 0.875rem; letter-spacing: 0.005em;
+}
+
+/* What's-next grid — used on the complete step. */
+.onboarding-shell .next-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem; margin-top: 1.5rem;
+}
+.onboarding-shell .next-card {
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent);
+  border-radius: var(--radius-field);
+  padding: 0.875rem;
+  background: color-mix(in oklab, var(--color-base-content) 2%, transparent);
+}
+.onboarding-shell .next-card .num {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  color: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+  font-size: 14px; display: block;
+  margin-bottom: 0.375rem;
+}
+.onboarding-shell .next-card h4 {
+  margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.005em;
+}
+.onboarding-shell .next-card p {
+  margin: 4px 0 0; font-size: 11.5px;
+  color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+  line-height: 1.45;
+}
+
+/* Action row — bottom nav within each step. */
+.onboarding-shell .action-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-top: 2rem; padding-top: 2rem;
+  border-top: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+.onboarding-shell .action-row .filler { flex: 1; }
+
+/* Big "Fin." flourish on the complete step. */
+.onboarding-shell .flourish-num {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  font-size: clamp(4rem, 10vw, 6.5rem);
+  line-height: 1;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+/* Step body fade-in. */
+@keyframes step-in {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.onboarding-shell .step-animate {
+  animation: step-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

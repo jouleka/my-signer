@@ -1,0 +1,342 @@
+<%= breadcrumbs([
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "Reviews & Ratings" }
+]) %>
+
+<section class="flex flex-col gap-6">
+  <%# Header %>
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-[1.375rem] font-extrabold leading-tight tracking-[-0.02em] text-base-content/95">
+        <i class="fa-solid fa-star-half-stroke text-primary/50 mr-1"></i>
+        Reviews & Ratings
+      </h1>
+      <p class="text-xs text-base-content/40 mt-1">Monitor and respond to user reviews across both stores</p>
+    </div>
+    <% if @entitlements.review_monitoring_enabled? %>
+      <%= button_to sync_organization_reviews_path(@organization),
+          method: :post,
+          class: btn_ghost_sm_classes do %>
+        <i class="fa-solid fa-arrows-rotate"></i> Sync Reviews
+      <% end %>
+    <% end %>
+  </div>
+
+  <% unless @entitlements.review_monitoring_enabled? %>
+    <%# Free plan upgrade prompt %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <span class="<%= card_title_classes %>">Upgrade to unlock Review Monitoring</span>
+      </div>
+      <div class="<%= card_body_classes %>">
+        <p class="text-sm text-base-content/60 leading-relaxed mb-4">
+          Review monitoring, sentiment tracking, and response management require a Pro plan or higher.
+          Upgrade to stay on top of your user feedback across both App Store and Google Play.
+        </p>
+        <%= link_to pricing_path, class: btn_primary_sm_classes do %>
+          <i class="fa-solid fa-arrow-up-right"></i> View Plans
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <%# Stats row %>
+    <div class="stats stats-horizontal w-full border border-base-content/[0.06] bg-base-content/[0.02]">
+      <div class="stat">
+        <div class="stat-title text-xs">Average Rating</div>
+        <div class="stat-value text-xl"><%= @average_rating %></div>
+        <div class="stat-desc"><%= star_rating_html(@average_rating.round) %></div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-xs">Total Reviews</div>
+        <div class="stat-value text-xl"><%= @total_reviews %></div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-xs">Negative</div>
+        <div class="stat-value text-xl text-error/80"><%= @negative_count %></div>
+        <div class="stat-desc">1-2 star reviews</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-xs">Unanswered</div>
+        <div class="stat-value text-xl"><%= @unanswered_count %></div>
+        <div class="stat-desc">No reply yet</div>
+      </div>
+    </div>
+
+    <%# Apple Review Summarizations %>
+    <% if @summarizations.present? %>
+      <div class="<%= card_container_classes %>">
+        <div class="<%= card_header_classes %>">
+          <div class="<%= card_icon_classes %>">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <span class="<%= card_title_classes %>">AI Review Summary</span>
+          <span class="<%= muted_badge_classes %> ml-2">Apple Intelligence</span>
+        </div>
+        <div class="<%= card_body_classes %>">
+          <% @summarizations.each do |sum| %>
+            <div class="mb-2 last:mb-0">
+              <p class="text-sm text-base-content/70 leading-relaxed"><%= sum.dig("attributes", "text") %></p>
+              <p class="<%= hint_text_classes %> mt-1">
+                <%= sum.dig("attributes", "locale") %> &middot; <%= sum.dig("attributes", "platform") %>
+                <% if sum.dig("attributes", "createdDate") %>
+                  &middot; Updated <%= time_ago_in_words(Time.zone.parse(sum.dig("attributes", "createdDate"))) %> ago
+                <% end %>
+              </p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Plan limit info %>
+    <% if @review_app_limit_reached %>
+      <% max_apps = @entitlements.max_review_monitoring_apps %>
+      <% monitored_names = (@apple_apps.map(&:name) + @android_apps.map { |a| a.name.presence || a.package_name }).first(max_apps) %>
+      <div class="<%= sn_info_classes %>">
+        <div class="flex items-center gap-2">
+          <div class="<%= sn_icon_info_classes %>">
+            <i class="fa-solid fa-circle-info text-[0.5rem]"></i>
+          </div>
+          <p class="text-xs text-base-content/60">
+            Your <strong class="text-base-content/80"><%= @entitlements.tier.capitalize %></strong> plan monitors up to <strong class="text-base-content/80"><%= max_apps %></strong> app<%= "s" if max_apps != 1 %>.
+            Currently monitoring: <strong class="text-base-content/80"><%= monitored_names.to_sentence %></strong>.
+            <%= link_to "Upgrade", pricing_path, class: "text-primary/80 hover:text-primary underline" %> to unlock more apps.
+          </p>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Rating trend card %>
+    <%= render "reviews/rating_trend_card" %>
+
+    <%# Filter bar %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_body_classes %>">
+        <form method="get" action="<%= organization_reviews_path(@organization) %>" class="flex flex-wrap items-center gap-3">
+          <select name="app" class="select select-bordered select-sm">
+            <option value="">All Apps</option>
+            <% @apple_apps.each do |app| %>
+              <option value="apple_<%= app.id %>" <%= "selected" if @app_filter == "apple_#{app.id}" %>>
+                <i class="fa-brands fa-apple"></i> <%= app.name.presence || app.bundle_id %>
+              </option>
+            <% end %>
+            <% @android_apps.each do |app| %>
+              <option value="android_<%= app.id %>" <%= "selected" if @app_filter == "android_#{app.id}" %>>
+                <%= app.name.presence || app.package_name %>
+              </option>
+            <% end %>
+          </select>
+
+          <select name="platform" class="select select-bordered select-sm">
+            <option value="">All Platforms</option>
+            <option value="apple" <%= "selected" if @platform_filter == "apple" %>>App Store</option>
+            <option value="android" <%= "selected" if @platform_filter == "android" %>>Google Play</option>
+          </select>
+
+          <select name="rating" class="select select-bordered select-sm">
+            <option value="">All Ratings</option>
+            <% (1..5).each do |r| %>
+              <option value="<%= r %>" <%= "selected" if @rating_filter == r.to_s %>><%= r %> Star<%= "s" if r != 1 %></option>
+            <% end %>
+          </select>
+
+          <select name="sentiment" class="select select-bordered select-sm">
+            <option value="">All Sentiments</option>
+            <option value="positive" <%= "selected" if @sentiment_filter == "positive" %>>Positive</option>
+            <option value="neutral" <%= "selected" if @sentiment_filter == "neutral" %>>Neutral</option>
+            <option value="negative" <%= "selected" if @sentiment_filter == "negative" %>>Negative</option>
+          </select>
+
+          <button type="submit" class="<%= btn_ghost_sm_classes %>">
+            <i class="fa-solid fa-filter"></i> Filter
+          </button>
+
+          <% if @app_filter.present? || @platform_filter.present? || @rating_filter.present? || @sentiment_filter.present? %>
+            <%= link_to organization_reviews_path(@organization), class: "text-xs text-base-content/40 hover:text-base-content/70" do %>
+              <i class="fa-solid fa-xmark"></i> Clear
+            <% end %>
+          <% end %>
+        </form>
+      </div>
+    </div>
+
+    <%# Response Templates (collapsible, above reviews) %>
+    <details class="group">
+      <summary class="<%= card_container_classes %> cursor-pointer select-none list-none">
+        <div class="<%= card_header_split_classes %>">
+          <div class="flex items-center gap-2.5">
+            <div class="<%= card_icon_classes %>">
+              <i class="fa-solid fa-clipboard-list"></i>
+            </div>
+            <span class="<%= card_title_classes %>">Reply Templates</span>
+            <% if @response_templates.any? %>
+              <span class="<%= count_badge_classes %>"><%= @response_templates.size %></span>
+            <% end %>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="<%= hint_text_classes %>">Quick responses for common review types</span>
+            <i class="fa-solid fa-chevron-down text-[0.5rem] text-base-content/30 transition-transform group-open:rotate-180"></i>
+          </div>
+        </div>
+      </summary>
+      <div class="<%= card_container_classes %> rounded-t-none -mt-px border-t-0">
+        <div class="<%= card_body_classes %>">
+          <% if @response_templates.any? %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+              <% @response_templates.each do |template| %>
+                <details class="group/edit rounded-lg bg-base-content/[0.02] border border-base-content/[0.04]">
+                  <%# Read-only view (click to expand edit form) %>
+                  <summary class="flex items-start justify-between gap-2 p-2.5 cursor-pointer list-none select-none">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-1.5 mb-0.5">
+                        <span class="text-xs font-semibold text-base-content/75"><%= template.name %></span>
+                        <span class="<%= muted_badge_classes %> text-[0.5rem]"><%= template.category.humanize %></span>
+                      </div>
+                      <p class="text-[0.6875rem] text-base-content/45 line-clamp-2 leading-relaxed"><%= template.body %></p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                      <% if @entitlements.response_templates_enabled? %>
+                        <span class="<%= icon_btn_sm_classes %>">
+                          <i class="fa-solid fa-pen text-[0.5rem] group-open/edit:hidden"></i>
+                          <i class="fa-solid fa-chevron-up text-[0.5rem] hidden group-open/edit:inline"></i>
+                        </span>
+                        <%= button_to organization_review_response_template_path(@organization, template),
+                            method: :delete,
+                            class: "#{icon_btn_sm_classes}",
+                            data: { turbo_confirm: "Delete this template?" } do %>
+                          <i class="fa-solid fa-trash-can text-[0.6rem]"></i>
+                        <% end %>
+                      <% else %>
+                        <%= pro_badge_html %>
+                      <% end %>
+                    </div>
+                  </summary>
+
+                  <% if @entitlements.response_templates_enabled? %>
+                    <%# Inline edit form %>
+                    <div class="px-2.5 pb-2.5 pt-1 border-t border-base-content/[0.04]">
+                      <%= form_with model: template, url: organization_review_response_template_path(@organization, template), method: :patch, class: "flex flex-col gap-2" do |f| %>
+                        <div class="flex flex-wrap gap-2">
+                          <div class="flex-1 min-w-[120px]">
+                            <%= f.text_field :name, class: input_field_classes, placeholder: "Template name" %>
+                          </div>
+                          <div class="w-36">
+                            <%= f.select :category,
+                                ReviewResponseTemplate::CATEGORIES.map { |c| [c.humanize, c] },
+                                {}, class: "select select-bordered select-sm w-full" %>
+                          </div>
+                        </div>
+                        <%= f.text_area :body, class: "#{textarea_field_classes}", rows: 2, maxlength: 350,
+                            placeholder: "Reply text (max 350 chars)..." %>
+                        <div class="flex items-center gap-2">
+                          <%= f.submit "Update", class: btn_primary_sm_classes %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </details>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% if @entitlements.response_templates_enabled? %>
+            <%# Inline add form — compact %>
+            <details class="group/add">
+              <summary class="<%= btn_ghost_xs_classes %> cursor-pointer list-none inline-flex">
+                <i class="fa-solid fa-plus text-[0.5rem]"></i> Add Template
+              </summary>
+              <div class="mt-3 pt-3 border-t border-base-content/[0.04]">
+                <%= form_with model: ReviewResponseTemplate.new, url: organization_review_response_templates_path(@organization), class: "flex flex-col gap-2" do |f| %>
+                  <div class="flex flex-wrap gap-2">
+                    <div class="flex-1 min-w-[160px]">
+                      <%= f.text_field :name, class: input_field_classes, placeholder: "Template name" %>
+                    </div>
+                    <div class="w-36">
+                      <%= f.select :category,
+                          ReviewResponseTemplate::CATEGORIES.map { |c| [c.humanize, c] },
+                          {}, class: "select select-bordered select-sm w-full" %>
+                    </div>
+                  </div>
+                  <div class="flex gap-2">
+                    <%= f.text_area :body, class: "#{textarea_field_classes} flex-1", rows: 2, maxlength: 350,
+                        placeholder: "Reply text (max 350 chars)..." %>
+                  </div>
+                  <div>
+                    <%= f.submit "Save", class: btn_primary_sm_classes %>
+                  </div>
+                <% end %>
+              </div>
+            </details>
+          <% else %>
+            <p class="<%= hint_text_classes %>">
+              Creating templates requires <%= pro_badge_html %>
+              <%= link_to "Upgrade", pricing_path, class: "text-primary/80 hover:text-primary underline" %>
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </details>
+
+    <%# Review feed %>
+    <% if @reviews.any? %>
+      <div class="flex flex-col gap-3">
+        <% @reviews.each do |review| %>
+          <%= render "reviews/review_row", review: review, response_templates: @response_templates %>
+        <% end %>
+      </div>
+
+      <%# Pagination %>
+      <% if @total_pages > 1 %>
+        <div class="flex items-center justify-center gap-3 mt-4">
+          <% if @page > 1 %>
+            <%= link_to organization_reviews_path(@organization, page: @page - 1, app: @app_filter, platform: @platform_filter, rating: @rating_filter, sentiment: @sentiment_filter),
+                class: btn_ghost_sm_classes do %>
+              <i class="fa-solid fa-chevron-left"></i> Previous
+            <% end %>
+          <% end %>
+
+          <span class="<%= meta_text_classes %>">Page <%= @page %> of <%= @total_pages %></span>
+
+          <% if @page < @total_pages %>
+            <%= link_to organization_reviews_path(@organization, page: @page + 1, app: @app_filter, platform: @platform_filter, rating: @rating_filter, sentiment: @sentiment_filter),
+                class: btn_ghost_sm_classes do %>
+              Next <i class="fa-solid fa-chevron-right"></i>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="<%= empty_state_classes %>">
+        <div class="<%= empty_state_icon_classes %>">
+          <i class="fa-solid fa-comments text-2xl"></i>
+        </div>
+        <h2 class="<%= empty_state_title_classes %>">No reviews yet</h2>
+        <p class="<%= empty_state_text_classes %>">
+          <% if @last_synced_at %>
+            No written reviews found. Apple's API only returns reviews where users wrote text — star-only ratings are not included.
+            Check App Store Connect to see if your app has text reviews.
+          <% else %>
+            Sync your apps to pull in reviews from the App Store and Google Play.
+          <% end %>
+        </p>
+        <div class="flex items-center gap-3">
+          <%= button_to sync_organization_reviews_path(@organization), method: :post, class: btn_primary_classes do %>
+            <i class="fa-solid fa-arrows-rotate"></i> Sync Reviews Now
+          <% end %>
+        </div>
+        <% if @last_synced_at %>
+          <p class="<%= hint_text_classes %> mt-3">
+            <i class="fa-solid fa-circle-info mr-1"></i>
+            Last synced: <%= time_ago_in_words(@last_synced_at) %> ago.
+            Star-only ratings (without text) are tracked by Apple separately and are not available via their API.
+          </p>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# Templates section removed — now above review feed in collapsible %>
+  <% end %>
+</section>

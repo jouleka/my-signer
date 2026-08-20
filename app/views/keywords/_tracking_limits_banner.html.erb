@@ -1,0 +1,36 @@
+<%# Single-line limits banner: slot usage + refresh cadence + upgrade CTA
+    for plans that lack Apple Ads popularity. Replaced by Turbo Stream
+    after create/destroy to keep the slot count accurate. Callers pass
+    the precomputed `usage` count so this partial doesn't need to hit the
+    DB for that -- the parent view/Turbo Stream already knows the slot count.
+
+    Task 24 addition: when an org has TrackedKeywordCountry rows with
+    enabled=false (caused by a plan downgrade), surface the paused count
+    and an "Upgrade to resume" CTA inline. Paused rows are excluded from
+    `usage` in callers (which count enabled TKCs), so this is additive.
+
+    Optional `estimate` local (Aso::NextCheckEstimator::Estimate) appends
+    a "Next run <ETA>" segment; callers that don't pass it keep the old
+    behaviour. %>
+<%# locals: app, entitlements, usage, estimate (optional) %>
+<% estimate ||= local_assigns[:estimate] %>
+<% paused_count = TrackedKeywordCountry
+                    .joins(:tracked_keyword)
+                    .where(tracked_keywords: { apple_app_id: app.id, enabled: true })
+                    .where(tracked_keyword_countries: { enabled: false })
+                    .count %>
+<div id="tracked-keywords-limits" class="text-xs text-base-content/55 mb-3">
+  <%= usage %> of <%= entitlements.max_tracked_keywords_per_app %> keyword-country slots used &middot;
+  <%= entitlements.keyword_tracking_refresh_days == 1 ? "Daily" : "Weekly" %> refresh
+  <% if estimate %>
+    &middot; Next run <%= estimate.human %>
+  <% end %>
+  <% if paused_count > 0 %>
+    &middot; <span class="text-warning/80"><%= paused_count %> paused</span>
+    &mdash;
+    <%= link_to "Upgrade to resume", pricing_path, class: "text-primary/70 underline" %>
+  <% end %>
+  <% unless entitlements.apple_ads_integration_enabled? %>
+    &middot; <span class="text-primary/60"><%= link_to "Upgrade to unlock popularity data", pricing_path, class: "underline" %></span>
+  <% end %>
+</div>

@@ -1,0 +1,72 @@
+<%# iOS release status card %>
+<% app = local_assigns[:app] %>
+<% latest = app.app_store_versions.includes(:apple_build).order(created_at: :desc).first %>
+<% release_config = app.respond_to?(:app_store_release) ? app.app_store_release : nil %>
+
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_split_classes %>">
+    <div class="flex items-center gap-2.5">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-brands fa-apple"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Current Release</span>
+    </div>
+    <% if latest %>
+      <span class="<%= version_badge_classes %>">v<%= latest.version_string %></span>
+    <% end %>
+  </div>
+  <div class="<%= card_body_classes %>">
+    <% if latest %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <p class="<%= label_uppercase_classes %>">Version</p>
+          <p class="<%= field_text_classes %>"><%= latest.version_string %></p>
+        </div>
+        <div>
+          <p class="<%= label_uppercase_classes %>">Build</p>
+          <p class="<%= field_text_classes %>"><%= latest.apple_build&.build_number.presence || "N/A" %></p>
+        </div>
+        <div>
+          <p class="<%= label_uppercase_classes %>">App Store State</p>
+          <span class="<%= status_badge_classes(latest.app_store_state) %>">
+            <%= latest.app_store_state&.titleize || "Unknown" %>
+          </span>
+        </div>
+        <div>
+          <p class="<%= label_uppercase_classes %>">Platform</p>
+          <p class="<%= field_text_classes %>"><%= latest.platform&.titleize || "iOS" %></p>
+        </div>
+        <% if release_config&.release_type.present? %>
+          <div>
+            <p class="<%= label_uppercase_classes %>">Release Type</p>
+            <p class="<%= field_text_classes %>"><%= release_config.release_type.titleize %></p>
+          </div>
+        <% end %>
+        <% if release_config&.auto_submit %>
+          <div>
+            <p class="<%= label_uppercase_classes %>">Auto Submit</p>
+            <p class="<%= field_text_classes %>"><i class="fa-solid fa-check text-success"></i> Enabled</p>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Phased release indicator %>
+      <% if latest.phased_release_pending %>
+        <div class="mt-4 pt-4 border-t border-base-content/5">
+          <p class="<%= label_uppercase_classes %> mb-2">Phased Release</p>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-info badge-sm gap-1">
+              <i class="fa-solid fa-clock"></i>
+              Pending Activation
+            </span>
+          </div>
+          <p class="<%= hint_text_classes %> mt-1">
+            Phased release is queued and will activate after submission.
+          </p>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="<%= empty_inline_classes %>"><i class="fa-solid fa-box-open"></i> No versions synced yet</p>
+    <% end %>
+  </div>
+</div>

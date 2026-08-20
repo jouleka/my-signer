@@ -1,0 +1,24 @@
+<%# Rating trend chart card %>
+<% snapshot_data = (@snapshots || []).map { |s| { snapshot_date: s.snapshot_date.to_s, average_rating: s.average_rating.to_f } } %>
+
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_classes %>">
+    <div class="<%= card_icon_classes %>">
+      <i class="fa-solid fa-chart-line"></i>
+    </div>
+    <span class="<%= card_title_classes %>">Rating Trend (Last 30 Days)</span>
+  </div>
+  <div class="<%= card_body_classes %>">
+    <% if snapshot_data.any? %>
+      <div class="h-[180px]"
+           data-controller="rating-chart"
+           data-rating-chart-snapshots-value="<%= json_escape(snapshot_data.to_json) %>">
+        <canvas></canvas>
+      </div>
+    <% else %>
+      <p class="<%= empty_inline_classes %>">
+        <i class="fa-solid fa-chart-line"></i> No rating data yet. Sync reviews to start tracking trends.
+      </p>
+    <% end %>
+  </div>
+</div>

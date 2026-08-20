@@ -1,0 +1,389 @@
+<div class="navbar bg-base-100 shadow-sm">
+  <% if user_signed_in? %>
+    <% nav_tree = developer_navigation(current_organization: current_organization) %>
+    <% shortcuts = navigation_shortcuts(nav_tree) %>
+    <% quick_creates = navigation_quick_creates(nav_tree) %>
+  <% end %>
+  <div class="navbar-start">
+    <% if user_signed_in? %>
+      <label for="sidebar-toggle" class="btn btn-ghost lg:hidden" aria-label="open sidebar">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </label>
+    <% end %>
+    <%= link_to (user_signed_in? ? authenticated_root_path : unauthenticated_root_path), class: "btn btn-ghost text-xl gap-2" do %>
+      <img src="/icon.svg" alt="" class="w-7 h-7" aria-hidden="true" />
+      <span class="font-semibold tracking-tight">MySigner</span>
+    <% end %>
+    <% if user_signed_in? && Rails.env.staging? %>
+      <span class="badge badge-warning badge-xs ml-2">Staging</span>
+    <% elsif user_signed_in? && Rails.env.production? %>
+      <span class="badge badge-success badge-xs ml-2">Live</span>
+    <% end %>
+  </div>
+
+  <div class="navbar-center hidden lg:flex">
+    <% if user_signed_in? %>
+      <div class="join">
+        <!-- Organization Switcher -->
+        <div class="dropdown dropdown-bottom join-item">
+          <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
+            <i class="fa-solid fa-building opacity-60"></i>
+            <span class="opacity-70">Org</span>
+            <span class="font-medium"><%= current_organization&.name || "All" %></span>
+            <% if current_organization %>
+              <% nav_tier = current_organization.plan_tier %>
+              <% if nav_tier == "free" %>
+                <span class="badge badge-ghost badge-xs"><%= nav_tier.titleize %></span>
+              <% else %>
+                <span class="badge badge-primary badge-xs gap-1">
+                  <i class="fa-solid fa-crown" style="font-size: 0.5rem" aria-hidden="true"></i>
+                  <%= nav_tier.titleize %>
+                </span>
+              <% end %>
+            <% end %>
+          </div>
+          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-80 p-2 shadow">
+            <% policy_scope(Organization).includes(:memberships).each do |org| %>
+              <% user_membership = org.memberships.find { |m| m.user_id == current_user.id } %>
+              <% org_tier = org.plan_tier %>
+              <li>
+                <% if org.accessible? %>
+                  <%= link_to switch_organization_path(org), data: { turbo_method: :post }, class: "justify-between" do %>
+                    <div class="flex flex-col items-start flex-1">
+                      <span class="font-medium"><%= org.name %></span>
+                      <div class="flex gap-2 text-xs text-base-content/60">
+                        <% if user_membership %>
+                          <span class="badge badge-ghost badge-xs"><%= user_membership.role.titleize %></span>
+                        <% end %>
+                        <% if org_tier == "free" %>
+                          <span class="badge badge-ghost badge-xs"><%= org_tier.titleize %></span>
+                        <% else %>
+                          <span class="badge badge-primary badge-xs gap-1">
+                            <i class="fa-solid fa-crown" style="font-size: 0.5rem" aria-hidden="true"></i>
+                            <%= org_tier.titleize %>
+                          </span>
+                        <% end %>
+                        <span><%= org.memberships_count %> <%= 'member'.pluralize(org.memberships_count) %></span>
+                      </div>
+                    </div>
+                    <% if current_organization&.id == org.id %>
+                      <span class="badge badge-primary badge-xs">Current</span>
+                    <% end %>
+                  <% end %>
+                <% else %>
+                  <div class="flex items-center justify-between gap-2 px-4 py-2 text-sm text-base-content/60">
+                    <div class="flex flex-col items-start flex-1">
+                      <span class="font-medium"><%= org.name %></span>
+                      <div class="flex gap-2 text-xs text-base-content/60">
+                        <% if user_membership %>
+                          <span class="badge badge-ghost badge-xs"><%= user_membership.role.titleize %></span>
+                        <% end %>
+                        <span class="badge badge-warning badge-xs">Blocked by plan</span>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </li>
+            <% end %>
+            <hr class="my-2 border-base-300" />
+            <li><%= link_to "Manage Organizations", organizations_path %></li>
+          </ul>
+        </div>
+
+        <!-- Command Palette -->
+        <div class="join-item" data-controller="command-palette" data-command-palette-open-class-value="modal-open">
+          <button type="button"
+                  class="btn btn-ghost btn-sm border border-base-300/70 bg-base-100/60 backdrop-blur px-3 font-medium hover:border-base-300 hover:bg-base-100"
+                  data-action="click->command-palette#open">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-terminal text-sm opacity-70"></i>
+              <span class="hidden md:inline text-sm tracking-wide">Command</span>
+              <span class="hidden md:flex items-center gap-1">
+                <kbd class="kbd kbd-xs text-[10px] opacity-80">⌘K</kbd>
+                <kbd class="kbd kbd-xs text-[10px] opacity-80">Ctrl+K</kbd>
+              </span>
+              <span class="md:hidden text-[10px] uppercase tracking-wider opacity-75">⌘K</span>
+            </span>
+          </button>
+
+          <div class="modal modal-bottom sm:modal-middle" data-command-palette-target="container">
+            <div class="modal-box w-full max-w-3xl overflow-hidden border border-base-200/60 bg-base-100/90 backdrop-blur-xl p-0 shadow-2xl">
+              <div class="flex items-center gap-3 border-b border-base-200/70 px-4 py-3">
+                <i class="fa-solid fa-magnifying-glass text-base-content/50"></i>
+                <input type="text"
+                       class="flex-1 bg-transparent text-sm outline-none placeholder:text-base-content/50"
+                       placeholder="Search commands…"
+                       data-command-palette-target="input"
+                       data-action="input->command-palette#filter keydown.escape->command-palette#close">
+                <kbd class="kbd kbd-xs hidden md:flex">Esc</kbd>
+              </div>
+
+              <div class="max-h-96 overflow-y-auto" role="listbox" aria-label="Available commands">
+                <% if quick_creates.present? %>
+                  <section class="px-4 py-3" aria-labelledby="quick-create-heading">
+                    <h4 id="quick-create-heading" class="text-xs font-semibold uppercase tracking-[0.25em] text-base-content/50 mb-2">Create</h4>
+                    <ul class="space-y-1" role="group">
+                      <% quick_creates.each do |item| %>
+                        <% disabled = item[:disabled] || item[:path].blank? %>
+                        <% requires_org_badge = item[:requires_org] && (!current_organization || disabled) %>
+                        <% tooltip = item[:hint] || (item[:requires_org] ? 'Requires organization' : nil) %>
+                        <% data_attrs = (item[:data] || {}).dup %>
+                        <% data_attrs[:command_palette_target] = "item" %>
+                        <% data_attrs[:command_palette_label] = item[:label].to_s.downcase %>
+                        <% data_attrs[:action] = [data_attrs[:action], "click->command-palette#execute"].compact.join(" ") %>
+                        <li role="option" aria-disabled="<%= disabled %>">
+                          <% if disabled %>
+                            <div class="command-item flex items-center justify-between rounded-lg px-3 py-2 text-sm text-base-content/60 cursor-not-allowed"
+                                 data-command-palette-target="item"
+                                 data-command-palette-label="<%= item[:label].to_s.downcase %>"
+                                 title="<%= tooltip %>"
+                                 aria-label="<%= item[:label] %> - <%= tooltip %>">
+                              <span class="flex items-center gap-3">
+                                <span class="command-icon flex h-8 w-8 items-center justify-center rounded-lg border border-base-300/70 bg-base-100/80 text-base-content/70">
+                                  <i class="<%= item[:icon] %>" aria-hidden="true"></i>
+                                </span>
+                                <span class="flex flex-col items-start">
+                                  <span class="font-medium text-base-content/80"><%= item[:label] %></span>
+                                  <% if tooltip.present? %>
+                                    <span class="text-xs text-base-content/50 line-clamp-1"><%= tooltip %></span>
+                                  <% end %>
+                                </span>
+                              </span>
+                              <% if requires_org_badge %>
+                                <span class="badge badge-outline badge-xs">Org</span>
+                              <% end %>
+                            </div>
+                          <% else %>
+                            <%= link_to item[:path],
+                                        data: data_attrs,
+                                        title: tooltip,
+                                        aria: { label: "#{item[:label]}#{tooltip.present? ? " - #{tooltip}" : ''}" },
+                                        class: "command-item flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-base-200/60 focus:bg-base-200/80 focus:outline-none" do %>
+                              <span class="flex items-center gap-3">
+                                <span class="command-icon flex h-8 w-8 items-center justify-center rounded-lg border border-base-300/70 bg-base-100/80 text-base-content/70">
+                                  <i class="<%= item[:icon] %>" aria-hidden="true"></i>
+                                </span>
+                                <span class="flex flex-col items-start">
+                                  <span class="font-medium text-base-content/90"><%= item[:label] %></span>
+                                  <% if tooltip.present? %>
+                                    <span class="text-xs text-base-content/50 line-clamp-1"><%= tooltip %></span>
+                                  <% end %>
+                                </span>
+                              </span>
+                              <% if requires_org_badge %>
+                                <span class="badge badge-outline badge-xs">Org</span>
+                              <% end %>
+                            <% end %>
+                          <% end %>
+                        </li>
+                      <% end %>
+                    </ul>
+                  </section>
+                <% end %>
+
+                <% if shortcuts.present? %>
+                  <% shortcuts.group_by { |item| [item[:section], item[:group]] }.each do |(section, group), items| %>
+                    <% section_id = "section-#{[section, group].compact.join('-').parameterize}" %>
+                    <section class="px-4 py-3 border-t border-base-200/60" aria-labelledby="<%= section_id %>">
+                      <h4 id="<%= section_id %>" class="text-xs font-semibold uppercase tracking-[0.25em] text-base-content/50 mb-2">
+                        <%= [section, group].compact.join(" · ") %>
+                      </h4>
+                      <ul class="space-y-1" role="group">
+                        <% items.each do |item| %>
+                          <% disabled = item[:disabled] || item[:path].blank? %>
+                          <% requires_org_badge = item[:requires_org] && (!current_organization || disabled) %>
+                          <% tooltip = item[:hint] || (item[:requires_org] ? 'Requires organization' : nil) %>
+                          <% data_attrs = (item[:data] || {}).dup %>
+                          <% data_attrs[:command_palette_target] = "item" %>
+                          <% data_attrs[:command_palette_label] = item[:label].to_s.downcase %>
+                          <% data_attrs[:action] = [data_attrs[:action], "click->command-palette#execute"].compact.join(" ") %>
+                          <li role="option" aria-disabled="<%= disabled %>">
+                            <% if disabled %>
+                              <div class="command-item flex items-center justify-between rounded-lg px-3 py-2 text-sm text-base-content/60 cursor-not-allowed"
+                                   data-command-palette-target="item"
+                                   data-command-palette-label="<%= item[:label].to_s.downcase %>"
+                                   title="<%= tooltip %>"
+                                   aria-label="<%= item[:label] %> - <%= tooltip %>">
+                                <span class="flex items-center gap-3">
+                                  <span class="command-icon flex h-8 w-8 items-center justify-center rounded-lg border border-base-300/70 bg-base-100/80 text-base-content/70">
+                                    <i class="<%= item[:icon] %>" aria-hidden="true"></i>
+                                  </span>
+                                  <span class="flex flex-col items-start">
+                                    <span class="font-medium text-base-content/80"><%= item[:label] %></span>
+                                    <% if tooltip.present? %>
+                                      <span class="text-xs text-base-content/50 line-clamp-1"><%= tooltip %></span>
+                                    <% end %>
+                                  </span>
+                                </span>
+                                <% if requires_org_badge %>
+                                  <span class="badge badge-outline badge-xs opacity-60">Org required</span>
+                                <% else %>
+                                  <span class="badge badge-outline badge-xs opacity-60">Unavailable</span>
+                                <% end %>
+                              </div>
+                            <% else %>
+                              <%= link_to item[:path],
+                                          data: data_attrs,
+                                          title: tooltip,
+                                          aria: { label: "#{item[:label]}#{tooltip.present? ? " - #{tooltip}" : ''}" },
+                                          class: "command-item flex items-center justify-between rounded-lg px-3 py-2 text-sm transition hover:bg-base-200/60 focus:bg-base-200/80 focus:outline-none" do %>
+                                <span class="flex items-center gap-3">
+                                  <span class="command-icon flex h-8 w-8 items-center justify-center rounded-lg border border-base-300/70 bg-base-100/80 text-base-content/70">
+                                    <i class="<%= item[:icon] %>" aria-hidden="true"></i>
+                                  </span>
+                                  <span class="flex flex-col items-start">
+                                    <span class="font-medium text-base-content/90"><%= item[:label] %></span>
+                                    <% if tooltip.present? %>
+                                      <span class="text-xs text-base-content/50 line-clamp-1"><%= tooltip %></span>
+                                    <% end %>
+                                  </span>
+                                </span>
+                                <% if requires_org_badge %>
+                                  <span class="badge badge-outline badge-xs">Org</span>
+                                <% end %>
+                              <% end %>
+                            <% end %>
+                          </li>
+                        <% end %>
+                      </ul>
+                    </section>
+                  <% end %>
+                <% end %>
+
+                <% unless quick_creates.present? || shortcuts.present? %>
+                  <div class="px-4 py-10 text-center text-sm text-base-content/60" role="status">
+                    No commands available yet. Check back after we add more actions.
+                  </div>
+                <% end %>
+              </div>
+
+              <div class="flex items-center justify-between border-t border-base-200/70 bg-base-100/80 px-4 py-2 text-xs text-base-content/60">
+                <span>⌘K / Ctrl+K to open · Esc to close</span>
+                <button type="button" class="btn btn-link btn-xs text-base-content/70" data-action="click->command-palette#close">
+                  Close
+                </button>
+              </div>
+            </div>
+            <div class="modal-backdrop bg-black/40" data-action="click->command-palette#close"></div>
+          </div>
+        </div>
+
+        <!-- Unified Sync — one button, runs everything the org is entitled to -->
+        <% if current_organization && policy(current_organization).sync? %>
+          <% if current_organization.any_active_platform_credential? %>
+            <button type="button"
+                    id="navbar-sync-button"
+                    data-controller="sync"
+                    data-sync-url-value="<%= sync_all_organization_path(current_organization) %>"
+                    data-sync-status-url-value="<%= sync_status_all_organization_path(current_organization) %>"
+                    data-sync-badge-id-value="sync-badge"
+                    data-action="click->sync#start"
+                    data-sync-target="button"
+                    class="btn btn-ghost btn-sm gap-2 join-item"
+                    title="Sync App Store Connect, Google Play, reviews, analytics, custom product pages, and keyword rankings">
+              <i class="fa-solid fa-rotate"></i>
+              <span>Sync</span>
+            </button>
+          <% else %>
+            <%= link_to organization_path(current_organization), class: "btn btn-ghost btn-sm gap-2 join-item",
+                         title: "Add an App Store Connect or Google Play credential to enable sync" do %>
+              <i class="fa-solid fa-rotate opacity-60"></i>
+              <span>Setup sync</span>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <%# Links available in footer %>
+    <% end %>
+  </div>
+
+  <div class="navbar-end">
+    <% if user_signed_in? %>
+      <!-- Notifications -->
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-circle" aria-label="Notifications" data-controller="turbo-frame-loader" data-turbo-frame-loader-frame-value="notifications_dropdown" data-action="click->turbo-frame-loader#load">
+          <div class="indicator">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <% unread_count = current_user.notifications.visible.unread.count %>
+            <% if unread_count > 0 %>
+              <span class="badge badge-sm border-none bg-transparent text-primary font-bold indicator-item">
+                <%= unread_count > 9 ? "9+" : unread_count %>
+              </span>
+            <% end %>
+          </div>
+        </div>
+        <div tabindex="0" class="mt-3 z-[1] card card-compact dropdown-content w-80 bg-base-100 shadow">
+          <turbo-frame id="notifications_dropdown" src="<%= dropdown_notifications_path %>" loading="lazy">
+            <div class="card-body flex items-center justify-center min-h-[200px]">
+              <span class="loading loading-spinner loading-md text-primary"></span>
+            </div>
+          </turbo-frame>
+        </div>
+      </div>
+
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-circle relative">
+          <% if current_user.avatar_url.present? %>
+            <div class="avatar">
+              <div class="w-10 rounded-full">
+                <%= image_tag current_user.avatar_url, alt: "#{current_user.name.presence || current_user.email} avatar", class: "object-cover" %>
+              </div>
+            </div>
+            <% if current_user.provider.present? %>
+              <% provider_icon = current_user.provider == "google_oauth2" ? "google" : current_user.provider %>
+              <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-base-100 flex items-center justify-center">
+                <i class="fa-brands fa-<%= provider_icon %> text-[10px]"></i>
+              </div>
+            <% end %>
+          <% else %>
+            <% initials = if current_user.name.present?
+                            current_user.name.split.map { |w| w[0] }.join.first(2).upcase
+                          else
+                            current_user.email.split('@').first[0, 2].upcase
+                          end %>
+            <div class="avatar avatar-placeholder">
+              <div class="bg-neutral text-neutral-content rounded-full w-10">
+                <span class="text-xs"><%= initials %></span>
+              </div>
+            </div>
+            <% if current_user.provider.present? %>
+              <% provider_icon = current_user.provider == "google_oauth2" ? "google" : current_user.provider %>
+              <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-base-100 flex items-center justify-center">
+                <i class="fa-brands fa-<%= provider_icon %> text-[10px]"></i>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+        <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow">
+          <li class="menu-title" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+            <span><%= current_user.email %></span>
+          </li>
+          <li>
+            <%= link_to settings_path do %>
+              <i class="fa-solid fa-gear text-xs"></i>
+              <span>Settings</span>
+            <% end %>
+          </li>
+          <hr class="my-2 border-base-300" />
+          <li><%= link_to destroy_user_session_path, data: { turbo_method: :delete } do %>
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            <span>Logout</span>
+          <% end %></li>
+        </ul>
+      </div>
+    <% else %>
+      <div class="flex items-center gap-2">
+        <%# Mobile nav links available in footer %>
+        <div class="flex gap-2">
+        <%= link_to "Sign Up", new_user_registration_path, class: "btn btn-primary btn-sm" %>
+        <%= link_to "Sign In", new_user_session_path, class: "btn btn-ghost btn-sm" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

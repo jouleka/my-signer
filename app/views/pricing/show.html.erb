@@ -1,0 +1,92 @@
+<%# app/views/pricing/show.html.erb
+    Thin orchestrator. Composes focused partials using @viewer_context.
+    All state resolution lives in Pricing::ViewerContext (see app/services/pricing/viewer_context.rb).
+%>
+
+<% content_for(:title) { "Pricing" } %>
+<% content_for(:description) { "Simple, transparent pricing. Start free, upgrade when you're ready." } %>
+
+<%# Surface the subscription so the cancellation modal can reference it without an instance-variable dependency %>
+<% current_subscription = @billing_subscription if @billing_subscription.present? && @billing_subscription.effective_tier != "free" %>
+
+<%# pricing-plans controller must span both the plan cards AND the preview
+    modal (rendered near the bottom of this template) — Stimulus targets
+    only resolve inside the controller element's subtree. Hoisting it to
+    the outer div keeps the preview dialog in scope. %>
+<div class="space-y-8 sm:space-y-10 min-w-0 w-full overflow-hidden"
+     data-controller="paddle-checkout modal pricing-plans"
+     data-pricing-plans-default-interval-value="<%= billing_default_interval %>"
+     data-pricing-plans-preview-url-value="<%= billing_paddle_subscription_change_preview_path %>"
+     <% if defined?(Billing::Configuration) && billing_checkout_enabled? %>
+       data-paddle-checkout-token-value="<%= Billing::Configuration.paddle_client_side_token %>"
+       data-paddle-checkout-environment-value="<%= Billing::Configuration.paddle_environment %>"
+       <% if user_signed_in? %>
+         data-paddle-checkout-user-id-value="<%= current_user.id %>"
+         data-paddle-checkout-email-value="<%= current_user.email %>"
+         data-paddle-checkout-checkout-complete-url-value="<%= billing_paddle_checkout_complete_path %>"
+         data-paddle-checkout-return-to-value="<%= pricing_path %>"
+       <% end %>
+     <% end %>>
+
+  <%# Page header %>
+  <%= render "shared/page_header",
+             title: "Plans & Billing",
+             description: "Start free, upgrade when you need more. Every change shows a billing preview before you confirm.",
+             gradient: "from-amber-500/15 via-base-100 to-rose-500/10",
+             badge_icon: "fa-solid fa-crown",
+             badge_text: "Billing",
+             actions: (capture do %>
+    <% if @organization.present? %>
+      <%= link_to organization_path(@organization), class: "btn btn-ghost btn-sm gap-2" do %>
+        <i class="fa-solid fa-building"></i>
+        <span class="hidden sm:inline"><%= @organization.name %></span>
+        <span class="sm:hidden">Org</span>
+      <% end %>
+    <% end %>
+    <% if current_subscription.present? %>
+      <%= button_to billing_paddle_portal_session_path, method: :post, class: "btn btn-primary btn-sm gap-2", form: { data: { turbo: false } } do %>
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        Manage billing
+      <% end %>
+    <% elsif !user_signed_in? %>
+      <%= link_to new_user_registration_path, class: "btn btn-primary btn-sm gap-2" do %>
+        <i class="fa-solid fa-user-plus"></i>
+        Start free
+      <% end %>
+    <% end %>
+  <% end) %>
+
+  <%# Top strips (shown when relevant) %>
+  <%= render "pricing/subscription_strip", viewer_context: @viewer_context, subscription: @billing_subscription %>
+  <%= render "pricing/scheduled_change_strip", viewer_context: @viewer_context %>
+  <%= render "pricing/trial_strip", viewer_context: @viewer_context %>
+
+  <%# Scheduled downgrade impact banner (shown when a plan change is queued) %>
+  <% if current_subscription.present? %>
+    <% scheduled_change_impact = scheduled_plan_change_impact(current_subscription, organization: @organization) %>
+    <% if scheduled_change_impact.present? %>
+      <%= render "shared/scheduled_plan_change_banner", impact: scheduled_change_impact, compact: true %>
+    <% end %>
+  <% end %>
+
+  <%# The hero — Plan Studio %>
+  <%= render "pricing/plan_studio",
+             viewer_context: @viewer_context,
+             billing_offerings: @billing_offerings,
+             default_interval: billing_default_interval,
+             subscription: current_subscription %>
+
+  <%# Below the fold %>
+  <%= render "pricing/compare_tabs", viewer_context: @viewer_context %>
+  <%= render "pricing/trust_strip" %>
+  <%= render "pricing/faq" %>
+
+  <%# Modals — passed current_subscription so cancellation modal's internal local works %>
+  <%= render "pricing/billing_change_preview_modal", current_subscription: current_subscription %>
+  <%= render "pricing/cancellation_modal", current_subscription: current_subscription %>
+  <%# Trial-end modal renders only for users on an active reverse trial.
+      The Stimulus pricing-plans#openEndTrial action falls through to this
+      modal when no #billing-cancel-modal is on the page. %>
+  <%= render "pricing/trial_end_modal" %>
+  <%= render "pricing/paddle_checkout_modal" %>
+</div>

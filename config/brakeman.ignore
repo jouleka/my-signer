@@ -1,0 +1,55 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "2671b058adbc97cee74e7ae80a0df0a959cab227d4aef2fd06dd6dcfe8ba72ab",
+      "code": "render(action => current_user.notifications.visible.recent.page(params[:page]).per(20), {})",
+      "file": "app/views/notifications/index.html.erb",
+      "line": 20,
+      "note": "False positive - Kaminari pagination rendering"
+    },
+    {
+      "fingerprint": "648c7d05529bb817fb35f50a2d27a673b6f2a2e18477ca37c48da8a5417e54c7",
+      "code": "File.read(doc_file_path(params[:category], params[:slug]))",
+      "file": "app/controllers/docs_controller.rb",
+      "line": 39,
+      "note": "Path constrained to CONTENT_PATH and validated"
+    },
+    {
+      "fingerprint": "7975e919dc5b3d7aaed04f58cc65a2edea7ab2d3c25ec8111e930f1fc0eafeb5",
+      "code": "params.require(:organization_invitation).permit(:email, :role)",
+      "file": "app/controllers/organization_invitations_controller.rb",
+      "line": 48,
+      "note": "Protected by Pundit authorization"
+    },
+    {
+      "fingerprint": "f96cc5c1ec7fcc45cb30bccfbd195583d8c89900a42601f942a161bce26cf212",
+      "code": "params.permit!",
+      "file": "app/views/shared/_ios_breadcrumbs.html.erb",
+      "line": 52,
+      "note": "params.permit! used only for URL generation, not mass assignment"
+    },
+    {
+      "fingerprint": "f96cc5c1ec7fcc45cb30bccfbd195583d8c89900a42601f942a161bce26cf212",
+      "code": "params.permit!",
+      "file": "app/views/shared/_ios_breadcrumbs.html.erb",
+      "line": 65,
+      "note": "params.permit! used only for URL generation, not mass assignment"
+    },
+    {
+      "fingerprint": "6611a2be16bc287614f284128022ca892d7d4e26501fa1e23885ef1c094cd332",
+      "code": "send_file((generate_cloud_zip(...) or generate_fastlane_zip_file(...) or generate_zip_file(...)).path, ...)",
+      "file": "app/controllers/api/v1/screenshot_exports_controller.rb",
+      "line": 174,
+      "note": "send_file uses Tempfile path from zip generators; params[:preset] and params[:fastlane] are used as ActiveRecord filters and type-cast booleans, not in file paths"
+    },
+    {
+      "fingerprint": "1538d0664e5c56954c9bd0603e597afe128ac0de108aa610a148d50429540fed",
+      "code": "params.require(:membership).permit(:role)",
+      "file": "app/controllers/memberships_controller.rb",
+      "line": 132,
+      "note": "Protected by Pundit (MembershipPolicy#update? = admin/owner only). The mass-assignable :user_id was removed (M-4); only :role remains, validated by the Membership role enum plus keep_at_least_one_admin / owner-immutable guards. Same rationale as the organization_invitations permit(:email,:role) ignore."
+    }
+  ],
+  "updated": "2026-04-02 00:00:00 +0000",
+  "brakeman_version": "7.1.0"
+}

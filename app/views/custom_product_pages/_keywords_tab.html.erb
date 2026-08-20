@@ -1,0 +1,137 @@
+<%# Keywords tab: assign keywords from the app's keyword field to this CPP %>
+<% assigned_ids = @assigned_keywords.map { |kw| kw["id"] } %>
+<% assigned_texts = @assigned_keywords.map { |kw| kw["id"].to_s } %>
+<% unassigned = @available_keywords.reject { |kw| assigned_texts.include?(kw) } %>
+<% first_localization = @localizations&.first %>
+
+<div class="flex flex-col gap-5">
+  <%# Your App's Keywords (from Releases > Listing) %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_split_classes %>">
+      <div class="flex items-center gap-2.5">
+        <div class="<%= card_icon_classes %>">
+          <i class="fa-solid fa-tags"></i>
+        </div>
+        <span class="<%= card_title_classes %>">Your App's Keywords</span>
+        <% if @available_keywords.any? %>
+          <span class="<%= count_badge_classes %>"><%= @available_keywords.size %></span>
+        <% end %>
+      </div>
+      <% if first_localization %>
+        <span class="<%= locale_badge_classes %>"><%= first_localization.locale %></span>
+      <% end %>
+    </div>
+    <div class="<%= card_body_classes %>">
+      <% if @available_keywords.any? %>
+        <div class="flex flex-wrap gap-1.5">
+          <% @available_keywords.each do |kw| %>
+            <% is_assigned = assigned_texts.include?(kw) %>
+            <span class="<%= is_assigned ? kw_tag_classes : muted_badge_classes %> <%= 'ring-1 ring-primary/20' if is_assigned %>">
+              <%= kw %>
+              <% if is_assigned %>
+                <i class="fa-solid fa-check text-[0.45rem] ml-0.5"></i>
+              <% end %>
+            </span>
+          <% end %>
+        </div>
+        <p class="<%= hint_text_classes %> mt-2">
+          From your keyword field in Releases &gt; Listing. Keywords with <i class="fa-solid fa-check text-[0.45rem]"></i> are assigned to this CPP.
+        </p>
+      <% else %>
+        <p class="<%= empty_inline_classes %>">
+          <i class="fa-solid fa-circle-info text-[0.625rem]"></i>
+          No keywords found. Set keywords in
+          <%= link_to "Releases > Listing", organization_releases_path(@organization), class: "text-primary/80 hover:text-primary underline" %>
+          first, then sync.
+        </p>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Assigned to This CPP %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_split_classes %>">
+      <div class="flex items-center gap-2.5">
+        <div class="<%= card_icon_classes %>">
+          <i class="fa-solid fa-key"></i>
+        </div>
+        <span class="<%= card_title_classes %>">Assigned to This CPP</span>
+        <% if @assigned_keywords.any? %>
+          <span class="<%= count_badge_classes %>"><%= @assigned_keywords.size %></span>
+        <% end %>
+      </div>
+    </div>
+    <div class="<%= card_body_classes %>">
+      <% if @assigned_keywords.any? %>
+        <div class="flex flex-wrap gap-2">
+          <% @assigned_keywords.each do |kw_data| %>
+            <div class="<%= keyword_chip_classes %>">
+              <span><%= kw_data["id"] %></span>
+              <%= button_to remove_keyword_organization_custom_product_page_path(@organization, @cpp),
+                  method: :delete,
+                  params: { keyword_id: kw_data["id"], locale: first_localization&.locale },
+                  class: "text-primary/40 hover:text-error/80 transition-colors cursor-pointer",
+                  data: { turbo_confirm: "Remove this keyword from the CPP?" } do %>
+                <i class="fa-solid fa-xmark text-[0.625rem]"></i>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="<%= empty_inline_classes %>">
+          <i class="fa-solid fa-circle-info text-[0.625rem]"></i>
+          No keywords assigned yet. Select one below to assign it.
+        </p>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Assign Keyword Form %>
+  <% if first_localization && unassigned.any? %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>">
+          <i class="fa-solid fa-plus"></i>
+        </div>
+        <span class="<%= card_title_classes %>">Assign Keyword to CPP</span>
+      </div>
+      <div class="<%= card_body_classes %>">
+        <%= form_with url: add_keyword_organization_custom_product_page_path(@organization, @cpp),
+            method: :post,
+            local: true,
+            class: "flex items-end gap-3" do %>
+          <%= hidden_field_tag :locale, first_localization.locale %>
+          <div class="flex-1">
+            <label class="<%= label_form_classes %> mb-1">Select a keyword</label>
+            <select name="keyword_id" class="<%= input_field_classes %>" required>
+              <option value="">Choose a keyword...</option>
+              <% unassigned.each do |kw| %>
+                <option value="<%= kw %>"><%= kw %></option>
+              <% end %>
+            </select>
+          </div>
+          <button type="submit" class="<%= btn_primary_sm_classes %> shrink-0">
+            <i class="fa-solid fa-plus"></i> Assign
+          </button>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Info banner %>
+  <div class="<%= sn_info_classes %>">
+    <div class="flex items-start gap-2">
+      <div class="<%= sn_icon_info_classes %> mt-0.5">
+        <i class="fa-solid fa-circle-info text-[0.5rem]"></i>
+      </div>
+      <div>
+        <p class="text-xs text-base-content/60 leading-relaxed">
+          Assigning a keyword to this CPP means users searching that term on the App Store will see
+          <strong class="text-base-content/80">this Custom Product Page</strong> instead of your default page.
+          Keywords must exist in your app's keyword field (Releases &gt; Listing).
+          No App Review required — assignments go live immediately.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

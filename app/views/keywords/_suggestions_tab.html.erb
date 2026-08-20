@@ -1,0 +1,97 @@
+<%# Suggestions tab: composition workspace for the 100-char keyword field. %>
+
+<%= render "keywords/budget_bar" %>
+
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_classes %>">
+    <div class="<%= card_icon_classes %>">
+      <i class="fa-solid fa-lightbulb"></i>
+    </div>
+    <span class="<%= card_title_classes %>">Keyword Suggestions</span>
+  </div>
+
+  <div class="<%= card_body_classes %>">
+    <p class="text-xs text-base-content/50 leading-relaxed mb-4">
+      Search Apple's App Store autocomplete to discover keyword ideas. Click a chip to stage it — review and commit at the bottom.
+    </p>
+
+    <% if @entitlements.keyword_editor_read_only? %>
+      <div class="mb-4">
+        <label class="<%= label_form_classes %> mb-1.5">Search term <%= pro_badge_html %></label>
+        <input type="text"
+               class="<%= input_field_classes %> max-w-md opacity-50 cursor-not-allowed"
+               placeholder="Upgrade to Pro to search suggestions..."
+               disabled>
+      </div>
+      <p class="text-xs text-base-content/40 italic">
+        Apple autocomplete suggestions require a Pro plan.
+        <%= link_to "Upgrade", pricing_path, class: "text-primary/80 hover:text-primary underline" %> to unlock.
+      </p>
+    <% else %>
+      <div class="flex items-start gap-2 mb-4">
+        <div class="flex-1">
+          <label class="<%= label_form_classes %> mb-1.5">Search Apple autocomplete</label>
+          <input type="text"
+                 class="<%= input_field_classes %> max-w-md"
+                 placeholder="Type a seed keyword, or try a competitor app name..."
+                 data-keyword-editor-target="suggestionsInput"
+                 data-action="input->keyword-editor#searchSuggestions">
+        </div>
+        <div class="pt-[1.85rem]">
+          <button type="button" class="<%= btn_ghost_sm_classes %>"
+                  data-controller="modal"
+                  data-action="click->modal#open"
+                  data-modal-target-value="competitor-lookup-modal">
+            <i class="fa-solid fa-diamond"></i> From competitor URL
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center flex-wrap hidden" data-keyword-editor-target="recentSearches"></div>
+
+      <div data-keyword-editor-target="suggestionsContainer">
+        <p class="text-xs text-base-content/40 italic">Type at least 2 characters to search</p>
+      </div>
+    <% end %>
+
+    <div class="mt-5 pt-4 border-t border-base-content/[0.05]">
+      <p class="<%= label_uppercase_classes %> mb-2">Tips</p>
+      <ul class="text-xs text-base-content/45 space-y-1 leading-relaxed">
+        <li><i class="fa-solid fa-circle-info text-primary/40 mr-1"></i> Click a suggestion to stage it</li>
+        <li><i class="fa-solid fa-circle-info text-primary/40 mr-1"></i> Grayed-out keywords are already in your keywords, title, or subtitle</li>
+        <li><i class="fa-solid fa-circle-info text-primary/40 mr-1"></i> Dashed chips don't fit the 100-char budget</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<%= render "keywords/scratchpad",
+           saved_keyword_ideas: (@saved_keyword_ideas || []),
+           apple_app: @app,
+           organization: @organization,
+           store_listing: @store_listing,
+           popularity_map: (@popularity_map || {}) %>
+
+<%= render "keywords/apple_ads_recommendations" %>
+
+<div data-keyword-editor-target="basketZone" class="hidden fixed bottom-0 left-0 right-0 z-[50] px-5 py-3 bg-base-200/95 backdrop-blur border-t border-primary/20 flex items-center gap-3">
+  <div class="flex items-center gap-3 flex-1">
+    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-success/[0.12] text-success/90 font-semibold text-sm" data-keyword-editor-target="basketCount">0</span>
+    <div>
+      <div class="text-sm font-medium text-base-content/90">keywords staged</div>
+      <div class="text-xs text-base-content/50" data-keyword-editor-target="basketDelta">&mdash;</div>
+    </div>
+  </div>
+  <button type="button" class="<%= btn_ghost_sm_classes %>" data-action="click->keyword-editor#clearBasket">Clear</button>
+  <button type="button" class="<%= btn_primary_classes %>" data-controller="modal" data-action="click->modal#open" data-modal-target-value="commit-basket-modal">
+    Review &amp; commit &rarr;
+  </button>
+</div>
+
+<% if !@entitlements.keyword_editor_read_only? %>
+  <%= render "keywords/commit_basket_modal" %>
+<% end %>
+
+<% if !@entitlements.keyword_editor_read_only? %>
+  <%= render "keywords/competitor_lookup_modal" %>
+<% end %>

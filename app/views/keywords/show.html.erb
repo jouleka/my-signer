@@ -1,0 +1,95 @@
+<%# Keywords dashboard: tabbed view for a single iOS app %>
+<% app_label = @app.name.presence || @app.bundle_id %>
+
+<%= breadcrumbs([
+  { label: "Keywords & ASO", path: organization_keywords_path(@organization) },
+  { label: app_label }
+]) %>
+
+<section class="flex flex-col gap-4"
+         data-controller="keyword-editor"
+         data-keyword-editor-suggestions-url-value="<%= suggestions_organization_keywords_path(@organization) %>"
+         data-keyword-editor-keywords-str-value="<%= @store_listing&.keywords || '' %>"
+         data-keyword-editor-country-value="<%= @current_locale.to_s.split('-').last.downcase.presence || 'us' %>"
+         data-keyword-editor-limit-value="100"
+         data-keyword-editor-app-id-value="<%= @app.id %>"
+         data-keyword-editor-locale-value="<%= @current_locale %>"
+         data-keyword-editor-popularity-map-value='<%= (@popularity_map || {}).to_json.html_safe %>'
+         data-keyword-editor-apple-ads-connected-value="<%= @apple_ads_connected ? "true" : "false" %>"
+         data-keyword-editor-save-idea-url-value='<%= (@app && respond_to?(:organization_apple_app_saved_keyword_ideas_path)) ? organization_apple_app_saved_keyword_ideas_path(@organization, @app) : "" %>'>
+
+  <%# Header %>
+  <div class="flex flex-wrap items-start justify-between gap-4 mb-2">
+    <div class="flex items-start gap-[0.875rem]">
+      <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/[0.08] text-primary/60 shrink-0">
+        <i class="fa-brands fa-apple text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-2xl font-extrabold leading-tight tracking-[-0.02em] text-base-content/95"><%= app_label %></h1>
+        <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+          <span class="<%= platform_badge_classes %>">
+            <i class="fa-brands fa-apple"></i> iOS
+          </span>
+          <% if @app.bundle_id.present? %>
+            <span class="<%= meta_text_classes %>"><%= @app.bundle_id %></span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Read-only info banner for free plan users %>
+  <% if @entitlements.keyword_editor_read_only? %>
+    <div class="<%= sn_info_classes %>">
+      <div class="flex items-center gap-2">
+        <div class="<%= sn_icon_info_classes %>">
+          <i class="fa-solid fa-eye text-[0.5rem]"></i>
+        </div>
+        <p class="text-xs text-base-content/60">
+          You're viewing keyword data in <strong class="text-base-content/80">read-only</strong> mode.
+          <%= link_to "Upgrade to Pro", pricing_path, class: "text-primary/80 hover:text-primary underline" %> to edit keywords, get suggestions, and track up to 50 per app.
+        </p>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Apple Search Ads connection banner (Pro+ pre-connect or Free-tier upsell).
+      The banner partial owns the Free-tier upsell copy, so we always render
+      it — the inner states handle the per-plan UX. %>
+  <%= render "keywords/apple_ads_connection_banner" %>
+  <%= render "keywords/popularity_health_banner" %>
+
+  <div id="keywords-flash-zone"></div>
+
+  <%# Tab navigation. %>
+  <div class="<%= tab_bar_classes %>">
+    <% tabs = [
+      { key: "editor",     label: "Editor",      icon: "fa-solid fa-pen-to-square" },
+      { key: "suggestions", label: "Suggestions", icon: "fa-solid fa-lightbulb" },
+      { key: "tracking",   label: "Tracking",    icon: "fa-solid fa-chart-line" },
+      { key: "locale_map", label: "Locale Map",  icon: "fa-solid fa-globe" }
+    ] %>
+    <% tabs.each do |t| %>
+      <%= link_to organization_keyword_path(@organization, params[:id], tab: t[:key]),
+          class: (@tab == t[:key] ? tab_active_classes : tab_inactive_classes) do %>
+        <i class="<%= t[:icon] %>"></i> <%= t[:label] %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <%# Tab content %>
+  <div>
+    <% case @tab %>
+    <% when "editor" %>
+      <%= render "keywords/editor_tab" %>
+    <% when "suggestions" %>
+      <%= render "keywords/suggestions_tab" %>
+    <% when "tracking" %>
+      <%= render "keywords/tracking_tab" %>
+    <% when "locale_map" %>
+      <%= render "keywords/locale_map_tab" %>
+    <% else %>
+      <%= render "keywords/editor_tab" %>
+    <% end %>
+  </div>
+</section>

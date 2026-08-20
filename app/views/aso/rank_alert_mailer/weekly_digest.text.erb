@@ -1,0 +1,24 @@
+Keyword rank changes this week
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+Here's the weekly rundown for "<%= @organization.name %>". We only surface
+significant movements -- keywords that crossed the top-10 or top-50
+thresholds, or moved more than 5 positions within the top 100.
+
+<% if @movements.empty? -%>
+No significant rank changes this week. All tracked keywords held steady.
+<% else -%>
+<% @movements.each do |m| -%>
+- <%= m.tkc.tracked_keyword.keyword %> (<%= m.tkc.country.upcase %>): <%= m.week_ago ? "##{m.week_ago}" : "--" %> -> <%= m.current ? "##{m.current}" : "--" %><%= m.delta ? " (#{m.delta > 0 ? "↑" : "↓"}#{m.delta.abs})" : "" %>
+<% end -%>
+<% end -%>
+
+View keyword tracker: <%= organization_url(@organization) %>
+
+Weekly rank digests are a Team-tier feature. You can adjust preferences in
+your organization settings.
+
+Thanks,
+My Signer Team

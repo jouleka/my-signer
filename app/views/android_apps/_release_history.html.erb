@@ -1,0 +1,157 @@
+<%# Release History Partial for Android Apps %>
+<% releases ||= [] %>
+<% show_view_all = local_assigns.fetch(:show_view_all, true) %>
+
+<div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+  <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+    <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+      <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+        <i class="fa-solid fa-clock-rotate-left text-warning"></i>
+        Release History
+      </h2>
+      <div class="flex items-center gap-2">
+        <span class="badge badge-ghost badge-sm sm:badge-md"><%= releases.size %> releases</span>
+        <% if show_view_all && defined?(@app) && @organization %>
+          <%= link_to releases_organization_android_app_path(@organization, @app), class: "btn btn-ghost btn-xs gap-1.5" do %>
+            View All
+            <i class="fa-solid fa-arrow-right"></i>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <% if releases.any? %>
+      <%# Timeline View %>
+      <div class="relative">
+        <%# Vertical line %>
+        <div class="absolute left-[18px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary/50 via-base-300 to-base-300 hidden md:block"></div>
+
+        <div class="space-y-3 sm:space-y-4">
+          <% releases.first(show_view_all ? 5 : releases.size).each_with_index do |release, idx| %>
+            <%
+              track_style = case release.track
+                when "production" then { color: "border-success/50 bg-success/5", icon: "fa-rocket", badge: "badge-success", dot: "bg-success" }
+                when "beta" then { color: "border-warning/50 bg-warning/5", icon: "fa-flask", badge: "badge-warning", dot: "bg-warning" }
+                when "alpha" then { color: "border-info/50 bg-info/5", icon: "fa-vial", badge: "badge-info", dot: "bg-info" }
+                when "internal" then { color: "border-base-300 bg-base-200/30", icon: "fa-lock", badge: "badge-ghost", dot: "bg-base-300" }
+                else { color: "border-base-300", icon: "fa-code-branch", badge: "badge-ghost", dot: "bg-base-300" }
+              end
+
+              status_style = case release.status
+                when "live" then { badge: "badge-success", icon: "fa-circle-check" }
+                when "submitted" then { badge: "badge-info", icon: "fa-paper-plane" }
+                when "draft" then { badge: "badge-warning", icon: "fa-file-pen" }
+                when "rejected" then { badge: "badge-error", icon: "fa-circle-xmark" }
+                when "removed" then { badge: "badge-ghost", icon: "fa-trash" }
+                else { badge: "badge-ghost", icon: "fa-circle-question" }
+              end
+            %>
+
+            <div class="flex gap-3 sm:gap-4 md:pl-10 relative">
+              <%# Timeline dot (desktop only) %>
+              <div class="absolute left-2 w-4 h-4 rounded-full <%= track_style[:dot] %> border-4 border-base-100 hidden md:block shadow-sm" style="top: 1.25rem;"></div>
+
+              <div class="card border <%= track_style[:color] %> shadow-sm flex-1 min-w-0 overflow-hidden hover:shadow-md transition-shadow">
+                <div class="card-body p-3 sm:p-4 space-y-2 sm:space-y-3 min-w-0">
+                  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                    <div class="space-y-1.5 sm:space-y-2 min-w-0">
+                      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                        <span class="badge <%= track_style[:badge] %> gap-1 sm:gap-1.5 capitalize badge-sm">
+                          <i class="fa-solid <%= track_style[:icon] %> text-[10px]"></i>
+                          <%= release.track %>
+                        </span>
+                        <span class="badge <%= status_style[:badge] %> gap-1 sm:gap-1.5 badge-sm">
+                          <i class="fa-solid <%= status_style[:icon] %> text-[10px]"></i>
+                          <%= release.status.titleize %>
+                        </span>
+                        <% if idx == 0 && show_view_all %>
+                          <span class="badge badge-primary badge-xs">Latest</span>
+                        <% end %>
+                      </div>
+                      <h3 class="font-semibold flex items-center gap-2">
+                        <code class="font-mono text-xs sm:text-sm bg-base-200 px-2 py-0.5 rounded">v<%= release.version_code %></code>
+                      </h3>
+                    </div>
+                    <div class="text-left sm:text-right text-xs sm:text-sm text-base-content/60 shrink-0">
+                      <% if release.effective_released_at %>
+                        <div class="font-medium" title="<%= release.effective_released_at.to_fs(:long) %>">
+                          <%= time_ago_in_words(release.effective_released_at) %> ago
+                        </div>
+                        <div class="text-xs">
+                          <%= release.effective_released_at.strftime("%b %d, %Y") %>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <%# Release Details %>
+                  <% if release.user_fraction.present? && release.user_fraction < 1.0 %>
+                    <div class="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+                      <i class="fa-solid fa-users text-base-content/40 w-4 shrink-0"></i>
+                      <span class="shrink-0">Staged:</span>
+                      <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <div class="w-16 sm:w-24 bg-base-200 rounded-full h-2 shrink-0">
+                          <div class="bg-primary h-2 rounded-full" style="width: <%= (release.user_fraction * 100).round %>%"></div>
+                        </div>
+                        <span class="font-semibold"><%= (release.user_fraction * 100).round(1) %>%</span>
+                      </div>
+                    </div>
+                  <% end %>
+
+                  <% if release.release_notes.present? %>
+                    <details class="collapse collapse-arrow bg-base-200/50 rounded-xl overflow-hidden">
+                      <summary class="collapse-title text-xs sm:text-sm font-medium py-2 sm:py-3 min-h-0 flex items-center gap-2">
+                        <i class="fa-solid fa-file-lines text-base-content/50"></i>
+                        Release Notes
+                      </summary>
+                      <div class="collapse-content text-xs sm:text-sm">
+                        <p class="whitespace-pre-wrap text-base-content/80 break-words"><%= release.release_notes %></p>
+                      </div>
+                    </details>
+                  <% end %>
+
+                  <% if release.localizations.present? && release.localizations.any? %>
+                    <details class="collapse collapse-arrow bg-base-200/50 rounded-xl overflow-hidden">
+                      <summary class="collapse-title text-xs sm:text-sm font-medium py-2 sm:py-3 min-h-0 flex items-center gap-2">
+                        <i class="fa-solid fa-globe text-base-content/50"></i>
+                        Localizations
+                        <span class="badge badge-ghost badge-xs"><%= release.localizations.size %></span>
+                      </summary>
+                      <div class="collapse-content text-xs sm:text-sm space-y-3">
+                        <% release.localizations.each do |lang, content| %>
+                          <div class="border-l-2 border-primary/50 pl-3 min-w-0">
+                            <div class="font-semibold uppercase text-xs text-primary"><%= lang %></div>
+                            <p class="whitespace-pre-wrap text-base-content/70 text-xs sm:text-sm mt-1 break-words"><%= content.is_a?(Hash) ? content["releaseNotes"] : content %></p>
+                          </div>
+                        <% end %>
+                      </div>
+                    </details>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <% if show_view_all && releases.size > 5 %>
+          <div class="mt-4 text-center">
+            <%= link_to releases_organization_android_app_path(@organization, @app), class: "btn btn-ghost btn-sm gap-2" do %>
+              View all <%= releases.size %> releases
+              <i class="fa-solid fa-arrow-right"></i>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mb-4">
+          <i class="fa-solid fa-clock-rotate-left text-xl sm:text-2xl text-amber-500/50"></i>
+        </div>
+        <h3 class="text-base sm:text-lg font-bold">No Releases Yet</h3>
+        <p class="text-base-content/60 max-w-sm mt-2 text-sm break-words">
+          Create releases via the CLI or API to track them here.
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>

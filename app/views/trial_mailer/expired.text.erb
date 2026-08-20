@@ -1,0 +1,18 @@
+Your trial has ended
+
+Hi <%= @user.name.presence || @user.email %>,
+
+Your 14-day MySigner Pro trial ended on <%= @trial_ended_at.strftime("%B %d, %Y") %>.
+You're now on the Free plan — we've downgraded your account from Pro.
+
+You can still use MySigner on the Free tier, but Pro features
+(unlimited screenshots, store listing editor, ASO tracking, and more)
+are now locked.
+
+Upgrade: <%= pricing_url %>
+
+The CLI stays free for everyone — signing, builds, TestFlight, and Play
+Store uploads keep working on Free.
+
+—
+Change notification preferences: <%= settings_url(tab: "notifications") %>

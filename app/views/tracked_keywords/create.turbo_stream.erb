@@ -1,0 +1,40 @@
+<%# Replace the list and limits banner; swap in a fresh (closed) modal
+    instance so any prior error state is cleared. Prepend a confirmation
+    banner into the flash zone that auto-dismisses after 8s. %>
+<%= turbo_stream.replace "tracked-keywords-list",
+      partial: "keywords/tracked_keywords_list",
+      locals: { app: @app } %>
+
+<% usage = TrackedKeywordCountry
+             .joins(:tracked_keyword)
+             .where(tracked_keywords: { apple_app_id: @app.id, enabled: true })
+             .where(tracked_keyword_countries: { enabled: true })
+             .count %>
+<%= turbo_stream.replace "tracked-keywords-limits",
+      partial: "keywords/tracking_limits_banner",
+      locals: { app: @app, entitlements: @organization.entitlements, usage: usage, estimate: @next_check_estimate } %>
+
+<%= turbo_stream.replace "add-tracked-keyword-modal",
+      partial: "keywords/add_tracked_keyword_modal" %>
+
+<%= turbo_stream.prepend "tracked-keywords-flash-zone" do %>
+  <div class="<%= sn_success_classes %> mb-4"
+       data-controller="inline-notification"
+       data-inline-notification-timeout-value="8000">
+    <div class="flex items-start gap-2.5 p-1">
+      <div class="<%= sn_icon_success_classes %>">
+        <i class="fa-solid fa-circle-check text-[0.65rem]"></i>
+      </div>
+      <p class="text-xs text-base-content/80 leading-relaxed flex-1">
+        <strong class="text-base-content/90"><%= @tracked_keyword.keyword %></strong> tracked.
+        First rank check <%= @next_check_estimate.human %>.
+      </p>
+      <button type="button"
+              class="<%= sn_close_classes %>"
+              data-action="click->inline-notification#dismiss"
+              aria-label="Dismiss">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+<% end %>

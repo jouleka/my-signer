@@ -1,0 +1,89 @@
+<%# Turbo-stream renderable checklist partial %>
+<% checklist = local_assigns[:checklist] %>
+<% return unless checklist %>
+<% app = checklist.listable %>
+<% read_only = local_assigns.fetch(:read_only, @organization&.entitlements&.release_checklist_read_only?) %>
+<% complete = checklist.completion_percentage == 100 %>
+
+<div id="release-checklist" class="<%= card_container_classes %>" data-controller="release-checklist"
+     data-release-checklist-total-value="<%= (checklist.items + checklist.custom_items).size %>">
+
+  <div class="<%= card_header_split_classes %>">
+    <div class="flex items-center gap-2.5">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-solid fa-clipboard-check"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Pre-Submission Checklist</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <% if checklist.ready_for_submission? %>
+        <span class="badge badge-sm badge-success gap-1">
+          <i class="fa-solid fa-check text-[0.5rem]"></i> Ready
+        </span>
+      <% end %>
+      <span class="inline-flex items-center text-[0.625rem] font-semibold tabular-nums px-[0.4rem] py-[0.1rem] rounded bg-base-content/[0.04] text-base-content/30" data-release-checklist-target="progressText">
+        <%= checklist.completion_percentage %>%
+      </span>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3 px-5 py-3 border-b border-base-content/[0.06]">
+    <div class="flex-1 h-1.5 rounded-[3px] bg-base-content/[0.06] overflow-hidden">
+      <div class="h-full rounded-[3px] transition-[width,background] duration-300 <%= complete ? 'bg-[oklch(0.72_0.19_142.5/0.7)]' : 'bg-primary/60' %>"
+           data-release-checklist-target="progressBar"
+           style="width: <%= checklist.completion_percentage %>%"></div>
+    </div>
+    <span class="<%= meta_text_classes %>" data-release-checklist-target="progressText">
+      <%= (checklist.items + checklist.custom_items).count { |i| i["checked"] } %>/<%= (checklist.items + checklist.custom_items).size %>
+    </span>
+  </div>
+
+  <div class="flex flex-col">
+    <% (checklist.items + checklist.custom_items).each do |item| %>
+      <% checked = item["checked"] == true %>
+      <% required = item["required"] == true %>
+      <% if checklist.persisted? && app %>
+        <% check_url = check_item_organization_release_release_checklist_path(
+             @organization, app.is_a?(AppleApp) ? "apple_app_#{app.id}" : "android_app_#{app.id}",
+             checklist) %>
+        <% uncheck_url = uncheck_item_organization_release_release_checklist_path(
+             @organization, app.is_a?(AppleApp) ? "apple_app_#{app.id}" : "android_app_#{app.id}",
+             checklist) %>
+      <% end %>
+
+      <div class="flex items-center gap-3 px-5 py-3 border-b border-base-content/[0.04] last:border-b-0 transition-colors hover:bg-base-content/[0.02] <%= 'opacity-60' if checked %>"
+           data-checklist-item
+           data-release-checklist-target="item">
+        <input type="checkbox"
+               class="checkbox checkbox-sm checkbox-primary"
+               <%= "checked" if checked %>
+               <% if checklist.persisted? && app && !read_only %>
+                 data-action="change->release-checklist#toggle"
+                 data-release-checklist-key-param="<%= item["key"] %>"
+                 data-release-checklist-url-param="<%= checked ? uncheck_url : check_url %>"
+               <% else %>
+                 disabled
+               <% end %>>
+        <span class="flex-1 text-sm text-base-content/85 <%= 'line-through' if checked %>" data-checklist-label><%= item["label"] %></span>
+        <% if required %>
+          <span class="text-[0.6rem] font-semibold uppercase tracking-[0.04em] px-[0.3rem] py-[0.1rem] rounded bg-error/[0.08] text-error/70">Required</span>
+        <% end %>
+        <% if item["checked_at"].present? %>
+          <span class="text-[0.6875rem] text-base-content/30">
+            <%= Time.parse(item["checked_at"]).strftime("%b %d") rescue "" %>
+          </span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if checklist.ready_for_submission? %>
+    <div data-release-checklist-target="submitGate"
+         class="p-5 border-t border-base-content/5">
+      <div class="flex items-center gap-2 text-sm text-success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span class="font-semibold">All required items complete. Ready for submission.</span>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,31 @@
+<% expires_at = keystore.expires_at %>
+<% 
+  if expires_at.blank?
+    badge_class = "badge badge-ghost"
+    icon = nil
+    content = "Unknown"
+  elsif expires_at < Date.current
+    badge_class = "badge badge-error gap-1.5"
+    icon = "fa-solid fa-circle-exclamation"
+    content = "Expired"
+  elsif expires_at <= 30.days.from_now.to_date
+    badge_class = "badge badge-warning gap-1.5"
+    icon = "fa-solid fa-triangle-exclamation"
+    content = expires_at.strftime("%b %d, %Y")
+  elsif expires_at <= 90.days.from_now.to_date
+    badge_class = "badge badge-info gap-1.5"
+    icon = "fa-solid fa-clock"
+    content = expires_at.strftime("%b %d, %Y")
+  else
+    badge_class = "badge badge-success gap-1.5"
+    icon = "fa-solid fa-check"
+    content = expires_at.strftime("%b %d, %Y")
+  end
+%>
+
+<div class="<%= badge_class %> font-medium whitespace-nowrap">
+  <% if icon %>
+    <i class="<%= icon %> text-[10px]"></i>
+  <% end %>
+  <%= content %>
+</div>

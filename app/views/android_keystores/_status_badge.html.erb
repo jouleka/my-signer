@@ -1,0 +1,15 @@
+<% if keystore.active? %>
+  <div class="badge badge-success gap-1.5">
+    <i class="fa-solid fa-check text-[10px]"></i>
+    Active
+  </div>
+<% else %>
+  <%= button_to activate_organization_android_keystore_path(@organization, keystore), 
+      method: :post, 
+      class: "badge badge-ghost hover:badge-neutral cursor-pointer transition-colors border-0 text-xs font-medium gap-1.5", 
+      form: { style: "display: inline-block;" },
+      title: "Click to set as active" do %>
+    <i class="fa-solid fa-circle text-[6px] opacity-50"></i>
+    Inactive
+  <% end %>
+<% end %>

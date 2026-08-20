@@ -1,0 +1,41 @@
+<% steps = pending_setup_steps %>
+<% if steps.any? %>
+  <section class="card bg-gradient-to-r from-primary/10 to-secondary/10 shadow-lg mb-8" aria-labelledby="setup-progress-heading">
+    <div class="card-body">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="text-3xl">
+          <i class="fa-solid fa-rocket text-primary" aria-hidden="true"></i>
+        </div>
+        <div>
+          <h2 id="setup-progress-heading" class="card-title text-xl">Complete Your Setup</h2>
+          <p class="text-sm opacity-70">
+            <%= steps.count %> step<%= steps.count == 1 ? '' : 's' %> remaining to start shipping
+          </p>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <% steps.each_with_index do |step, index| %>
+          <div class="card bg-base-100 shadow">
+            <div class="card-body p-4">
+              <div class="flex items-start gap-3">
+                <div class="badge badge-primary badge-lg"><%= index + 1 %></div>
+                <div class="flex-1">
+                  <h3 class="font-semibold"><%= step[:title] %></h3>
+                  <p class="text-sm opacity-70 mb-3"><%= step[:description] %></p>
+                  <% if step[:modal] %>
+                    <button class="btn btn-primary btn-sm" data-controller="modal" data-action="click->modal#open" data-modal-target-value="<%= step[:modal].to_s.gsub(/\.showModal\(\)$/, '') %>">
+                      <%= step[:cta] %>
+                    </button>
+                  <% else %>
+                    <%= link_to step[:cta], step[:path], class: "btn btn-primary btn-sm" %>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+<% end %>

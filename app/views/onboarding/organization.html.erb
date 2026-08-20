@@ -1,0 +1,103 @@
+<% editing = @editing_organization %>
+<% content_for(:title, editing ? "Update Your Organization" : "Create Your Organization") %>
+
+<%= render "onboarding/layout" do %>
+  <div class="step-body step-animate">
+    <div class="step-eyebrow">
+      <span class="secnum">I</span>
+      <span class="step-eyebrow-label"><%= editing ? "Update your workspace" : "Establish your workspace" %></span>
+      <span class="step-eyebrow-rule"></span>
+    </div>
+
+    <h1 class="step-title">Your <em>workspace</em>.</h1>
+    <p class="step-lead">
+      <% if editing %>
+        Rename your organization or change the platforms you ship to. Apps, credentials, releases and team members stay attached.
+      <% else %>
+        Everything in MySigner &mdash; apps, credentials, releases, team members &mdash; lives inside an organization.
+        Pick a name and the platforms you ship to.
+      <% end %>
+    </p>
+
+    <% form_url = editing ? onboarding_update_organization_path : onboarding_create_organization_path %>
+    <% form_method = editing ? :patch : :post %>
+    <%= form_with url: form_url, method: form_method, scope: :organization,
+          data: { turbo: false } do |f| %>
+
+      <% if @organization.errors[:base].any? %>
+        <div class="aside" style="margin-bottom: 1.25rem; border-color: var(--color-error); color: var(--color-error);">
+          <span class="aside-mark"><i class="fa-solid fa-circle-exclamation"></i></span>
+          <span><%= @organization.errors[:base].to_sentence %></span>
+        </div>
+      <% end %>
+
+      <%# Organization name %>
+      <div class="field-wrap">
+        <div class="label-row">
+          <span class="lbl">Organization name</span>
+          <span class="alt">Required</span>
+        </div>
+        <label class="field <%= 'is-invalid' if @organization.errors[:name].any? %>">
+          <span class="lead">/</span>
+          <%= f.text_field :name,
+                value: @organization.name.presence || current_user.email&.split("@")&.last&.split(".")&.first&.titleize,
+                placeholder: "e.g. Acme Corp",
+                autofocus: true %>
+        </label>
+        <% if @organization.errors[:name].any? %>
+          <div class="hint" style="color: var(--color-error);">
+            <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+            <%= @organization.errors[:name].first %>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Platform tiles — radios styled as flat tiles. Defaults to
+          "both" (or whatever onboarding_platform was set to). %>
+      <div class="field-wrap" style="margin-top: 2rem;">
+        <div class="section-label">
+          <span class="num">i.</span>
+          <span>What platforms do you ship to?</span>
+        </div>
+        <%# CSP-safe tile selection. The onboarding-tile-select Stimulus
+            controller toggles the `.is-selected` class on every `.tile`
+            in this row whenever any radio inside it changes. %>
+        <div class="tiles" data-controller="onboarding-tile-select"
+             data-onboarding-tile-select-wrapper-class-value="tile">
+          <% selected_platform = (current_user.onboarding_platform.presence || "both") %>
+          <% [
+            { id: "ios",     icon: "fa-brands fa-apple",         title: "iOS",     sub: "App Store + TestFlight" },
+            { id: "android", icon: "fa-brands fa-android",       title: "Android", sub: "Play Console" },
+            { id: "both",    icon: "fa-solid fa-mobile-screen",  title: "Both",    sub: "Cross-platform" }
+          ].each do |t| %>
+            <label class="tile <%= 'is-selected' if selected_platform == t[:id] %>">
+              <input type="radio" name="platform" value="<%= t[:id] %>"
+                     <%= 'checked' if selected_platform == t[:id] %>
+                     class="sr-only"
+                     data-action="change->onboarding-tile-select#refresh">
+              <span class="tile-icon"><i class="<%= t[:icon] %>"></i></span>
+              <span class="tile-title"><%= t[:title] %></span>
+              <span class="tile-sub"><%= t[:sub] %></span>
+              <span class="tile-check"><i class="fa-solid fa-check"></i></span>
+            </label>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="aside" style="margin-top: 1.25rem;">
+        <span class="aside-mark">&sect;</span>
+        <span>
+          Sensitive credentials (signing certs, keystores, service account JSONs) are encrypted at rest with AES-256-GCM and scoped to your organization. Revoke access at any time from settings.
+        </span>
+      </div>
+
+      <div class="action-row">
+        <span class="filler"></span>
+        <button type="submit" class="btn-primary-ms">
+          <%= editing ? "Save & continue" : "Create organization & continue" %>
+          <span style="font-size: 16px; margin-left: 2px;">&rarr;</span>
+        </button>
+      </div>
+    <% end %>
+  </div>
+<% end %>

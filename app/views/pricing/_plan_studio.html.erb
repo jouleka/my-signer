@@ -1,0 +1,68 @@
+<%# app/views/pricing/_plan_studio.html.erb
+    Editorial Plan Studio — the hero.
+    Two intervalPanel containers so the Stimulus controller's selectInterval()
+    can toggle visibility between monthly/yearly via class hidden.
+    Locals:
+      viewer_context: Pricing::ViewerContext
+      billing_offerings: Hash from Billing::PlanCatalog.offerings
+      default_interval: "monthly" or "yearly"
+      subscription: BillingSubscription or nil
+%>
+<% subscription ||= nil %>
+
+<%# pricing-plans controller + values live on the outer div in
+    show.html.erb so the preview modal (rendered as a sibling of this
+    section) stays in scope. Do not re-attach here — two instances
+    would double-fire click handlers. %>
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12 sm:pt-12 sm:pb-16 lg:pt-14 lg:pb-20">
+
+  <%# Interval toggle — refined segmented control with animated highlight.
+      Uses pricing-plans controller's intervalOption target + Stimulus param convention. %>
+  <div class="flex flex-col items-center gap-3 sm:gap-4 mb-8 sm:mb-10 lg:mb-14">
+    <div class="inline-flex items-center gap-0.5 p-1 rounded-full bg-base-content/[0.06] border border-base-content/[0.08] backdrop-blur-sm max-w-full">
+      <button type="button"
+              role="tab"
+              aria-pressed="<%= default_interval == 'monthly' %>"
+              data-pricing-plans-target="intervalOption"
+              data-interval="monthly"
+              data-pricing-plans-interval-param="monthly"
+              data-action="click->pricing-plans#selectInterval"
+              class="inline-flex items-center gap-1.5 text-[0.8125rem] font-semibold px-4 sm:px-5 py-2 rounded-full text-base-content/55 transition-all duration-200 hover:text-base-content/80 aria-pressed:bg-base-100 aria-pressed:text-base-content aria-pressed:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer whitespace-nowrap">
+        Monthly
+      </button>
+      <button type="button"
+              role="tab"
+              aria-pressed="<%= default_interval == 'yearly' %>"
+              data-pricing-plans-target="intervalOption"
+              data-interval="yearly"
+              data-pricing-plans-interval-param="yearly"
+              data-action="click->pricing-plans#selectInterval"
+              class="inline-flex items-center gap-1.5 sm:gap-2 text-[0.8125rem] font-semibold px-4 sm:px-5 py-2 rounded-full text-base-content/55 transition-all duration-200 hover:text-base-content/80 aria-pressed:bg-base-100 aria-pressed:text-base-content aria-pressed:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer whitespace-nowrap">
+        Yearly
+        <span class="inline-flex items-center text-[0.6rem] font-bold uppercase tracking-[0.08em] px-1.5 py-[0.15rem] rounded bg-success/25 text-success">4 mo free</span>
+      </button>
+    </div>
+
+    <p class="text-[0.8125rem] text-base-content/50 text-center px-2" data-pricing-plans-target="savingsLine">
+      <%= default_interval == "yearly" ? "Save up to $198/year on Team" : "Switch to yearly to save up to $198/year on Team" %>
+    </p>
+  </div>
+
+  <%# Two interval panels. The pricing-plans controller toggles .hidden on these. %>
+  <% %w[monthly yearly].each do |panel_interval| %>
+    <div data-pricing-plans-target="intervalPanel"
+         data-interval="<%= panel_interval %>"
+         class="<%= 'hidden' if panel_interval != default_interval %>">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 items-stretch max-w-md mx-auto lg:max-w-none lg:mx-0">
+        <% Pricing::Entitlements::PLAN_SEQUENCE.each do |tier| %>
+          <%= render "pricing/plan_card",
+                     tier: tier,
+                     viewer_context: viewer_context,
+                     billing_offering: billing_offerings[tier],
+                     interval: panel_interval,
+                     subscription: subscription %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</section>

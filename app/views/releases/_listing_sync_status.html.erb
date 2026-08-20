@@ -1,0 +1,126 @@
+<%# Sync & push status notifications %>
+<% listing = local_assigns[:store_listing] || @store_listing %>
+<% push_status = listing&.push_status %>
+<% field_labels = { "description" => "Description", "keywords" => "Keywords", "whats_new" => "What's New",
+                    "support_url" => "Support URL", "marketing_url" => "Marketing URL" } %>
+
+<% case status.to_s
+   when "synced" %>
+  <% if push_status == "success" && listing&.push_fields_skipped.present? %>
+    <%# Push succeeded but some fields were skipped — timed warning with details %>
+    <div class="<%= sn_warning_classes %>"
+         data-controller="inline-notification"
+         data-inline-notification-timeout-value="12000"
+         data-action="mouseenter->inline-notification#pause mouseleave->inline-notification#resume">
+      <div class="flex items-start gap-3">
+        <div class="<%= sn_icon_warning_classes %>">
+          <i class="fa-solid fa-check text-[0.625rem]"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-base-content/90">Pushed successfully, but some fields were skipped</p>
+          <p class="text-xs text-base-content/50 mt-1 leading-relaxed">
+            The app version is not in an editable state for:
+            <strong class="text-base-content/70"><%= listing.push_fields_skipped.map { |f| field_labels[f] || f.to_s.gsub(/[^a-z0-9_ ]/i, "").titleize }.join(", ") %></strong>.
+            <% if listing.ios? %>
+              Only <strong class="text-base-content/70">Promotional Text</strong> can be updated at any time &mdash; all other fields require an editable version (e.g. &ldquo;Prepare for Submission&rdquo;).
+            <% end %>
+          </p>
+        </div>
+        <button class="<%= sn_close_classes %>" data-action="click->inline-notification#dismiss" aria-label="Dismiss">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="<%= sn_progress_base_classes %> bg-warning/35" data-progress-bar style="animation-duration: 12000ms;"></div>
+    </div>
+
+  <% elsif push_status == "success" %>
+    <%# Clean push success — timed, auto-dismisses %>
+    <div class="<%= sn_success_classes %>"
+         data-controller="inline-notification"
+         data-inline-notification-timeout-value="5000"
+         data-action="mouseenter->inline-notification#pause mouseleave->inline-notification#resume">
+      <div class="flex items-center gap-3">
+        <div class="<%= sn_icon_success_classes %>">
+          <i class="fa-solid fa-check text-[0.625rem]"></i>
+        </div>
+        <span class="text-sm font-medium text-base-content/90">Pushed to store successfully</span>
+        <span class="text-xs text-base-content/40 ml-1"><%= listing&.last_pushed_at ? time_ago_in_words(listing.last_pushed_at) + " ago" : "just now" %></span>
+        <button class="<%= sn_close_classes %> ml-auto" data-action="click->inline-notification#dismiss" aria-label="Dismiss">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="<%= sn_progress_base_classes %> bg-success/35" data-progress-bar style="animation-duration: 5000ms;"></div>
+    </div>
+
+  <% else %>
+    <%# Regular synced state — persistent, subtle %>
+    <div class="<%= sn_neutral_classes %>">
+      <div class="flex items-center gap-3">
+        <div class="<%= sn_icon_neutral_classes %>">
+          <i class="fa-solid fa-check text-[0.625rem]"></i>
+        </div>
+        <span class="text-sm text-base-content/60">In sync with the store</span>
+        <span class="text-xs text-base-content/30">&middot; <%= listing&.last_synced_at ? time_ago_in_words(listing.last_synced_at) + " ago" : "recently" %></span>
+      </div>
+    </div>
+  <% end %>
+
+<% when "modified" %>
+  <%# Local changes pending — persistent %>
+  <div class="<%= sn_modified_classes %>">
+    <div class="flex items-center gap-3">
+      <div class="<%= sn_icon_modified_classes %>">
+        <i class="fa-solid fa-pen text-[0.625rem]"></i>
+      </div>
+      <span class="text-sm text-base-content/70">Local changes not yet pushed to the store</span>
+    </div>
+  </div>
+
+<% when "conflict" %>
+  <%# Conflict — persistent error %>
+  <div class="<%= sn_error_classes %>">
+    <div class="flex items-center gap-3">
+      <div class="<%= sn_icon_error_classes %>">
+        <i class="fa-solid fa-exclamation text-[0.625rem]"></i>
+      </div>
+      <span class="text-sm font-medium text-base-content/90">Conflict detected between local and store versions. Re-sync to resolve.</span>
+    </div>
+  </div>
+
+<% when "syncing" %>
+  <%# Syncing in progress — animated %>
+  <div class="<%= sn_loading_classes %>">
+    <div class="flex items-center gap-3">
+      <span class="loading loading-spinner loading-xs text-primary"></span>
+      <span class="text-sm text-base-content/70">Syncing from store&hellip;</span>
+    </div>
+  </div>
+
+<% when "pushing" %>
+  <%# Push in progress — animated %>
+  <div class="<%= sn_loading_classes %>" data-push-active="true">
+    <div class="flex items-center gap-3">
+      <span class="loading loading-spinner loading-xs text-primary"></span>
+      <div>
+        <span class="text-sm font-medium text-base-content/80">Pushing changes to <%= listing&.ios? ? "App Store Connect" : "Google Play" %>&hellip;</span>
+        <p class="text-xs text-base-content/40 mt-0.5">This usually takes a few seconds.</p>
+      </div>
+    </div>
+  </div>
+
+<% when "draft" %>
+  <%# Draft — informational %>
+  <div class="<%= sn_neutral_classes %>">
+    <div class="flex items-center gap-3">
+      <div class="<%= sn_icon_neutral_classes %>">
+        <i class="fa-solid fa-file-pen text-[0.625rem]"></i>
+      </div>
+      <span class="text-sm text-base-content/60">Draft listing. Sync from the store to import existing data, or start editing.</span>
+    </div>
+  </div>
+<% end %>
+
+<%# NOTE: Push state (pushing/failed/success) is rendered by the
+     store-listing-sync Stimulus controller into #sync-status at the top of
+     the page. We don't render push banners inside this partial to keep the
+     UI single-source-of-truth. %>

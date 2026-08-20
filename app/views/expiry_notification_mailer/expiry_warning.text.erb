@@ -1,0 +1,20 @@
+<%= @resource_type %> Expiring Soon
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+Your <%= @resource_type %> "<%= @resource_name %>" is scheduled to expire in <%= @days_remaining %> days on <%= @resource.expires_at.strftime("%B %d, %Y") %>.
+
+Please take action to renew or replace this resource to avoid any service interruptions.
+
+Review Now: <%= case @resource
+                when AppleCertificate
+                  organization_apple_certificates_url(@resource.organization)
+                when AppleProvisioningProfile
+                  organization_apple_provisioning_profiles_url(@resource.organization)
+                else
+                  polymorphic_url([@resource.organization, @resource])
+                end %>
+
+Thanks,
+My Signer Team

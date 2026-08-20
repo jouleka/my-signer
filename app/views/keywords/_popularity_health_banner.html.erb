@@ -1,0 +1,36 @@
+<%# Popularity health banner. Renders when @popularity_health is non-healthy:
+    - Stale: PopularityRefreshJob output is older than 72 hours despite a
+      working credential (Apple silently stopped serving fresh data).
+    - Collapsed: >80% of refreshed values are pinned at the max (100), the
+      pattern Apple's API exhibited during the Oct 2025 degradation.
+    Honest copy on purpose ("may be degraded"): we can't actually prove
+    Apple is broken, only that the data has a degraded shape. %>
+<% health = @popularity_health %>
+<% if health.present? && !health.healthy? %>
+  <div class="<%= sn_warning_classes %>" role="alert">
+    <div class="flex items-start gap-2.5 p-1">
+      <div class="<%= sn_icon_warning_classes %>">
+        <i class="fa-solid fa-triangle-exclamation text-[0.6rem]"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs text-base-content/80 leading-relaxed">
+          <strong class="text-base-content/90">Apple's popularity data may be degraded.</strong>
+          Your numbers may not reflect current search demand.
+        </p>
+        <% if health.stale? %>
+          <p class="text-[0.7rem] text-base-content/55 mt-1">
+            <i class="fa-solid fa-clock-rotate-left mr-1"></i>
+            Last refresh <%= time_ago_in_words(health.last_refresh_at) %> ago &mdash; refreshes typically run within 24 hours.
+          </p>
+        <% end %>
+        <% if health.collapsed? %>
+          <p class="text-[0.7rem] text-base-content/55 mt-1">
+            <i class="fa-solid fa-chart-line mr-1"></i>
+            <%= number_to_percentage(health.collapse_ratio * 100, precision: 0) %> of your tracked keywords are currently at the maximum score (100),
+            a pattern consistent with upstream Apple API issues (e.g., Oct 2025 collapse).
+          </p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

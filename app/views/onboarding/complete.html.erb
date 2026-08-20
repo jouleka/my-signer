@@ -1,0 +1,79 @@
+<% content_for(:title, "You're All Set!") %>
+
+<%= render "onboarding/layout" do %>
+  <div class="step-body step-animate"
+       data-action="animationend->onboarding#celebrate">
+    <div class="step-eyebrow">
+      <span class="secnum">VI</span>
+      <span class="step-eyebrow-label">The setup, complete</span>
+      <span class="step-eyebrow-rule"></span>
+    </div>
+
+    <span class="flourish-num">Fin.</span>
+    <h1 class="step-title" style="font-size: clamp(2.5rem, 6vw, 4rem);">
+      Your pipeline is <em>ready</em>.
+    </h1>
+    <p class="step-lead">
+      You're all set. Time to ship your first build. Run one of the commands below from inside your project directory,
+      and MySigner will handle the rest &mdash; building, signing, uploading.
+    </p>
+
+    <div class="section-label">
+      <span class="num">i.</span>
+      <span>Ship your first build</span>
+    </div>
+
+    <div class="terminal" style="margin-bottom: 0.625rem;">
+      <div class="terminal-bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="label">~/projects/your-ios-app</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line"><span class="prompt">#</span><span class="comment">From inside your iOS project</span></div>
+        <div class="terminal-line"><span class="prompt">$</span><span>mysigner ship testflight</span></div>
+      </div>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="label">~/projects/your-android-app</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line"><span class="prompt">#</span><span class="comment">From inside your Android project</span></div>
+        <div class="terminal-line"><span class="prompt">$</span><span>mysigner ship internal</span></div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top: 2rem;">
+      <span class="num">ii.</span>
+      <span>What's next</span>
+    </div>
+    <div class="next-grid">
+      <div class="next-card">
+        <span class="num">i.</span>
+        <h4>Run doctor</h4>
+        <p>Verify the full setup with <span class="kbd-mono">mysigner doctor</span>.</p>
+      </div>
+      <div class="next-card">
+        <span class="num">ii.</span>
+        <h4>Invite teammates</h4>
+        <p>Add collaborators with role-scoped access from settings.</p>
+      </div>
+      <div class="next-card">
+        <span class="num">iii.</span>
+        <h4>Screenshot Studio</h4>
+        <p>Generate localized App Store and Play Store screenshots in minutes.</p>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <span class="filler"></span>
+      <%= link_to authenticated_root_path, class: "btn-primary-ms",
+            style: "text-decoration: none;" do %>
+        Open dashboard
+        <span style="font-size: 16px; margin-left: 2px;">&rarr;</span>
+      <% end %>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,1932 @@
+<% content_for :head do %>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <%# Preload only active font+weight pairs; additional weights load on-demand via font_loader.js %>
+  <% _settings = @project.settings || {} %>
+  <% font_pairs = [
+       [_settings.dig("caption_font_family") || "Inter", (_settings.dig("caption_font_weight") || 700).to_i],
+       [_settings.dig("subtitle_font_family") || "Inter", (_settings.dig("subtitle_font_weight") || 400).to_i]
+     ] %>
+  <% allowed_weights = [300, 400, 500, 600, 700, 800, 900] %>
+  <% family_weights = {} %>
+  <% font_pairs.each do |family, weight| %>
+    <% normalized = allowed_weights.include?(weight) ? weight : 400 %>
+    <% family_weights[family] ||= [] %>
+    <% family_weights[family] << normalized %>
+  <% end %>
+  <% family_weights.each do |family, weights| %>
+    <% encoded_family = ERB::Util.url_encode(family).gsub("%20", "+") %>
+    <% encoded_weights = weights.uniq.sort.join(";") %>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=<%= encoded_family %>:wght@<%= encoded_weights %>&display=swap">
+  <% end %>
+  <style>
+    /* Editor panel tab system */
+    .editor-tab-btn { transition: all 0.15s ease; }
+    .editor-tab-btn.active { background: oklch(var(--p) / 0.12); color: oklch(var(--p)); }
+    .editor-tab-btn:not(.active):hover { background: oklch(var(--bc) / 0.06); }
+    .editor-tab-content { display: none; }
+    .editor-tab-content.active { display: block; }
+    /* Sticky preview on desktop */
+    @media (min-width: 1024px) {
+      .editor-preview-col { position: sticky; top: 1rem; align-self: start; }
+    }
+    /* Match DaisyUI round theme for all editor elements */
+    .editor-panel-scroll .grid > * { min-width: 0; }
+    .editor-panel-scroll input[type="color"] {
+      -webkit-appearance: none;
+      appearance: none;
+      border: 1px solid oklch(var(--bc) / 0.2);
+      padding: 2px;
+      border-radius: var(--rounded-btn, 0.5rem);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .editor-panel-scroll input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+      border-radius: inherit;
+    }
+    .editor-panel-scroll input[type="color"]::-webkit-color-swatch {
+      border: none;
+      border-radius: inherit;
+    }
+    .editor-panel-scroll input[type="color"]::-moz-color-swatch {
+      border: none;
+      border-radius: inherit;
+    }
+    /* Pattern tile previews — SVGs use currentColor which resolves to black in <img> tags */
+    [data-theme*="dark"] .pattern-tile-preview { filter: invert(1); }
+    /* Background type selector */
+    .bg-type-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 2px;
+      border-radius: var(--rounded-btn, 0.5rem);
+      border: 1.5px solid oklch(var(--bc) / 0.1);
+      background: oklch(var(--b2) / 0.5);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .bg-type-btn:hover { border-color: oklch(var(--bc) / 0.25); background: oklch(var(--b2)); }
+    .bg-type-btn.active {
+      border-color: oklch(var(--p));
+      background: oklch(var(--p) / 0.08);
+      box-shadow: 0 0 0 1px oklch(var(--p) / 0.3);
+    }
+    .bg-type-btn .bg-type-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .bg-type-btn .bg-type-label {
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+      text-align: center;
+      color: oklch(var(--bc) / 0.55);
+      white-space: nowrap;
+    }
+    .bg-type-btn.active .bg-type-label { color: oklch(var(--p)); font-weight: 600; }
+    /* Override-active: dim controls when scene override is enabled */
+    .override-active {
+      opacity: 0.35;
+      pointer-events: none;
+      user-select: none;
+      transition: opacity 0.2s ease;
+    }
+    /* Panoramic hint animation */
+    .bg-type-hint { animation: bgHintSlide 0.2s ease-out; }
+    @keyframes bgHintSlide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    /* 3D Perspective preset buttons */
+    .perspective-preset-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 2px;
+      border-radius: var(--rounded-btn, 0.5rem);
+      border: 1.5px solid oklch(var(--bc) / 0.12);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .perspective-preset-btn:hover { border-color: oklch(var(--bc) / 0.25); }
+    .perspective-preset-btn.active {
+      border-color: oklch(var(--p));
+      background: oklch(var(--p) / 0.12);
+      box-shadow: 0 0 0 1px oklch(var(--p) / 0.3);
+    }
+    .perspective-preset-btn .persp-thumb {
+      width: 24px;
+      height: 36px;
+      border: 2.5px solid currentColor;
+      border-radius: 4px;
+      background: transparent;
+      transition: transform 0.2s ease;
+      opacity: 0.5;
+    }
+    .perspective-preset-btn:hover .persp-thumb { opacity: 0.7; }
+    .perspective-preset-btn.active .persp-thumb {
+      border-color: oklch(var(--p));
+      opacity: 1;
+    }
+    .perspective-preset-btn .persp-label {
+      font-size: 8px;
+      font-weight: 500;
+      line-height: 1;
+      text-align: center;
+      color: oklch(var(--bc) / 0.7);
+      white-space: nowrap;
+    }
+    .perspective-preset-btn.active .persp-label { color: oklch(var(--p)); font-weight: 600; }
+  </style>
+<% end %>
+
+<%
+  s = @project.settings || {}
+  fonts = ScreenshotProject::GOOGLE_FONTS
+  fonts_by_category = ScreenshotProject::GOOGLE_FONTS_BY_CATEGORY
+  weight_options = [["Light (300)", "300"], ["Regular (400)", "400"], ["Medium (500)", "500"], ["SemiBold (600)", "600"], ["Bold (700)", "700"], ["ExtraBold (800)", "800"], ["Black (900)", "900"]]
+  brand = @brand_settings || {}
+%>
+
+<section class="space-y-3 sm:space-y-4 min-w-0 w-full overflow-hidden"
+         data-controller="screenshot-editor screenshot-export screenshot-store-upload screenshot-bulk-edit"
+         data-screenshot-editor-project-id-value="<%= @project.id %>"
+         data-screenshot-editor-project-url-value="<%= organization_screenshot_project_path(@organization, @project) %>"
+         data-screenshot-editor-settings-value="<%= (@project.settings || {}).to_json %>"
+         data-screenshot-editor-presets-value="<%= ScreenshotProject::EXPORT_PRESETS.to_json %>"
+         data-screenshot-editor-frames-value="<%= ScreenshotProject::DEVICE_FRAMES.each_with_object({}) { |(key, frame), hash|
+           hash[key] = key == "none" ? frame : frame.merge(image_url: image_path("device_frames/#{key}.svg"))
+         }.to_json %>"
+         data-screenshot-editor-brand-value="<%= @brand_settings.to_json %>"
+         data-screenshot-editor-locales-value="<%= (@project.locales || []).to_json %>"
+         data-screenshot-editor-current-locale-value="<%= @project.default_locale %>"
+         data-screenshot-editor-template-value="<%= @project.template %>"
+         data-screenshot-editor-platform-value="<%= @project.platform %>"
+         data-screenshot-editor-background-image-url-value="<%= @project.background_image.attached? ? "#{organization_screenshot_project_path(@organization, @project)}/background_image_file" : "" %>"
+         data-screenshot-editor-pattern-library-value="<%= {
+           tiles: ScreenshotProject::PATTERN_LIBRARY[:tiles].map { |t| t.merge(image_url: image_path(t[:file])) },
+           procedural: ScreenshotProject::PATTERN_LIBRARY[:procedural]
+         }.to_json %>"
+         data-screenshot-editor-sticker-library-value="<%= ScreenshotProject::STICKER_LIBRARY.transform_values { |cat|
+           cat.merge(items: cat[:items].map { |item| item.merge(image_url: image_path(item[:file])) })
+         }.to_json %>"
+         data-screenshot-editor-custom-sticker-images-value="<%= @project.custom_sticker_images.map { |a|
+           {
+             signed_id: a.blob.signed_id,
+             attachment_id: a.id,
+             url: "#{organization_screenshot_project_path(@organization, @project)}/custom_sticker_images/#{a.id}",
+             filename: a.blob.filename.to_s
+           }
+         }.to_json %>"
+         data-screenshot-export-presets-value="<%= ScreenshotProject::EXPORT_PRESETS.to_json %>"
+         data-screenshot-store-upload-project-id-value="<%= @project.id %>"
+         data-screenshot-store-upload-organization-id-value="<%= @organization.id %>"
+         data-screenshot-store-upload-has-asc-credentials-value="<%= @has_asc_credentials %>"
+         data-screenshot-store-upload-has-gp-credentials-value="<%= @has_gp_credentials %>"
+         data-screenshot-store-upload-store-uploads-enabled-value="<%= @organization.store_upload_enabled? %>"
+         data-screenshot-store-upload-current-plan-value="<%= @organization.plan_tier %>"
+         data-screenshot-store-upload-next-plan-value="<%= @organization.entitlements.next_plan_tier %>"
+         data-screenshot-store-upload-daily-uploads-used-value="<%= @plan_payload.dig(:usage, :store_uploads_last_24_hours) %>"
+         data-screenshot-store-upload-daily-upload-limit-value="<%= @organization.entitlements.max_store_uploads_per_day_per_organization %>"
+         data-screenshot-store-upload-daily-limit-reached-value="<%= @organization.entitlements.max_store_uploads_per_day_per_organization.to_i.positive? && @plan_payload.dig(:usage, :store_uploads_last_24_hours).to_i >= @organization.entitlements.max_store_uploads_per_day_per_organization %>"
+         data-screenshot-bulk-edit-bulk-update-url-value="<%= bulk_update_organization_screenshot_project_screenshot_scenes_path(@organization, @project) %>"
+         data-screenshot-bulk-edit-locales-value="<%= (@project.locales || []).to_json %>">
+
+  <%# ══════════════════════════════════════════ %>
+  <%# Page Header (compact) %>
+  <%# ══════════════════════════════════════════ %>
+  <%= render "shared/page_header",
+             title: "Screenshot Studio",
+             description: @project.name,
+             gradient: "from-violet-500/10 via-base-100 to-fuchsia-500/10",
+             badge_icon: "fa-solid fa-images",
+             badge_text: "Editor",
+             actions: (capture do %>
+    <%= link_to organization_screenshot_projects_path(@organization), class: "btn btn-ghost btn-sm gap-2" do %>
+      <i class="fa-solid fa-arrow-left"></i>
+      <span class="hidden sm:inline">Projects</span>
+    <% end %>
+    <details class="dropdown dropdown-end">
+      <summary class="btn btn-ghost btn-sm gap-2">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span class="hidden sm:inline">Templates</span>
+      </summary>
+      <ul class="dropdown-content bg-base-200 rounded-box z-[100] w-72 p-2 shadow-lg mt-1 max-h-80 overflow-y-auto flex flex-col gap-1">
+        <% ScreenshotProject::TEMPLATES.each do |key, template| %>
+          <li>
+            <button type="button"
+                    class="flex items-center gap-3 w-full p-2 rounded-2xl hover:bg-base-300 transition-colors text-left"
+                    data-action="click->screenshot-editor#applyTemplate"
+                    data-template-key="<%= key %>"
+                    data-template-settings="<%= template[:settings].to_json %>">
+              <div class="w-8 h-8 rounded-xl shrink-0 border border-base-300" style="background: <%= template_preview_bg(template[:settings]) %>"></div>
+              <div class="min-w-0">
+                <span class="text-sm font-medium block"><%= template[:label] %></span>
+                <span class="text-xs text-base-content/50"><%= template[:description] %></span>
+              </div>
+            </button>
+          </li>
+        <% end %>
+      </ul>
+    </details>
+    <% if @scenes.any? %>
+      <button type="button" class="btn btn-ghost btn-sm gap-2" data-action="click->screenshot-bulk-edit#open" title="Bulk Edit Captions">
+        <i class="fa-solid fa-table-cells"></i>
+        <span class="hidden sm:inline">Bulk Edit</span>
+      </button>
+    <% end %>
+    <button type="button" class="btn btn-ghost btn-sm btn-circle" data-action="click->screenshot-editor#_toggleShortcutsHelp" title="Keyboard Shortcuts (?)">
+      <i class="fa-solid fa-keyboard"></i>
+    </button>
+    <%= link_to edit_organization_screenshot_project_path(@organization, @project), class: "btn btn-ghost btn-sm gap-2" do %>
+      <i class="fa-solid fa-gear"></i>
+      <span class="hidden sm:inline">Settings</span>
+    <% end %>
+  <% end) %>
+
+  <%= render "shared/plan_overage_banner", status: pricing_overage_status(@organization), current_project: @project, compact: true %>
+  <% scheduled_change_impact = scheduled_plan_change_impact(current_user&.current_billing_subscription, organization: @organization, only_if_affected: true) if user_signed_in? %>
+  <% if scheduled_change_impact.present? %>
+    <%= render "shared/scheduled_plan_change_banner", impact: scheduled_change_impact, compact: true, current_only: true %>
+  <% end %>
+
+  <%# ══════════════════════════════════════════ %>
+  <%# Scene Strip %>
+  <%# ══════════════════════════════════════════ %>
+  <div class="card bg-base-100 border border-base-200 shadow-lg overflow-hidden">
+    <div class="card-body p-3 sm:p-4">
+      <div class="flex items-center gap-2 mb-2">
+        <h2 class="text-sm font-semibold">Scenes</h2>
+        <span class="badge badge-ghost badge-xs"><%= @scenes.size %></span>
+      </div>
+      <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+        <% @scenes.each_with_index do |scene, idx| %>
+          <%= render "scene_thumbnail", scene: scene, organization: @organization, project: @project, selected: idx == 0, has_other_projects: @has_other_projects %>
+        <% end %>
+        <%= render "upload_zone", organization: @organization, project: @project %>
+      </div>
+    </div>
+  </div>
+
+  <%# ══════════════════════════════════════════ %>
+  <%# Locale Tabs (multi-locale only) %>
+  <%# ══════════════════════════════════════════ %>
+  <% if @project.multi_locale? %>
+    <div class="card bg-base-100 border border-base-200 shadow-lg overflow-hidden">
+      <div class="card-body p-3 sm:p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <h2 class="text-sm font-semibold">Locale</h2>
+          <span class="badge badge-ghost badge-xs"><%= @project.locales.size %></span>
+        </div>
+        <div class="flex gap-1 overflow-x-auto pb-1 scrollbar-thin" data-screenshot-editor-target="localeBar">
+          <% @project.locales.each_with_index do |locale, idx| %>
+            <button type="button"
+                    class="btn btn-xs <%= idx == 0 ? 'btn-primary' : 'btn-ghost' %>"
+                    data-action="click->screenshot-editor#switchLocale"
+                    data-locale="<%= locale %>">
+              <%= locale %>
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# ══════════════════════════════════════════════════════════════════ %>
+  <%# MAIN EDITOR: Preview (sticky) + Tabbed Settings Panel           %>
+  <%# ══════════════════════════════════════════════════════════════════ %>
+  <div class="flex flex-col lg:grid lg:grid-cols-5 gap-3 lg:gap-4">
+
+    <%# ── Preview Column (sticky on desktop) ── %>
+    <div class="lg:col-span-3 editor-preview-col min-w-0">
+      <div class="card bg-base-100 border border-base-200 shadow-lg overflow-hidden">
+        <div class="card-body p-3 sm:p-4">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-semibold">Preview</h2>
+            <div class="flex items-center gap-1">
+              <button type="button" class="btn btn-ghost btn-xs btn-circle" disabled
+                      data-screenshot-editor-target="undoButton"
+                      data-action="click->screenshot-editor#undo"
+                      title="Undo (Ctrl+Z)">
+                <i class="fa-solid fa-rotate-left text-[10px]"></i>
+              </button>
+              <button type="button" class="btn btn-ghost btn-xs btn-circle" disabled
+                      data-screenshot-editor-target="redoButton"
+                      data-action="click->screenshot-editor#redo"
+                      title="Redo (Ctrl+Shift+Z)">
+                <i class="fa-solid fa-rotate-right text-[10px]"></i>
+              </button>
+              <div class="divider divider-horizontal mx-0.5 h-4 self-center"></div>
+              <button type="button" class="btn btn-ghost btn-xs btn-circle"
+                      data-screenshot-editor-target="darkModeToggle"
+                      data-action="click->screenshot-editor#toggleDarkMode"
+                      title="Generate dark variant">
+                <i class="fa-solid fa-moon text-[10px]" data-screenshot-editor-target="darkModeIcon"></i>
+              </button>
+              <span class="badge badge-ghost badge-xs ml-1" data-screenshot-editor-target="previewSize">--</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-center bg-base-200/30 rounded-2xl p-2 sm:p-4 min-h-[300px]" data-screenshot-editor-target="canvasContainer">
+            <% if @scenes.any? %>
+              <div class="w-full max-w-[28rem] aspect-[9/16]">
+                <canvas data-screenshot-editor-target="canvas"
+                        class="w-full h-full rounded-2xl shadow-lg"
+                        width="1080"
+                        height="1920"
+                        data-action="mousedown->screenshot-editor#onCanvasMouseDown touchstart->screenshot-editor#onCanvasTouchStart"></canvas>
+              </div>
+            <% else %>
+              <div class="text-center py-16">
+                <div class="w-16 h-16 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-4">
+                  <i class="fa-solid fa-image text-2xl text-violet-500/50"></i>
+                </div>
+                <h3 class="text-lg font-bold mb-2">No Scenes Yet</h3>
+                <p class="text-sm text-base-content/60 max-w-xs mx-auto">
+                  Upload screenshots using the "Add" button above to start creating your app store screenshots.
+                </p>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Google Play text compliance warning %>
+          <% if @project.platform == "android" || @project.platform == "both" %>
+            <div data-screenshot-editor-target="googlePlayTextWarning"
+                 class="hidden mt-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/20 text-warning text-xs leading-tight">
+              <i class="fa-solid fa-triangle-exclamation text-[11px] mt-0.5 shrink-0"></i>
+              <div>
+                <span class="font-semibold">Google Play:</span>
+                Text overlays cover <span data-screenshot-editor-target="googlePlayTextPercent">0</span>% of the image area (limit: 20%).
+                Exceeding this may cause rejection.
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# ── Settings Panel (tabbed) ── %>
+    <div class="lg:col-span-2 min-w-0">
+      <div class="card bg-base-100 border border-base-200 shadow-lg overflow-visible min-w-0">
+
+        <%# Brand button %>
+        <% if @organization.brand_configured? %>
+          <div class="px-3 pt-3">
+            <button type="button" class="btn btn-sm w-full gap-2 btn-outline btn-primary"
+                    data-action="click->screenshot-editor#applyBrand">
+              <i class="fa-solid fa-swatchbook"></i>
+              Apply Brand
+            </button>
+          </div>
+        <% end %>
+
+        <%# ── Tab Navigation ── %>
+        <div class="flex border-b border-base-200 px-1 pt-2 gap-0.5 overflow-x-auto scrollbar-none">
+          <button type="button" class="editor-tab-btn active flex items-center gap-1.5 px-3 py-2 rounded-t-2xl text-xs font-medium whitespace-nowrap"
+                  data-screenshot-editor-target="editorTabBtn" data-tab="caption" data-action="click->screenshot-editor#switchTab">
+            <i class="fa-solid fa-font text-[10px]"></i>
+            <span>Caption</span>
+          </button>
+          <button type="button" class="editor-tab-btn flex items-center gap-1.5 px-3 py-2 rounded-t-2xl text-xs font-medium whitespace-nowrap"
+                  data-screenshot-editor-target="editorTabBtn" data-tab="style" data-action="click->screenshot-editor#switchTab">
+            <i class="fa-solid fa-palette text-[10px]"></i>
+            <span>Style</span>
+          </button>
+          <button type="button" class="editor-tab-btn flex items-center gap-1.5 px-3 py-2 rounded-t-2xl text-xs font-medium whitespace-nowrap"
+                  data-screenshot-editor-target="editorTabBtn" data-tab="frame" data-action="click->screenshot-editor#switchTab">
+            <i class="fa-solid fa-mobile-screen text-[10px]"></i>
+            <span>Frame</span>
+          </button>
+          <button type="button" class="editor-tab-btn flex items-center gap-1.5 px-3 py-2 rounded-t-2xl text-xs font-medium whitespace-nowrap"
+                  data-screenshot-editor-target="editorTabBtn" data-tab="stickers" data-action="click->screenshot-editor#switchTab">
+            <i class="fa-regular fa-face-smile text-[10px]"></i>
+            <span>Stickers</span>
+          </button>
+        </div>
+
+        <%# ── Tab Content Area ── %>
+        <div class="editor-panel-scroll p-3 min-w-0">
+
+          <%# ════════════════════════════════════════ %>
+          <%# TAB 1: CAPTION & TEXT                   %>
+          <%# ════════════════════════════════════════ %>
+          <div id="tab-caption" class="editor-tab-content active space-y-3 pb-4" data-screenshot-editor-target="editorTabContent" data-tab="caption">
+
+            <%# Title + Subtitle inputs %>
+            <div class="space-y-1.5">
+              <textarea class="textarea textarea-bordered textarea-xs w-full leading-tight"
+                        rows="2"
+                        placeholder="Title text..."
+                        data-screenshot-editor-target="captionText"
+                        data-action="input->screenshot-editor#updatePreview"><%= @scenes.first&.caption_text %></textarea>
+              <textarea class="textarea textarea-bordered textarea-xs w-full leading-tight"
+                        rows="1"
+                        placeholder="Subtitle text..."
+                        data-screenshot-editor-target="subtitleText"
+                        data-action="input->screenshot-editor#updatePreview"><%= @scenes.first&.subtitle_text %></textarea>
+            </div>
+
+            <%# Font pickers %>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div>
+                <span class="text-[10px] text-base-content/50">Title Font</span>
+                <% cf_val = s.dig("caption_font_family") || "Inter" %>
+                <details class="dropdown w-full" data-controller="custom-select">
+                  <input type="hidden" value="<%= cf_val %>"
+                         data-custom-select-target="input"
+                         data-screenshot-editor-target="captionFontFamily"
+                         data-action="change->screenshot-editor#fontChanged input->screenshot-editor#fontChanged">
+                  <summary class="select select-bordered select-xs w-full flex items-center cursor-pointer text-xs" data-custom-select-target="label" style="font-family: '<%= cf_val %>'"><%= cf_val %></summary>
+                  <div class="dropdown-content bg-base-200 rounded-box z-[100] w-64 shadow-lg mt-1">
+                    <div class="p-1.5 border-b border-base-300 sticky top-0 bg-base-200 z-10 rounded-t-box">
+                      <input type="text" placeholder="Search fonts..." class="input input-xs input-bordered w-full font-search-input" data-action="input->custom-select#filterFonts">
+                    </div>
+                    <ul class="p-2 max-h-60 overflow-y-auto flex flex-col gap-0.5">
+                      <% fonts_by_category.each do |category, cat_fonts| %>
+                        <li class="font-category-header text-[9px] font-bold text-base-content/40 uppercase tracking-wider px-2 pt-2 pb-0.5 select-none"><%= category %></li>
+                        <% cat_fonts.each do |font| %>
+                          <li class="font-option"><a href="#" data-action="click->custom-select#select" data-value="<%= font %>" data-label="<%= font %>" class="<%= 'active' if font == cf_val %>" style="font-family: '<%= font %>'"><%= font %></a></li>
+                        <% end %>
+                      <% end %>
+                    </ul>
+                    <div class="hidden p-3 text-center text-xs text-base-content/40 font-no-results">No fonts found</div>
+                  </div>
+                </details>
+              </div>
+              <div>
+                <span class="text-[10px] text-base-content/50">Subtitle Font</span>
+                <% sf_val = s.dig("subtitle_font_family") || "Inter" %>
+                <details class="dropdown w-full" data-controller="custom-select">
+                  <input type="hidden" value="<%= sf_val %>"
+                         data-custom-select-target="input"
+                         data-screenshot-editor-target="subtitleFontFamily"
+                         data-action="change->screenshot-editor#subtitleFontChanged input->screenshot-editor#subtitleFontChanged">
+                  <summary class="select select-bordered select-xs w-full flex items-center cursor-pointer text-xs" data-custom-select-target="label" style="font-family: '<%= sf_val %>'"><%= sf_val %></summary>
+                  <div class="dropdown-content bg-base-200 rounded-box z-[100] w-64 shadow-lg mt-1">
+                    <div class="p-1.5 border-b border-base-300 sticky top-0 bg-base-200 z-10 rounded-t-box">
+                      <input type="text" placeholder="Search fonts..." class="input input-xs input-bordered w-full font-search-input" data-action="input->custom-select#filterFonts">
+                    </div>
+                    <ul class="p-2 max-h-60 overflow-y-auto flex flex-col gap-0.5">
+                      <% fonts_by_category.each do |category, cat_fonts| %>
+                        <li class="font-category-header text-[9px] font-bold text-base-content/40 uppercase tracking-wider px-2 pt-2 pb-0.5 select-none"><%= category %></li>
+                        <% cat_fonts.each do |font| %>
+                          <li class="font-option"><a href="#" data-action="click->custom-select#select" data-value="<%= font %>" data-label="<%= font %>" class="<%= 'active' if font == sf_val %>" style="font-family: '<%= font %>'"><%= font %></a></li>
+                        <% end %>
+                      <% end %>
+                    </ul>
+                    <div class="hidden p-3 text-center text-xs text-base-content/40 font-no-results">No fonts found</div>
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            <%# Weight pickers %>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div>
+                <span class="text-[10px] text-base-content/50">Title Weight</span>
+                <% cfw_val = (s.dig("caption_font_weight") || 700).to_s %>
+                <details class="dropdown w-full" data-controller="custom-select">
+                  <input type="hidden" value="<%= cfw_val %>"
+                         data-custom-select-target="input"
+                         data-screenshot-editor-target="captionFontWeight"
+                         data-action="change->screenshot-editor#fontChanged input->screenshot-editor#fontChanged">
+                  <summary class="select select-bordered select-xs w-full flex items-center cursor-pointer text-xs" data-custom-select-target="label"><%= weight_options.find { |l, v| v == cfw_val }&.first || "Bold (700)" %></summary>
+                  <ul class="dropdown-content bg-base-200 rounded-box z-[100] w-44 p-2 shadow-lg mt-1 max-h-60 overflow-y-auto flex flex-col gap-1">
+                    <% weight_options.each do |label, value| %>
+                      <li><a href="#" data-action="click->custom-select#select" data-value="<%= value %>" data-label="<%= label %>" class="<%= 'active' if value == cfw_val %>"><%= label %></a></li>
+                    <% end %>
+                  </ul>
+                </details>
+              </div>
+              <div>
+                <span class="text-[10px] text-base-content/50">Sub Weight</span>
+                <% sfw_val = (s.dig("subtitle_font_weight") || 400).to_s %>
+                <details class="dropdown w-full" data-controller="custom-select">
+                  <input type="hidden" value="<%= sfw_val %>"
+                         data-custom-select-target="input"
+                         data-screenshot-editor-target="subtitleFontWeight"
+                         data-action="change->screenshot-editor#subtitleFontChanged input->screenshot-editor#subtitleFontChanged">
+                  <summary class="select select-bordered select-xs w-full flex items-center cursor-pointer text-xs" data-custom-select-target="label"><%= weight_options.find { |l, v| v == sfw_val }&.first || "Regular (400)" %></summary>
+                  <ul class="dropdown-content bg-base-200 rounded-box z-[100] w-44 p-2 shadow-lg mt-1 max-h-60 overflow-y-auto flex flex-col gap-1">
+                    <% weight_options.each do |label, value| %>
+                      <li><a href="#" data-action="click->custom-select#select" data-value="<%= value %>" data-label="<%= label %>" class="<%= 'active' if value == sfw_val %>"><%= label %></a></li>
+                    <% end %>
+                  </ul>
+                </details>
+              </div>
+            </div>
+
+            <%# Size sliders + Colors (overridable by per-scene styling) %>
+            <div data-screenshot-editor-target="overridableControls">
+              <div class="grid grid-cols-2 gap-1.5">
+                <label>
+                  <span class="text-[10px] text-base-content/50">Title Size</span>
+                  <input type="range" min="16" max="144" value="<%= s.dig("caption_font_size") || 32 %>"
+                         class="range range-primary range-xs"
+                         data-screenshot-editor-target="captionFontSize"
+                         data-action="input->screenshot-editor#updatePreview">
+                </label>
+                <label>
+                  <span class="text-[10px] text-base-content/50">Subtitle Size</span>
+                  <input type="range" min="10" max="96" value="<%= s.dig("subtitle_font_size") || 20 %>"
+                         class="range range-primary range-xs"
+                         data-screenshot-editor-target="subtitleFontSize"
+                         data-action="input->screenshot-editor#updatePreview">
+                </label>
+              </div>
+
+              <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+                <div>
+                  <span class="text-[10px] text-base-content/50">Title Color</span>
+                  <div class="flex items-center gap-1">
+                    <input type="color" value="<%= s.dig("caption_color") || "#FFFFFF" %>"
+                           class="w-7 h-7 rounded-lg border border-base-200 cursor-pointer shrink-0"
+                           aria-label="Title color"
+                           data-screenshot-editor-target="captionColor"
+                           data-action="input->screenshot-editor#updatePreview">
+                    <input type="text" value="<%= s.dig("caption_color") || "#FFFFFF" %>"
+                           class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0"
+                           aria-label="Title color hex value"
+                           data-screenshot-editor-target="captionColorText"
+                           data-action="input->screenshot-editor#syncCaptionColor">
+                    <% if brand["text_color"].present? %>
+                      <button type="button" class="w-5 h-5 rounded-full border border-base-300 shrink-0 cursor-pointer" style="background: <%= brand['text_color'] %>" title="Brand text color"
+                              data-action="click->screenshot-editor#applyBrandColor" data-color="<%= brand['text_color'] %>" data-target-input="captionColor"></button>
+                    <% end %>
+                  </div>
+                </div>
+                <div>
+                  <span class="text-[10px] text-base-content/50">Subtitle Color</span>
+                  <div class="flex items-center gap-1">
+                    <input type="color" value="<%= s.dig("subtitle_color") || "#CCCCCC" %>"
+                           class="w-7 h-7 rounded-lg border border-base-200 cursor-pointer shrink-0"
+                           aria-label="Subtitle color"
+                           data-screenshot-editor-target="subtitleColor"
+                           data-action="input->screenshot-editor#updatePreview">
+                    <input type="text" value="<%= s.dig("subtitle_color") || "#CCCCCC" %>"
+                           class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0"
+                           aria-label="Subtitle color hex value"
+                           data-screenshot-editor-target="subtitleColorText"
+                           data-action="input->screenshot-editor#syncSubtitleColor">
+                    <% if brand["secondary_color"].present? %>
+                      <button type="button" class="w-5 h-5 rounded-full border border-base-300 shrink-0 cursor-pointer" style="background: <%= brand['secondary_color'] %>" title="Brand secondary color"
+                              data-action="click->screenshot-editor#applyBrandColor" data-color="<%= brand['secondary_color'] %>" data-target-input="subtitleColor"></button>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div data-screenshot-editor-target="overrideActiveIndicator" class="hidden">
+              <div class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-warning/10 border border-warning/20 mt-1">
+                <i class="fa-solid fa-circle-info text-[9px] text-warning"></i>
+                <span class="text-[10px] text-warning leading-tight">
+                  These controls are overridden for this scene. Edit in <strong>Per-Scene Styling</strong> below, or disable it to use these defaults.
+                </span>
+              </div>
+            </div>
+
+            <%# Alignment %>
+            <div data-screenshot-editor-target="alignmentControls">
+              <span class="text-[10px] text-base-content/50">Alignment</span>
+              <input type="hidden" value="<%= s.dig("caption_text_align") || "center" %>" data-screenshot-editor-target="captionTextAlign">
+              <% ta_val = s.dig("caption_text_align") || "center" %>
+              <div class="join w-full">
+                <button type="button" class="btn btn-xs join-item flex-1 <%= "btn-active" if ta_val == "left" %>"
+                        data-action="click->screenshot-editor#setAlignment" data-align="left"
+                        data-screenshot-editor-target="alignLeft">
+                  <i class="fa-solid fa-align-left text-[10px]"></i>
+                </button>
+                <button type="button" class="btn btn-xs join-item flex-1 <%= "btn-active" if ta_val == "center" %>"
+                        data-action="click->screenshot-editor#setAlignment" data-align="center"
+                        data-screenshot-editor-target="alignCenter">
+                  <i class="fa-solid fa-align-center text-[10px]"></i>
+                </button>
+                <button type="button" class="btn btn-xs join-item flex-1 <%= "btn-active" if ta_val == "right" %>"
+                        data-action="click->screenshot-editor#setAlignment" data-align="right"
+                        data-screenshot-editor-target="alignRight">
+                  <i class="fa-solid fa-align-right text-[10px]"></i>
+                </button>
+              </div>
+            </div>
+
+            <%# Layout section %>
+            <details class="group" open>
+              <summary class="flex items-center justify-between cursor-pointer py-1 border-t border-base-200 mt-1">
+                <div class="flex flex-col">
+                  <span class="text-[10px] font-semibold text-base-content/50 uppercase tracking-wide">Layout</span>
+                  <span class="text-[9px] text-base-content/30 font-normal normal-case tracking-normal">Zone spacing, vertical position, freeform drag</span>
+                </div>
+                <i class="fa-solid fa-chevron-down text-[8px] text-base-content/30 transition-transform group-open:rotate-180"></i>
+              </summary>
+              <div class="space-y-1.5 pt-1">
+                <input type="hidden" value="<%= @project.settings&.dig("layout_mode") || "auto" %>" data-screenshot-editor-target="layoutMode">
+
+                <% _layout_mode = @project.settings&.dig("layout_mode") || "auto" %>
+                <div class="flex gap-0.5 p-0.5 bg-base-200 rounded-full">
+                  <button type="button"
+                          class="btn btn-xs flex-1 gap-1 <%= _layout_mode == "auto" ? "btn-active" : "btn-ghost" %>"
+                          data-action="click->screenshot-editor#setPositioningMode"
+                          data-mode="auto"
+                          data-screenshot-editor-target="posModeBtnAuto">
+                    <i class="fa-solid fa-table-cells text-[9px]"></i>
+                    Auto Layout
+                  </button>
+                  <button type="button"
+                          class="btn btn-xs flex-1 gap-1 <%= _layout_mode == "freeform" ? "btn-active" : "btn-ghost" %>"
+                          data-action="click->screenshot-editor#setPositioningMode"
+                          data-mode="freeform"
+                          data-screenshot-editor-target="posModeBtnFreeform">
+                    <i class="fa-solid fa-hand text-[9px]"></i>
+                    Freeform
+                  </button>
+                </div>
+
+                <%# Auto Layout Panel %>
+                <div data-screenshot-editor-target="autoLayoutPanel" class="space-y-1.5">
+                  <input type="hidden" value="zone" data-screenshot-editor-target="captionMode">
+                  <input type="hidden" value="top" data-screenshot-editor-target="captionPosition">
+
+                  <div data-screenshot-editor-target="modeZoneControls">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] text-base-content/50">Zone Size</span>
+                      <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="captionZoneSizeLabel"><%= s.dig("caption_zone_size") || 12 %>%</span>
+                    </div>
+                    <input type="range" min="0" max="30" value="<%= s.dig("caption_zone_size") || 12 %>"
+                           class="range range-primary range-xs"
+                           data-screenshot-editor-target="captionZoneSize"
+                           data-action="input->screenshot-editor#updatePreview">
+                  </div>
+
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] text-base-content/50">Vertical Pos.</span>
+                      <div class="flex items-center gap-1">
+                        <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="captionVerticalPositionLabel"><%= s.dig("caption_vertical_position").present? ? "#{s.dig("caption_vertical_position")}%" : "Auto" %></span>
+                        <button type="button" class="text-[9px] text-primary hover:underline" data-action="click->screenshot-editor#clearVerticalPosition">Reset</button>
+                      </div>
+                    </div>
+                    <input type="range" min="5" max="95" step="1" value="<%= s.dig("caption_vertical_position") || 50 %>"
+                           class="range range-primary range-xs"
+                           data-screenshot-editor-target="captionVerticalPosition"
+                           data-action="input->screenshot-editor#updatePreview">
+                  </div>
+                </div>
+
+                <%# Freeform Panel %>
+                <div data-screenshot-editor-target="freeformPanel" class="hidden">
+                  <div class="bg-base-200/50 rounded-2xl p-2.5 space-y-2.5">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-arrows-up-down-left-right text-[10px] text-indigo-500"></i>
+                      </div>
+                      <div>
+                        <div class="text-[10px] font-medium leading-tight">Drag text to reposition</div>
+                        <div class="text-[9px] text-base-content/40 leading-tight">Drag corners to resize &middot; Drag top handle to rotate</div>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] text-base-content/50">Position</span>
+                      <span class="text-[10px] text-base-content/40 font-mono" data-screenshot-editor-target="dragPositionLabel">Auto</span>
+                    </div>
+                    <button type="button"
+                            class="btn btn-xs btn-ghost w-full gap-1 hidden"
+                            data-action="click->screenshot-editor#resetDragPosition"
+                            data-screenshot-editor-target="resetDragButton">
+                      <i class="fa-solid fa-rotate-left text-[9px]"></i>
+                      Reset Position
+                    </button>
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] text-base-content/50">Rotation</span>
+                      <span class="text-[10px] text-base-content/40 font-mono" data-screenshot-editor-target="rotationLabel">0&deg;</span>
+                    </div>
+                    <button type="button"
+                            class="btn btn-xs btn-ghost w-full gap-1 hidden"
+                            data-action="click->screenshot-editor#resetRotation"
+                            data-screenshot-editor-target="resetRotationButton">
+                      <i class="fa-solid fa-rotate-left text-[9px]"></i>
+                      Reset Rotation
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <%# Spacing section %>
+            <details class="group">
+              <summary class="flex items-center justify-between cursor-pointer py-1 border-t border-base-200">
+                <div class="flex flex-col">
+                  <span class="text-[10px] font-semibold text-base-content/50 uppercase tracking-wide">Spacing</span>
+                  <span class="text-[9px] text-base-content/30 font-normal normal-case tracking-normal">Letter spacing, line height</span>
+                </div>
+                <i class="fa-solid fa-chevron-down text-[8px] text-base-content/30 transition-transform group-open:rotate-180"></i>
+              </summary>
+              <div class="space-y-1.5 pt-1">
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-base-content/50">Letter Spacing</span>
+                    <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="captionLetterSpacingLabel"><%= s.dig("caption_letter_spacing") || 0 %>px</span>
+                  </div>
+                  <input type="range" min="-2" max="10" step="0.5" value="<%= s.dig("caption_letter_spacing") || 0 %>"
+                         class="range range-primary range-xs"
+                         data-screenshot-editor-target="captionLetterSpacing"
+                         data-action="input->screenshot-editor#updatePreview">
+                </div>
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-base-content/50">Line Height</span>
+                    <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="captionLineHeightLabel"><%= s.dig("caption_line_height") || 1.3 %></span>
+                  </div>
+                  <input type="range" min="0.8" max="2.5" step="0.1" value="<%= s.dig("caption_line_height") || 1.3 %>"
+                         class="range range-primary range-xs"
+                         data-screenshot-editor-target="captionLineHeight"
+                         data-action="input->screenshot-editor#updatePreview">
+                </div>
+              </div>
+            </details>
+
+            <%# Effects section (text effects) %>
+            <details class="group">
+              <summary class="flex items-center justify-between cursor-pointer py-1 border-t border-base-200">
+                <div class="flex flex-col">
+                  <span class="text-[10px] font-semibold text-base-content/50 uppercase tracking-wide">
+                    <i class="fa-solid fa-wand-magic-sparkles text-[8px] mr-0.5"></i> Effects
+                  </span>
+                  <span class="text-[9px] text-base-content/30 font-normal normal-case tracking-normal">Gradient fill, text stroke, background pill</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <span data-screenshot-editor-target="effectsActiveBadge" class="hidden badge badge-xs badge-primary badge-outline">ON</span>
+                  <i class="fa-solid fa-chevron-down text-[8px] text-base-content/30 transition-transform group-open:rotate-180"></i>
+                </div>
+              </summary>
+              <div class="space-y-2 pt-1.5">
+                <%# Gradient Fill %>
+                <label class="flex items-center justify-between cursor-pointer">
+                  <span class="text-[10px] text-base-content/70">Gradient Fill</span>
+                  <input type="checkbox" class="toggle toggle-primary toggle-xs"
+                         data-screenshot-editor-target="captionGradientEnabled"
+                         data-action="change->screenshot-editor#toggleGradient"
+                         <%= "checked" if s.dig("caption_gradient_enabled") %>>
+                </label>
+                <div data-screenshot-editor-target="captionGradientControls" class="grid grid-cols-2 gap-1.5 <%= "hidden" unless s.dig("caption_gradient_enabled") %>">
+                  <div>
+                    <span class="text-[10px] text-base-content/50">Start</span>
+                    <input type="color" value="<%= s.dig("caption_gradient_start") || "#FF6B6B" %>"
+                           class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                           data-screenshot-editor-target="captionGradientStart"
+                           data-action="input->screenshot-editor#updatePreview">
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-base-content/50">End</span>
+                    <input type="color" value="<%= s.dig("caption_gradient_end") || "#4ECDC4" %>"
+                           class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                           data-screenshot-editor-target="captionGradientEnd"
+                           data-action="input->screenshot-editor#updatePreview">
+                  </div>
+                </div>
+
+                <%# Background Pill %>
+                <label class="flex items-center justify-between cursor-pointer">
+                  <span class="text-[10px] text-base-content/70">Background Pill</span>
+                  <input type="checkbox" class="toggle toggle-primary toggle-xs"
+                         data-screenshot-editor-target="textBgEnabled"
+                         data-action="change->screenshot-editor#toggleTextBg"
+                         <%= "checked" if s.dig("text_bg_enabled") %>>
+                </label>
+                <div data-screenshot-editor-target="textBgControls" class="space-y-1.5 <%= "hidden" unless s.dig("text_bg_enabled") %>">
+                  <div class="grid grid-cols-3 gap-1.5">
+                    <div>
+                      <span class="text-[10px] text-base-content/50">Color</span>
+                      <input type="color" value="<%= s.dig("text_bg_color") || "#000000" %>"
+                             class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                             data-screenshot-editor-target="textBgColor"
+                             data-action="input->screenshot-editor#updatePreview">
+                    </div>
+                    <div>
+                      <div class="flex justify-between"><span class="text-[10px] text-base-content/50">Opacity</span><span class="text-[10px] text-base-content/40" data-screenshot-editor-target="textBgOpacityLabel"><%= s.dig("text_bg_opacity") || 50 %>%</span></div>
+                      <input type="range" min="0" max="100" value="<%= s.dig("text_bg_opacity") || 50 %>"
+                             class="range range-primary range-xs"
+                             data-screenshot-editor-target="textBgOpacity"
+                             data-action="input->screenshot-editor#updatePreview">
+                    </div>
+                    <div>
+                      <div class="flex justify-between"><span class="text-[10px] text-base-content/50">Radius</span><span class="text-[10px] text-base-content/40" data-screenshot-editor-target="textBgRadiusLabel"><%= s.dig("text_bg_radius") || 12 %>px</span></div>
+                      <input type="range" min="0" max="50" value="<%= s.dig("text_bg_radius") || 12 %>"
+                             class="range range-primary range-xs"
+                             data-screenshot-editor-target="textBgRadius"
+                             data-action="input->screenshot-editor#updatePreview">
+                    </div>
+                  </div>
+                </div>
+
+                <%# Text Stroke %>
+                <label class="flex items-center justify-between cursor-pointer">
+                  <span class="text-[10px] text-base-content/70">Text Stroke</span>
+                  <input type="checkbox" class="toggle toggle-primary toggle-xs"
+                         data-screenshot-editor-target="captionStrokeEnabled"
+                         data-action="change->screenshot-editor#toggleStroke"
+                         <%= "checked" if s.dig("caption_stroke_enabled") %>>
+                </label>
+                <div data-screenshot-editor-target="captionStrokeControls" class="grid grid-cols-2 gap-1.5 <%= "hidden" unless s.dig("caption_stroke_enabled") %>">
+                  <div>
+                    <span class="text-[10px] text-base-content/50">Color</span>
+                    <input type="color" value="<%= s.dig("caption_stroke_color") || "#000000" %>"
+                           class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                           data-screenshot-editor-target="captionStrokeColor"
+                           data-action="input->screenshot-editor#updatePreview">
+                  </div>
+                  <div>
+                    <div class="flex justify-between"><span class="text-[10px] text-base-content/50">Width</span><span class="text-[10px] text-base-content/40" data-screenshot-editor-target="captionStrokeWidthLabel"><%= s.dig("caption_stroke_width") || 2 %>px</span></div>
+                    <input type="range" min="1" max="8" value="<%= s.dig("caption_stroke_width") || 2 %>"
+                           class="range range-primary range-xs"
+                           data-screenshot-editor-target="captionStrokeWidth"
+                           data-action="input->screenshot-editor#updatePreview">
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <%# Per-Scene Styling section %>
+            <details class="group">
+              <summary class="flex items-center justify-between cursor-pointer py-1 border-t border-base-200">
+                <div class="flex flex-col">
+                  <span class="text-[10px] font-semibold text-base-content/50 uppercase tracking-wide">Per-Scene Styling</span>
+                  <span class="text-[9px] text-base-content/30 font-normal normal-case tracking-normal">Custom colors & sizes for this scene</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <span data-screenshot-editor-target="overrideBadge" class="hidden badge badge-xs badge-primary badge-outline">ON</span>
+                  <i class="fa-solid fa-chevron-down text-[8px] text-base-content/30 transition-transform group-open:rotate-180"></i>
+                </div>
+              </summary>
+              <div class="space-y-1.5 pt-1">
+                <p class="text-[9px] text-base-content/40 leading-relaxed mb-1">
+                  Customize colors and sizes for just this scene, overriding the defaults above.
+                </p>
+                <label class="flex items-center justify-between cursor-pointer">
+                  <span class="text-[10px] text-base-content/70">Enable per-scene customization</span>
+                  <input type="checkbox" class="toggle toggle-primary toggle-xs"
+                         data-screenshot-editor-target="sceneOverrideEnabled"
+                         data-action="change->screenshot-editor#toggleSceneOverride">
+                </label>
+                <div data-screenshot-editor-target="sceneOverrideControls" class="space-y-1.5 hidden">
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <span class="text-[10px] text-base-content/50">Title Color</span>
+                      <input type="color" value="<%= s.dig("caption_color") || "#FFFFFF" %>"
+                             class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                             data-screenshot-editor-target="sceneOverrideCaptionColor"
+                             data-action="input->screenshot-editor#updatePreview">
+                    </div>
+                    <div>
+                      <span class="text-[10px] text-base-content/50">Subtitle Color</span>
+                      <input type="color" value="<%= s.dig("subtitle_color") || "#CCCCCC" %>"
+                             class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                             data-screenshot-editor-target="sceneOverrideSubtitleColor"
+                             data-action="input->screenshot-editor#updatePreview">
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <label>
+                      <span class="text-[10px] text-base-content/50">Title Size</span>
+                      <input type="range" min="16" max="144" value="<%= s.dig("caption_font_size") || 32 %>"
+                             class="range range-primary range-xs"
+                             data-screenshot-editor-target="sceneOverrideCaptionFontSize"
+                             data-action="input->screenshot-editor#updatePreview">
+                    </label>
+                    <label>
+                      <span class="text-[10px] text-base-content/50">Subtitle Size</span>
+                      <input type="range" min="10" max="96" value="<%= s.dig("subtitle_font_size") || 20 %>"
+                             class="range range-primary range-xs"
+                             data-screenshot-editor-target="sceneOverrideSubtitleFontSize"
+                             data-action="input->screenshot-editor#updatePreview">
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+          </div>
+
+          <%# ════════════════════════════════════════ %>
+          <%# TAB 2: STYLE (Background + Padding)      %>
+          <%# ════════════════════════════════════════ %>
+          <div id="tab-style" class="editor-tab-content space-y-3 pb-4" data-screenshot-editor-target="editorTabContent" data-tab="style">
+
+            <%# Background %>
+            <h3 class="text-xs font-semibold flex items-center gap-1.5 text-base-content/70 uppercase tracking-wide">
+              <i class="fa-solid fa-fill-drip text-[10px]"></i> Background
+            </h3>
+
+            <% bg_val = s.dig("background_type").presence || "solid"
+               bg_types = [
+                 { key: "none", label: "None", icon: "fa-solid fa-ban", icon_style: "color: oklch(var(--bc) / 0.3)", bg_style: "" },
+                 { key: "solid", label: "Solid", icon: nil, icon_style: nil, bg_style: "background: #{s.dig('background_color') || '#000000'}" },
+                 { key: "gradient", label: "Gradient", icon: nil, icon_style: nil, bg_style: "background: linear-gradient(135deg, #{s.dig('gradient_start') || '#000000'}, #{s.dig('gradient_end') || '#764BA2'})" },
+                 { key: "mesh", label: "Mesh", icon: nil, icon_style: nil, bg_style: "background: radial-gradient(circle at 30% 30%, #FF6B35, transparent 70%), radial-gradient(circle at 70% 50%, #F7931E, transparent 60%), #1a0533" },
+                 { key: "pattern", label: "Pattern", icon: nil, icon_style: nil, bg_style: "background: repeating-conic-gradient(rgba(255,255,255,0.35) 0% 25%, transparent 0% 50%) 0 0 / 8px 8px; background-color: #1a1a2e" },
+                 { key: "image", label: "Image", icon: "fa-solid fa-image", icon_style: "color: oklch(var(--bc) / 0.4); font-size: 12px", bg_style: "background: oklch(var(--b2))" },
+                 { key: "panoramic", label: "Panoramic", icon: "fa-solid fa-panorama", icon_style: "color: oklch(var(--bc) / 0.4); font-size: 11px", bg_style: "background: linear-gradient(90deg, #E67E22 0%, #3498DB 33%, #2ECC71 66%, #9B59B6 100%)" }
+               ] %>
+            <input type="hidden" value="<%= bg_val %>"
+                   data-screenshot-editor-target="backgroundType">
+            <div class="grid grid-cols-4 gap-1.5">
+              <% bg_types.each do |bt| %>
+                <button type="button"
+                        class="bg-type-btn <%= 'active' if bt[:key] == bg_val %>"
+                        data-action="click->screenshot-editor#selectBgType"
+                        data-bg-type="<%= bt[:key] %>">
+                  <div class="bg-type-icon" style="<%= bt[:bg_style] %>">
+                    <% if bt[:icon] %>
+                      <i class="<%= bt[:icon] %>" style="<%= bt[:icon_style] %>"></i>
+                    <% end %>
+                  </div>
+                  <span class="bg-type-label"><%= bt[:label] %></span>
+                </button>
+              <% end %>
+            </div>
+
+            <%# Contextual hint for panoramic %>
+            <div data-screenshot-editor-target="panoramicHint" class="bg-type-hint rounded-xl bg-info/10 border border-info/20 px-3 py-2 <%= 'hidden' unless bg_val == 'panoramic' %>">
+              <p class="text-[10px] text-info leading-relaxed">
+                <i class="fa-solid fa-circle-info mr-1"></i>
+                Upload one wide image &mdash; each scene displays a different slice, creating a continuous flow across your screenshots.
+              </p>
+            </div>
+
+            <%# Solid color picker (shown for solid type) %>
+            <div data-screenshot-editor-target="solidControls" class="<%= "hidden" unless bg_val == "solid" %>">
+              <div class="flex items-center gap-1">
+                <input type="color" value="<%= s.dig("background_color") || "#000000" %>"
+                       class="w-7 h-7 rounded-lg border border-base-200 cursor-pointer shrink-0"
+                       aria-label="Background color"
+                       data-screenshot-editor-target="backgroundColor"
+                       data-action="input->screenshot-editor#updatePreview">
+                <input type="text" value="<%= s.dig("background_color") || "#000000" %>"
+                       class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0"
+                       aria-label="Background color hex value"
+                       data-screenshot-editor-target="backgroundColorText"
+                       data-action="input->screenshot-editor#syncBackgroundColor">
+                <% if brand["background_color"].present? %>
+                  <button type="button" class="w-5 h-5 rounded-full border border-base-300 shrink-0 cursor-pointer" style="background: <%= brand['background_color'] %>" title="Brand background color"
+                          data-action="click->screenshot-editor#applyBrandColor" data-color="<%= brand['background_color'] %>" data-target-input="backgroundColor"></button>
+                <% end %>
+              </div>
+            </div>
+
+            <%# Gradient controls %>
+            <div data-screenshot-editor-target="gradientControls" class="<%= "hidden" unless bg_val == "gradient" %>">
+              <div class="grid grid-cols-3 gap-1.5">
+                <div>
+                  <span class="text-[10px] text-base-content/50">Start</span>
+                  <input type="color" value="<%= s.dig("gradient_start") || "#000000" %>"
+                         class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                         data-screenshot-editor-target="gradientStart"
+                         data-action="input->screenshot-editor#updatePreview">
+                </div>
+                <div>
+                  <span class="text-[10px] text-base-content/50">End</span>
+                  <input type="color" value="<%= s.dig("gradient_end") || "#764BA2" %>"
+                         class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                         data-screenshot-editor-target="gradientEnd"
+                         data-action="input->screenshot-editor#updatePreview">
+                </div>
+                <div>
+                  <span class="text-[10px] text-base-content/50">Direction</span>
+                  <% gd_val = s.dig("gradient_direction") == "to-right" ? "to-right" : "to-bottom" %>
+                  <details class="dropdown w-full" data-controller="custom-select">
+                    <input type="hidden" value="<%= gd_val %>"
+                           data-custom-select-target="input"
+                           data-screenshot-editor-target="gradientDirection"
+                           data-action="change->screenshot-editor#updatePreview input->screenshot-editor#updatePreview">
+                    <summary class="select select-bordered select-xs w-full flex items-center cursor-pointer text-[10px]" data-custom-select-target="label"><%= gd_val == "to-right" ? "L-R" : "T-B" %></summary>
+                    <ul class="dropdown-content bg-base-200 rounded-box z-[100] w-36 p-2 shadow-lg mt-1 flex flex-col gap-1">
+                      <li><a href="#" data-action="click->custom-select#select" data-value="to-bottom" data-label="T-B" class="<%= 'active' if gd_val == 'to-bottom' %>">Top to Bottom</a></li>
+                      <li><a href="#" data-action="click->custom-select#select" data-value="to-right" data-label="L-R" class="<%= 'active' if gd_val == 'to-right' %>">Left to Right</a></li>
+                    </ul>
+                  </details>
+                </div>
+              </div>
+            </div>
+
+            <%# Mesh Gradient controls %>
+            <% mesh_preset_val = s.dig("mesh_preset") || "sunset" %>
+            <div data-screenshot-editor-target="meshControls" class="<%= "hidden" unless bg_val == "mesh" %> space-y-2">
+              <input type="hidden" value="<%= mesh_preset_val %>" data-screenshot-editor-target="meshPreset">
+              <span class="text-[10px] text-base-content/50">Preset</span>
+              <div class="grid grid-cols-4 gap-1.5" data-mesh-grid>
+                <% mesh_presets = {
+                  "sunset" => { base: "#1a0533", c1: "#FF6B35", c2: "#F7931E", c3: "#D4145A" },
+                  "ocean" => { base: "#0a1628", c1: "#0077B6", c2: "#00B4D8", c3: "#023E8A" },
+                  "aurora" => { base: "#0B0B1A", c1: "#00C9A7", c2: "#845EC2", c3: "#00B8A9" },
+                  "lavender" => { base: "#1A1025", c1: "#9B59B6", c2: "#8E44AD", c3: "#D4A5FF" },
+                  "coral" => { base: "#1A0A0A", c1: "#FF6F61", c2: "#FF9671", c3: "#FFC75F" },
+                  "forest" => { base: "#0A1A0A", c1: "#2D6A4F", c2: "#40916C", c3: "#52B788" },
+                  "candy" => { base: "#1A0820", c1: "#FF6B9D", c2: "#C44DFF", c3: "#FF85A1" },
+                  "midnight" => { base: "#050510", c1: "#1A1A4E", c2: "#2D2D7F", c3: "#4040B0" },
+                  "neon" => { base: "#0A0A0A", c1: "#00FF87", c2: "#FF00E5", c3: "#00D4FF" },
+                  "peach" => { base: "#1A1008", c1: "#FFBE76", c2: "#FF9F43", c3: "#FECA57" },
+                  "arctic" => { base: "#0A1520", c1: "#74B9FF", c2: "#A29BFE", c3: "#81ECEC" },
+                  "ember" => { base: "#1A0800", c1: "#E74C3C", c2: "#E67E22", c3: "#C0392B" }
+                } %>
+                <% mesh_presets.each do |key, colors| %>
+                  <button type="button"
+                          class="w-full aspect-square rounded-xl border border-base-200 cursor-pointer transition-all hover:scale-105 <%= 'ring-2 ring-primary' if key == mesh_preset_val %>"
+                          style="background: radial-gradient(circle at 30% 30%, <%= colors[:c1] %>, transparent 70%), radial-gradient(circle at 70% 50%, <%= colors[:c2] %>, transparent 70%), radial-gradient(circle at 50% 80%, <%= colors[:c3] %>, transparent 70%), <%= colors[:base] %>"
+                          data-action="click->screenshot-editor#selectMeshPreset"
+                          data-preset="<%= key %>"
+                          title="<%= key.titleize %>">
+                  </button>
+                <% end %>
+              </div>
+              <div class="grid grid-cols-3 gap-1.5 pt-1">
+                <div>
+                  <span class="text-[10px] text-base-content/50">Color 1</span>
+                  <input type="color" value="<%= s.dig("mesh_color_1").presence || mesh_presets.dig(mesh_preset_val, :c1) || "#FF6B35" %>"
+                         class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                         data-screenshot-editor-target="meshColor1"
+                         data-action="input->screenshot-editor#updatePreview">
+                </div>
+                <div>
+                  <span class="text-[10px] text-base-content/50">Color 2</span>
+                  <input type="color" value="<%= s.dig("mesh_color_2").presence || mesh_presets.dig(mesh_preset_val, :c2) || "#F7931E" %>"
+                         class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                         data-screenshot-editor-target="meshColor2"
+                         data-action="input->screenshot-editor#updatePreview">
+                </div>
+                <div>
+                  <span class="text-[10px] text-base-content/50">Color 3</span>
+                  <input type="color" value="<%= s.dig("mesh_color_3").presence || mesh_presets.dig(mesh_preset_val, :c3) || "#D4145A" %>"
+                         class="w-full h-6 rounded-xl border border-base-200 cursor-pointer"
+                         data-screenshot-editor-target="meshColor3"
+                         data-action="input->screenshot-editor#updatePreview">
+                </div>
+              </div>
+            </div>
+
+            <%# Pattern controls %>
+            <% pattern_id_val = s.dig("pattern_id") || "dots" %>
+            <div data-screenshot-editor-target="patternControls" class="<%= "hidden" unless bg_val == "pattern" %> space-y-2">
+              <input type="hidden" value="<%= pattern_id_val %>" data-screenshot-editor-target="patternId">
+              <span class="text-[10px] text-base-content/50">Pattern</span>
+              <div class="grid grid-cols-5 gap-1.5" data-pattern-grid>
+                <% ScreenshotProject::PATTERN_LIBRARY[:tiles].each do |tile| %>
+                  <button type="button"
+                          class="w-full aspect-square rounded-lg border border-base-200 cursor-pointer transition-all hover:scale-105 flex items-center justify-center bg-base-200/30 <%= 'ring-2 ring-primary' if tile[:id] == pattern_id_val %>"
+                          data-action="click->screenshot-editor#selectPattern"
+                          data-pattern-id="<%= tile[:id] %>"
+                          title="<%= tile[:label] %>">
+                    <img src="<%= image_path(tile[:file]) %>" class="w-5 h-5 opacity-60 pattern-tile-preview" alt="<%= tile[:label] %>">
+                  </button>
+                <% end %>
+                <% ScreenshotProject::PATTERN_LIBRARY[:procedural].each do |proc_pattern| %>
+                  <button type="button"
+                          class="w-full aspect-square rounded-lg border border-base-200 cursor-pointer transition-all hover:scale-105 flex items-center justify-center text-[8px] font-medium text-base-content/50 bg-base-200/30 <%= 'ring-2 ring-primary' if proc_pattern[:id] == pattern_id_val %>"
+                          data-action="click->screenshot-editor#selectPattern"
+                          data-pattern-id="<%= proc_pattern[:id] %>"
+                          title="<%= proc_pattern[:label] %>">
+                    <%= proc_pattern[:label] %>
+                  </button>
+                <% end %>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5 pt-1">
+                <div>
+                  <span class="text-[10px] text-base-content/50">Pattern Color</span>
+                  <div class="flex items-center gap-1">
+                    <input type="color" value="<%= s.dig("pattern_color") || "#FFFFFF" %>"
+                           class="w-7 h-7 rounded-lg border border-base-200 cursor-pointer shrink-0"
+                           aria-label="Pattern color"
+                           data-screenshot-editor-target="patternColor"
+                           data-action="input->screenshot-editor#updatePreview">
+                    <input type="text" value="<%= s.dig("pattern_color") || "#FFFFFF" %>"
+                           class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0"
+                           aria-label="Pattern color hex value"
+                           data-screenshot-editor-target="patternColorText"
+                           data-action="input->screenshot-editor#syncPatternColor">
+                  </div>
+                </div>
+                <div>
+                  <span class="text-[10px] text-base-content/50">Bg Color</span>
+                  <div class="flex items-center gap-1">
+                    <input type="color" value="<%= s.dig("pattern_bg_color") || "#000000" %>"
+                           class="w-7 h-7 rounded-lg border border-base-200 cursor-pointer shrink-0"
+                           aria-label="Pattern background color"
+                           data-screenshot-editor-target="patternBgColor"
+                           data-action="input->screenshot-editor#updatePreview">
+                    <input type="text" value="<%= s.dig("pattern_bg_color") || "#000000" %>"
+                           class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0"
+                           aria-label="Pattern background color hex value"
+                           data-screenshot-editor-target="patternBgColorText"
+                           data-action="input->screenshot-editor#syncPatternBgColor">
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-base-content/50">Scale</span>
+                  <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="patternScaleLabel"><%= s.dig("pattern_scale") || 100 %>%</span>
+                </div>
+                <input type="range" min="50" max="200" value="<%= s.dig("pattern_scale") || 100 %>"
+                       class="range range-primary range-xs"
+                       data-screenshot-editor-target="patternScale"
+                       data-action="input->screenshot-editor#updatePreview">
+              </div>
+            </div>
+
+            <%# Background Image controls %>
+            <div data-screenshot-editor-target="imageControls" class="<%= "hidden" unless bg_val == "image" %> space-y-2">
+              <div class="flex items-center gap-2">
+                <label class="btn btn-xs btn-outline gap-1 flex-1 cursor-pointer">
+                  <i class="fa-solid fa-cloud-arrow-up text-[10px]"></i>
+                  <span>Upload Image</span>
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/webp"
+                         data-action="change->screenshot-editor#uploadBackgroundImage">
+                </label>
+                <button type="button"
+                        class="btn btn-xs btn-ghost btn-error gap-1 <%= 'hidden' unless @project.background_image.attached? %>"
+                        data-screenshot-editor-target="backgroundImageRemoveBtn"
+                        data-action="click->screenshot-editor#removeBackgroundImage">
+                  <i class="fa-solid fa-trash text-[10px]"></i>
+                  Remove
+                </button>
+              </div>
+              <% if @project.background_image.attached? %>
+                <img src="<%= "#{organization_screenshot_project_path(@organization, @project)}/background_image_file" %>"
+                     class="w-full h-16 object-cover rounded-lg border border-base-200"
+                     data-screenshot-editor-target="backgroundImagePreview"
+                     alt="Background preview">
+              <% else %>
+                <img src="" class="w-full h-16 object-cover rounded-lg border border-base-200 hidden"
+                     data-screenshot-editor-target="backgroundImagePreview"
+                     alt="Background preview">
+              <% end %>
+              <div>
+                <span class="text-[10px] text-base-content/50">Fit Mode</span>
+                <% fit_val = s.dig("background_image_fit") || "cover" %>
+                <details class="dropdown w-full" data-controller="custom-select">
+                  <input type="hidden" value="<%= fit_val %>"
+                         data-custom-select-target="input"
+                         data-screenshot-editor-target="backgroundImageFit"
+                         data-action="change->screenshot-editor#updatePreview input->screenshot-editor#updatePreview">
+                  <summary class="select select-bordered select-xs w-full flex items-center cursor-pointer text-xs" data-custom-select-target="label"><%= fit_val == "contain" ? "Contain" : "Cover" %></summary>
+                  <ul class="dropdown-content bg-base-200 rounded-box z-[100] w-full p-2 shadow-lg mt-1 flex flex-col gap-1">
+                    <li><a href="#" data-action="click->custom-select#select" data-value="cover" data-label="Cover" class="<%= 'active' if fit_val == 'cover' %>">Cover</a></li>
+                    <li><a href="#" data-action="click->custom-select#select" data-value="contain" data-label="Contain" class="<%= 'active' if fit_val == 'contain' %>">Contain</a></li>
+                  </ul>
+                </details>
+              </div>
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-base-content/50">Blur</span>
+                  <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="backgroundImageBlurLabel"><%= s.dig("background_image_blur") || 0 %>px</span>
+                </div>
+                <input type="range" min="0" max="20" value="<%= s.dig("background_image_blur") || 0 %>"
+                       class="range range-primary range-xs"
+                       data-screenshot-editor-target="backgroundImageBlur"
+                       data-action="input->screenshot-editor#updatePreview">
+              </div>
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-base-content/50">Brightness</span>
+                  <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="backgroundImageBrightnessLabel"><%= s.dig("background_image_brightness") || 100 %>%</span>
+                </div>
+                <input type="range" min="20" max="100" value="<%= s.dig("background_image_brightness") || 100 %>"
+                       class="range range-primary range-xs"
+                       data-screenshot-editor-target="backgroundImageBrightness"
+                       data-action="input->screenshot-editor#updatePreview">
+              </div>
+            </div>
+
+            <%# Panoramic controls %>
+            <div data-screenshot-editor-target="panoramicControls" class="<%= "hidden" unless bg_val == "panoramic" %> space-y-2">
+              <div class="flex items-center gap-2">
+                <label class="btn btn-xs btn-outline gap-1 flex-1 cursor-pointer">
+                  <i class="fa-solid fa-cloud-arrow-up text-[10px]"></i>
+                  <span>Upload Panorama</span>
+                  <input type="file" class="hidden" accept="image/png,image/jpeg,image/webp"
+                         data-action="change->screenshot-editor#uploadBackgroundImage">
+                </label>
+                <button type="button"
+                        class="btn btn-xs btn-ghost btn-error gap-1 <%= 'hidden' unless @project.background_image.attached? %>"
+                        data-screenshot-editor-target="panoramicRemoveBtn"
+                        data-action="click->screenshot-editor#removeBackgroundImage">
+                  <i class="fa-solid fa-trash text-[10px]"></i>
+                  Remove
+                </button>
+              </div>
+              <div class="relative">
+                <% if @project.background_image.attached? %>
+                  <img src="<%= "#{organization_screenshot_project_path(@organization, @project)}/background_image_file" %>"
+                       class="w-full h-16 object-cover rounded-lg border border-base-200"
+                       data-screenshot-editor-target="panoramicPreview"
+                       alt="Panoramic preview">
+                <% else %>
+                  <img src="" class="w-full h-16 object-cover rounded-lg border border-base-200 hidden"
+                       data-screenshot-editor-target="panoramicPreview"
+                       alt="Panoramic preview">
+                <% end %>
+                <div class="absolute inset-0 flex rounded-lg overflow-hidden pointer-events-none"
+                     data-screenshot-editor-target="panoramicSliceOverlay"></div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-base-content/50">Blur</span>
+                  <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="panoramicBlurLabel"><%= s.dig("background_image_blur") || 0 %>px</span>
+                </div>
+                <input type="range" min="0" max="20" value="<%= s.dig("background_image_blur") || 0 %>"
+                       class="range range-primary range-xs"
+                       data-screenshot-editor-target="panoramicBlur"
+                       data-action="change->screenshot-editor#updatePreview input->screenshot-editor#updatePreview">
+              </div>
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-base-content/50">Brightness</span>
+                  <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="panoramicBrightnessLabel"><%= s.dig("background_image_brightness") || 100 %>%</span>
+                </div>
+                <input type="range" min="20" max="100" value="<%= s.dig("background_image_brightness") || 100 %>"
+                       class="range range-primary range-xs"
+                       data-screenshot-editor-target="panoramicBrightness"
+                       data-action="change->screenshot-editor#updatePreview input->screenshot-editor#updatePreview">
+              </div>
+            </div>
+
+            <%# Padding %>
+            <div data-screenshot-editor-target="paddingControls" class="<%= "hidden" if bg_val == "none" %>">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] text-base-content/50">Padding</span>
+                <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="paddingLabel"><%= s.dig("screenshot_padding") || 8 %>%</span>
+              </div>
+              <input type="range" min="0" max="20" value="<%= s.dig("screenshot_padding") || 8 %>"
+                     class="range range-primary range-xs"
+                     data-screenshot-editor-target="screenshotPadding"
+                     data-action="input->screenshot-editor#updatePreview">
+
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-[10px] text-base-content/50">Y Offset</span>
+                <span class="text-[10px] text-base-content/40" data-screenshot-editor-target="screenshotOffsetYLabel"><%= s.dig("screenshot_offset_y") || 0 %>%</span>
+              </div>
+              <input type="range" min="-20" max="50" value="<%= s.dig("screenshot_offset_y") || 0 %>"
+                     class="range range-primary range-xs"
+                     data-screenshot-editor-target="screenshotOffsetY"
+                     data-action="input->screenshot-editor#updatePreview">
+            </div>
+
+          </div>
+
+          <%# ════════════════════════════════════════ %>
+          <%# TAB 3: DEVICE FRAME                     %>
+          <%# ════════════════════════════════════════ %>
+          <div id="tab-frame" class="editor-tab-content space-y-3 pb-4" data-screenshot-editor-target="editorTabContent" data-tab="frame">
+
+            <h3 class="text-xs font-semibold flex items-center gap-1.5 text-base-content/70 uppercase tracking-wide">
+              <i class="fa-solid fa-mobile-screen text-[10px]"></i> Device Frame
+            </h3>
+
+            <% df_val = s.dig("device_frame") || "none"
+               df_options = ScreenshotProject::DEVICE_FRAMES.reject { |k, f|
+                 (@project.platform == "ios" && f[:platform] == "android") ||
+                 (@project.platform == "android" && f[:platform] == "ios")
+               }
+               df_label = df_options[df_val]&.[](:label) || "No Frame" %>
+            <details class="dropdown w-full" data-controller="custom-select">
+              <input type="hidden" value="<%= df_val %>"
+                     data-custom-select-target="input"
+                     data-screenshot-editor-target="deviceFrame"
+                     data-action="change->screenshot-editor#updatePreview input->screenshot-editor#updatePreview">
+              <summary class="select select-bordered select-xs w-full flex items-center cursor-pointer text-xs" data-custom-select-target="label"><%= df_label %></summary>
+              <ul class="dropdown-content bg-base-200 rounded-box z-[100] w-full p-2 shadow-lg mt-1 flex flex-col gap-1 max-h-60 overflow-y-auto">
+                <% df_options.each do |key, frame| %>
+                  <li><a href="#" data-action="click->custom-select#select" data-value="<%= key %>" data-label="<%= frame[:label] %>" class="<%= 'active' if key == df_val %>"><%= frame[:label] %></a></li>
+                <% end %>
+              </ul>
+            </details>
+
+            <div class="bg-base-200/30 rounded-2xl p-3 mt-2">
+              <div class="text-[10px] text-base-content/50 space-y-1">
+                <p><i class="fa-solid fa-circle-info text-[9px] mr-1"></i> Device frames add a phone or tablet bezel around your screenshot.</p>
+                <p>Choose "No Frame" for a clean, frameless look. The frame is automatically scaled to fit your export dimensions.</p>
+              </div>
+            </div>
+
+            <%# ── 3D Perspective ── %>
+            <div class="border-t border-base-200 mt-3 pt-3">
+              <p class="text-[9px] text-base-content/40 leading-relaxed mb-2">
+                <i class="fa-solid fa-circle-info text-[8px] mr-0.5"></i>
+                Apply 3D rotation to your screenshot. Pick a preset or customize tilt, depth, shadow and reflection.
+              </p>
+            </div>
+
+            <h3 class="text-xs font-semibold flex items-center gap-1.5 text-base-content/70 uppercase tracking-wide">
+              <i class="fa-solid fa-cube text-[10px]"></i> 3D Perspective
+            </h3>
+
+            <input type="hidden" value="<%= s.dig("perspective_preset") || "none" %>"
+                   data-screenshot-editor-target="perspectivePreset">
+
+            <% persp_val = s.dig("perspective_preset") || "none" %>
+            <div class="grid grid-cols-4 gap-1.5">
+              <% ScreenshotProject::PERSPECTIVE_PRESETS.each do |key, preset| %>
+                <button type="button"
+                        class="perspective-preset-btn <%= 'active' if key == persp_val %>"
+                        data-action="click->screenshot-editor#updatePerspectivePreset"
+                        data-preset="<%= key %>"
+                        data-rotate-x="<%= preset[:rotate_x] %>"
+                        data-rotate-y="<%= preset[:rotate_y] %>"
+                        data-distance="<%= preset[:distance] %>">
+                  <div class="persp-thumb" style="transform: perspective(60px) rotateX(<%= preset[:rotate_x] * 0.6 %>deg) rotateY(<%= preset[:rotate_y] * 0.6 %>deg);"></div>
+                  <span class="persp-label"><%= preset[:label] %></span>
+                </button>
+              <% end %>
+            </div>
+
+            <%# Custom sliders (visible when perspective is not "none") %>
+            <div data-screenshot-editor-target="perspectiveControls" class="<%= 'hidden' if persp_val == 'none' %> space-y-2 mt-1">
+
+              <%# Tilt X slider %>
+              <div>
+                <div class="flex justify-between items-center mb-0.5">
+                  <span class="text-[10px] font-medium text-base-content/60">Tilt X</span>
+                  <span class="text-[10px] tabular-nums text-base-content/50" data-screenshot-editor-target="perspectiveRotateXLabel"><%= s.dig("perspective_rotate_x") || 0 %>&deg;</span>
+                </div>
+                <input type="range" min="-45" max="45" step="1"
+                       value="<%= s.dig("perspective_rotate_x") || 0 %>"
+                       class="range range-xs range-primary"
+                       data-screenshot-editor-target="perspectiveRotateX"
+                       data-action="input->screenshot-editor#updatePerspective">
+              </div>
+
+              <%# Tilt Y slider %>
+              <div>
+                <div class="flex justify-between items-center mb-0.5">
+                  <span class="text-[10px] font-medium text-base-content/60">Tilt Y</span>
+                  <span class="text-[10px] tabular-nums text-base-content/50" data-screenshot-editor-target="perspectiveRotateYLabel"><%= s.dig("perspective_rotate_y") || 0 %>&deg;</span>
+                </div>
+                <input type="range" min="-45" max="45" step="1"
+                       value="<%= s.dig("perspective_rotate_y") || 0 %>"
+                       class="range range-xs range-primary"
+                       data-screenshot-editor-target="perspectiveRotateY"
+                       data-action="input->screenshot-editor#updatePerspective">
+              </div>
+
+              <%# Depth slider %>
+              <div>
+                <div class="flex justify-between items-center mb-0.5">
+                  <span class="text-[10px] font-medium text-base-content/60">Depth</span>
+                  <span class="text-[10px] tabular-nums text-base-content/50" data-screenshot-editor-target="perspectiveDistLabel"><%= s.dig("perspective_distance") || 2000 %></span>
+                </div>
+                <input type="range" min="400" max="2000" step="50"
+                       value="<%= s.dig("perspective_distance") || 2000 %>"
+                       class="range range-xs range-primary"
+                       data-screenshot-editor-target="perspectiveDist"
+                       data-action="input->screenshot-editor#updatePerspective">
+              </div>
+
+              <%# Shadow toggle %>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" class="toggle toggle-xs toggle-primary"
+                       <%= "checked" if s.dig("perspective_shadow") %>
+                       data-screenshot-editor-target="perspectiveShadow"
+                       data-action="change->screenshot-editor#updatePerspective">
+                <span class="text-[10px] font-medium text-base-content/60">Shadow</span>
+              </label>
+
+              <%# Reflection toggle %>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" class="toggle toggle-xs toggle-primary"
+                       <%= "checked" if s.dig("perspective_reflection") %>
+                       data-screenshot-editor-target="perspectiveReflection"
+                       data-action="change->screenshot-editor#updatePerspective">
+                <span class="text-[10px] font-medium text-base-content/60">Reflection</span>
+              </label>
+
+            </div>
+
+          </div>
+
+          <%# ════════════════════════════════════════ %>
+          <%# TAB 4: STICKERS                         %>
+          <%# ════════════════════════════════════════ %>
+          <div id="tab-stickers" class="editor-tab-content space-y-3 pb-4" data-screenshot-editor-target="editorTabContent" data-tab="stickers">
+
+            <%# Section toggle: Emoji / Library %>
+            <div class="flex gap-0.5 p-0.5 bg-base-200 rounded-full">
+              <button type="button"
+                      class="btn btn-xs flex-1 gap-1 btn-active"
+                      data-action="click->screenshot-editor#switchStickerSection"
+                      data-section="emoji"
+                      data-screenshot-editor-target="stickerSectionBtnEmoji">
+                <i class="fa-regular fa-face-smile text-[9px]"></i>
+                Emoji
+              </button>
+              <button type="button"
+                      class="btn btn-xs flex-1 gap-1 btn-ghost"
+                      data-action="click->screenshot-editor#switchStickerSection"
+                      data-section="library"
+                      data-screenshot-editor-target="stickerSectionBtnLibrary">
+                <i class="fa-solid fa-icons text-[9px]"></i>
+                Library
+              </button>
+              <button type="button"
+                      class="btn btn-xs flex-1 gap-1 btn-ghost"
+                      data-action="click->screenshot-editor#switchStickerSection"
+                      data-section="images"
+                      data-screenshot-editor-target="stickerSectionBtnImages">
+                <i class="fa-solid fa-image text-[9px]"></i>
+                Images
+              </button>
+              <button type="button"
+                      class="btn btn-xs flex-1 gap-1 btn-ghost"
+                      data-action="click->screenshot-editor#switchStickerSection"
+                      data-section="text"
+                      data-screenshot-editor-target="stickerSectionBtnText">
+                <i class="fa-solid fa-font text-[9px]"></i>
+                Text
+              </button>
+            </div>
+
+            <%# Emoji Section %>
+            <div data-screenshot-editor-target="stickerEmojiSection">
+              <% emoji_categories = {
+                "Smileys" => ScreenshotProject::POPULAR_EMOJIS[:smileys],
+                "Hands" => ScreenshotProject::POPULAR_EMOJIS[:hands],
+                "People" => ScreenshotProject::POPULAR_EMOJIS[:people],
+                "Animals" => ScreenshotProject::POPULAR_EMOJIS[:animals],
+                "Food" => ScreenshotProject::POPULAR_EMOJIS[:food],
+                "Objects" => ScreenshotProject::POPULAR_EMOJIS[:objects],
+                "Symbols" => ScreenshotProject::POPULAR_EMOJIS[:symbols],
+                "Flags" => ScreenshotProject::POPULAR_EMOJIS[:flags]
+              } %>
+
+              <div role="tablist" class="tabs tabs-xs tabs-boxed bg-base-200/50 gap-0">
+                <% emoji_categories.each_with_index do |(cat_name, _emojis), idx| %>
+                  <input type="radio" name="sticker_tabs" role="tab" class="tab text-[10px] !px-1.5"
+                         aria-label="<%= cat_name %>" <%= 'checked' if idx == 0 %>>
+                  <div role="tabpanel" class="tab-content pt-2">
+                    <div class="grid grid-cols-8 gap-0.5">
+                      <% emoji_categories[cat_name].each do |emoji| %>
+                        <button type="button"
+                                class="btn btn-ghost btn-xs text-base leading-none p-0 h-7 min-h-0"
+                                data-action="click->screenshot-editor#addSticker"
+                                data-emoji="<%= emoji %>"><%= emoji %></button>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <%# Library Section %>
+            <div class="hidden" data-screenshot-editor-target="stickerLibrarySection">
+              <div class="space-y-2">
+                <input type="text" placeholder="Search all stickers..."
+                       class="input input-xs input-bordered w-full"
+                       data-screenshot-editor-target="stickerLibrarySearch"
+                       data-action="input->screenshot-editor#filterLibraryStickers">
+
+                <div class="max-h-64 overflow-y-auto space-y-1 pr-0.5">
+                  <% library = ScreenshotProject::STICKER_LIBRARY %>
+                  <% library.each do |cat_key, cat_data| %>
+                    <details class="group sticker-lib-category" open>
+                      <summary class="flex items-center justify-between cursor-pointer py-1.5 px-1 rounded-2xl hover:bg-base-200/50 sticky top-0 bg-base-100 z-[1]">
+                        <span class="text-[10px] font-semibold text-base-content/60 uppercase tracking-wide flex items-center gap-1.5">
+                          <i class="<%= cat_data[:icon] %> text-[9px]"></i>
+                          <%= cat_data[:label] %>
+                          <span class="badge badge-ghost badge-xs font-normal normal-case"><%= cat_data[:items].size %></span>
+                        </span>
+                        <i class="fa-solid fa-chevron-down text-[7px] text-base-content/30 transition-transform group-open:rotate-180"></i>
+                      </summary>
+                      <% if cat_key == :badges %>
+                        <div class="grid grid-cols-2 gap-1.5 pt-1 pb-2">
+                          <% cat_data[:items].each do |item| %>
+                            <button type="button"
+                                    class="sticker-lib-item btn btn-ghost btn-xs px-2 h-10 min-h-0 w-full flex items-center justify-start gap-1"
+                                    title="<%= item[:label] %>"
+                                    data-action="click->screenshot-editor#addLibrarySticker"
+                                    data-asset-key="<%= item[:key] %>"
+                                    data-image-url="<%= image_path(item[:file]) %>"
+                                    data-tags="<%= item[:tags] %>"
+                                    data-category="<%= cat_key %>">
+                              <img src="<%= image_path(item[:file]) %>" loading="lazy"
+                                   class="h-5 w-auto [filter:invert(0.85)]"
+                                   alt="<%= item[:label] %>">
+                              <span class="text-[9px] truncate text-base-content/50"><%= item[:label] %></span>
+                            </button>
+                          <% end %>
+                        </div>
+                      <% else %>
+                        <div class="grid grid-cols-5 gap-1 pt-1 pb-2">
+                          <% cat_data[:items].each do |item| %>
+                            <button type="button"
+                                    class="sticker-lib-item btn btn-ghost btn-xs p-0.5 h-8 min-h-0 flex items-center justify-center"
+                                    title="<%= item[:label] %>"
+                                    data-action="click->screenshot-editor#addLibrarySticker"
+                                    data-asset-key="<%= item[:key] %>"
+                                    data-image-url="<%= image_path(item[:file]) %>"
+                                    data-tags="<%= item[:tags] %>"
+                                    data-category="<%= cat_key %>">
+                              <img src="<%= image_path(item[:file]) %>" loading="lazy"
+                                   class="w-5 h-5 [filter:invert(0.85)]"
+                                   alt="<%= item[:label] %>">
+                            </button>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </details>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+
+            <%# Images Section (custom uploads) %>
+            <div class="hidden" data-screenshot-editor-target="stickerImagesSection">
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <label class="btn btn-xs btn-outline gap-1 flex-1 cursor-pointer">
+                    <i class="fa-solid fa-upload text-[9px]"></i>
+                    Upload Image
+                    <input type="file"
+                           accept="image/png,image/jpeg,image/webp"
+                           class="hidden"
+                           data-screenshot-editor-target="customImageUpload"
+                           data-action="change->screenshot-editor#uploadCustomStickerImage">
+                  </label>
+                </div>
+                <p class="text-[10px] text-base-content/40">PNG, JPEG, or WebP. Max 5 MB per image.</p>
+                <div class="grid grid-cols-3 gap-2" data-screenshot-editor-target="customImageGallery">
+                  <% if @project.custom_sticker_images.any? %>
+                    <% @project.custom_sticker_images.each do |attachment| %>
+                      <div class="relative group">
+                        <button type="button"
+                                class="w-full aspect-square rounded-lg border border-base-200 hover:border-primary/50 overflow-hidden flex items-center justify-center bg-base-200/30 transition-all"
+                                data-action="click->screenshot-editor#addCustomImageSticker"
+                                data-image-url="<%= "#{organization_screenshot_project_path(@organization, @project)}/custom_sticker_images/#{attachment.id}" %>"
+                                data-attachment-id="<%= attachment.id %>"
+                                data-signed-id="<%= attachment.blob.signed_id %>"
+                                title="<%= attachment.blob.filename %>">
+                          <img src="<%= "#{organization_screenshot_project_path(@organization, @project)}/custom_sticker_images/#{attachment.id}" %>"
+                               class="max-w-full max-h-full object-contain"
+                               alt="<%= attachment.blob.filename %>"
+                               loading="lazy">
+                        </button>
+                        <button type="button"
+                                class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-error text-error-content flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                data-action="click->screenshot-editor#deleteCustomStickerImage"
+                                data-signed-id="<%= attachment.blob.signed_id %>"
+                                data-attachment-id="<%= attachment.id %>"
+                                title="Delete image">
+                          <i class="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <p class="text-xs text-base-content/40 text-center py-3 col-span-3">No images uploaded yet</p>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+
+            <%# Text Section %>
+            <div class="hidden" data-screenshot-editor-target="stickerTextSection">
+              <div class="space-y-2">
+                <p class="text-[10px] text-base-content/50">Add a text label, badge, or callout overlay.</p>
+
+                <div class="flex gap-1.5">
+                  <input type="text" placeholder="Enter text..."
+                         class="input input-xs input-bordered flex-1"
+                         data-screenshot-editor-target="newTextStickerInput">
+                  <button type="button"
+                          class="btn btn-xs btn-primary gap-1"
+                          data-action="click->screenshot-editor#addTextSticker">
+                    <i class="fa-solid fa-plus text-[9px]"></i> Add
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-3 gap-1">
+                  <% [ ["Label", "700", "rgba(99,102,241,0.85)"],
+                       ["Badge", "800", "rgba(239,68,68,0.85)"],
+                       ["Note", "600", "rgba(234,179,8,0.9)"],
+                       ["NEW", "800", "rgba(16,185,129,0.85)"],
+                       ["Beta", "700", "rgba(139,92,246,0.85)"],
+                       ["Tip", "700", "rgba(59,130,246,0.85)"]
+                  ].each do |text, weight, bg| %>
+                    <button type="button"
+                            class="btn btn-xs btn-ghost border border-base-200 text-[10px]"
+                            data-action="click->screenshot-editor#addTextSticker"
+                            data-text="<%= text %>"
+                            data-font-weight="<%= weight %>"
+                            data-bg-color="<%= bg %>">
+                      <%= text %>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+
+            <%# Selected sticker controls %>
+            <div class="hidden space-y-1.5 pt-1 border-t border-base-200"
+                 data-screenshot-editor-target="stickerControls">
+              <div class="flex items-center gap-2">
+                <label class="text-[10px] text-base-content/60 w-10">Size</label>
+                <input type="range" min="24" max="400" value="64" step="1"
+                       class="range range-xs range-primary flex-1"
+                       data-screenshot-editor-target="stickerSize"
+                       data-action="input->screenshot-editor#updateStickerSize">
+                <span class="text-[10px] text-base-content/50 w-10 text-right"
+                      data-screenshot-editor-target="stickerSizeLabel">64px</span>
+              </div>
+
+              <div class="hidden flex items-center gap-2"
+                   data-screenshot-editor-target="stickerColorControls">
+                <label class="text-[10px] text-base-content/60 w-10">Color</label>
+                <input type="color" value="#FFFFFF"
+                       class="w-6 h-6 rounded-lg cursor-pointer border border-base-300"
+                       data-screenshot-editor-target="stickerColor"
+                       data-action="input->screenshot-editor#updateStickerColor">
+                <input type="text" value="#FFFFFF" maxlength="7"
+                       class="input input-xs input-bordered flex-1 font-mono text-[10px]"
+                       data-screenshot-editor-target="stickerColorText"
+                       data-action="change->screenshot-editor#updateStickerColorFromText">
+              </div>
+
+              <div class="hidden flex items-center gap-2"
+                   data-screenshot-editor-target="stickerTextControls">
+                <label class="text-[10px] text-base-content/60 w-10">Text</label>
+                <input type="text" value="" placeholder="Type here..."
+                       class="input input-xs input-bordered flex-1"
+                       data-screenshot-editor-target="stickerText"
+                       data-action="input->screenshot-editor#updateStickerText">
+              </div>
+
+              <div class="hidden flex items-center gap-2"
+                   data-screenshot-editor-target="stickerBgColorControls">
+                <label class="text-[10px] text-base-content/60 w-10">Bg</label>
+                <input type="color" value="#000000"
+                       class="w-6 h-6 rounded-lg cursor-pointer border border-base-300"
+                       data-screenshot-editor-target="stickerBgColor"
+                       data-action="input->screenshot-editor#updateStickerBgColor">
+                <label class="flex items-center gap-1 text-[10px] text-base-content/60 cursor-pointer ml-auto">
+                  <input type="checkbox" checked
+                         class="checkbox checkbox-xs checkbox-primary"
+                         data-screenshot-editor-target="stickerBgEnabled"
+                         data-action="change->screenshot-editor#updateStickerBgEnabled">
+                  Show
+                </label>
+              </div>
+
+              <button type="button"
+                      class="btn btn-error btn-xs btn-outline w-full gap-1"
+                      data-action="click->screenshot-editor#deleteSelectedSticker">
+                <i class="fa-solid fa-trash-can text-[10px]"></i> Delete Sticker
+              </button>
+            </div>
+
+          </div>
+
+        </div><%# end panel scroll %>
+
+        <%# ── Pinned Save + Export Bar ── %>
+    <% if @scenes.any? %>
+      <div class="border-t border-base-200 p-3 flex gap-2">
+        <button type="button"
+                class="btn btn-primary btn-sm flex-1 gap-1.5 px-3 text-xs"
+                data-action="click->screenshot-editor#saveCurrentScene"
+                    data-screenshot-editor-target="saveButton">
+              <i class="fa-solid fa-floppy-disk text-[10px]" data-screenshot-editor-target="saveIcon"></i>
+              <span data-screenshot-editor-target="saveLabel">Save</span>
+            </button>
+        <button class="btn btn-sm gap-2 btn-outline" data-action="click->screenshot-export#openModal">
+          <i class="fa-solid fa-download text-[10px]"></i>
+          Export
+        </button>
+        <button class="btn btn-sm btn-accent gap-2"
+                data-action="click->screenshot-store-upload#openModal"
+                title="Upload to Store">
+          <i class="fa-solid fa-cloud-arrow-up text-[10px]"></i>
+          <span class="hidden sm:inline">Upload</span>
+        </button>
+      </div>
+    <% end %>
+
+      </div><%# end settings card %>
+    </div><%# end settings column %>
+
+  </div><%# end main grid %>
+
+  <%# ══════════════════════════════════════════ %>
+  <%# Modals & Hidden Data (unchanged) %>
+  <%# ══════════════════════════════════════════ %>
+
+  <%# Export Modal %>
+  <%= render "export_modal", project: @project %>
+
+  <%# Store Upload Modal %>
+  <%= render "store_upload_modal",
+             project: @project,
+             apple_apps: @apple_apps,
+             android_apps: @android_apps,
+             editable_versions: @editable_versions,
+             has_asc_credentials: @has_asc_credentials,
+             has_gp_credentials: @has_gp_credentials,
+             custom_product_pages: @custom_product_pages || [] %>
+
+  <%# Delete Scene Confirmation Dialog %>
+  <dialog id="delete_scene_modal" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-trash text-error text-lg"></i>
+        </div>
+        <div class="space-y-2">
+          <h3 class="text-lg font-bold">Delete scene?</h3>
+          <p class="text-sm text-base-content/70">
+            Are you sure you want to delete <span id="delete_scene_name" class="font-semibold"></span>?
+            This action cannot be undone.
+          </p>
+        </div>
+      </div>
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn btn-ghost">Cancel</button>
+        </form>
+        <form id="delete_scene_form" method="post">
+          <input type="hidden" name="_method" value="delete">
+          <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
+          <button type="submit" class="btn btn-error gap-2">
+            <i class="fa-solid fa-trash"></i>
+            Delete
+          </button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <%# Hidden data for scenes %>
+  <% @scenes.each do |scene| %>
+    <div class="hidden"
+         data-screenshot-editor-target="sceneData"
+         data-scene-id="<%= scene.id %>"
+         data-scene-caption="<%= scene.caption_text %>"
+         data-scene-subtitle="<%= scene.subtitle_text %>"
+         data-scene-overrides="<%= (scene.overrides || {}).to_json %>"
+         data-scene-locale-variants="<%= (scene.locale_variants || {}).to_json %>"
+         data-scene-image-url="<%= image_organization_screenshot_project_screenshot_scene_path(@organization, @project, scene) %>"
+         data-scene-update-url="<%= organization_screenshot_project_screenshot_scene_path(@organization, @project, scene) %>"
+         data-scene-position="<%= scene.position %>">
+    </div>
+  <% end %>
+
+  <%# Bulk Edit Modal %>
+  <dialog id="bulk_edit_modal" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box max-w-5xl p-0">
+      <div class="flex items-center justify-between px-5 pt-5 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-table-cells-large text-primary text-sm"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold leading-tight">Bulk Edit Captions</h3>
+            <p class="text-xs text-base-content/50 mt-0.5">Click any cell to edit. Press Enter to move down, Tab to move right.</p>
+          </div>
+        </div>
+        <form method="dialog">
+          <button class="btn btn-ghost btn-sm btn-circle">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </form>
+      </div>
+      <div class="overflow-x-auto max-h-[26rem] border-y border-base-200">
+        <table class="w-full border-collapse [&_th]:border-b [&_th]:border-base-200 [&_td]:border-b [&_td]:border-base-200/50"
+               data-screenshot-bulk-edit-target="bulkTable">
+          <thead class="sticky top-0 z-10 bg-base-200/80 backdrop-blur-sm">
+            <tr data-screenshot-bulk-edit-target="tableHead"></tr>
+          </thead>
+          <tbody data-screenshot-bulk-edit-target="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between px-5 py-3">
+        <span class="text-xs text-base-content/40" data-screenshot-bulk-edit-target="cellCount"></span>
+        <div class="flex items-center gap-2">
+          <form method="dialog">
+            <button class="btn btn-ghost btn-sm">Cancel</button>
+          </form>
+          <button class="btn btn-primary btn-sm gap-2" data-action="click->screenshot-bulk-edit#saveBulk">
+            <i class="fa-solid fa-floppy-disk text-xs"></i>
+            Save All
+          </button>
+        </div>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <%# Keyboard Shortcuts Help Dialog %>
+  <dialog id="shortcuts_help_modal" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box max-w-md">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-full bg-base-200 flex items-center justify-center">
+          <i class="fa-solid fa-keyboard text-base-content/70"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold">Keyboard Shortcuts</h3>
+          <p class="text-sm text-base-content/60">Quick actions for the editor</p>
+        </div>
+      </div>
+      <div class="space-y-2 text-sm">
+        <div class="flex items-center justify-between py-1.5 border-b border-base-200">
+          <span>Save Scene</span>
+          <div class="flex gap-1"><kbd class="kbd kbd-sm">Ctrl</kbd><kbd class="kbd kbd-sm">S</kbd></div>
+        </div>
+        <div class="flex items-center justify-between py-1.5 border-b border-base-200">
+          <span>Save All Scenes</span>
+          <div class="flex gap-1"><kbd class="kbd kbd-sm">Ctrl</kbd><kbd class="kbd kbd-sm">Shift</kbd><kbd class="kbd kbd-sm">S</kbd></div>
+        </div>
+        <div class="flex items-center justify-between py-1.5 border-b border-base-200">
+          <span>Undo</span>
+          <div class="flex gap-1"><kbd class="kbd kbd-sm">Ctrl</kbd><kbd class="kbd kbd-sm">Z</kbd></div>
+        </div>
+        <div class="flex items-center justify-between py-1.5 border-b border-base-200">
+          <span>Redo</span>
+          <div class="flex gap-1"><kbd class="kbd kbd-sm">Ctrl</kbd><kbd class="kbd kbd-sm">Shift</kbd><kbd class="kbd kbd-sm">Z</kbd></div>
+        </div>
+        <div class="flex items-center justify-between py-1.5 border-b border-base-200">
+          <span>Export</span>
+          <div class="flex gap-1"><kbd class="kbd kbd-sm">Ctrl</kbd><kbd class="kbd kbd-sm">E</kbd></div>
+        </div>
+        <div class="flex items-center justify-between py-1.5 border-b border-base-200">
+          <span>Previous Scene</span>
+          <kbd class="kbd kbd-sm">&larr;</kbd>
+        </div>
+        <div class="flex items-center justify-between py-1.5 border-b border-base-200">
+          <span>Next Scene</span>
+          <kbd class="kbd kbd-sm">&rarr;</kbd>
+        </div>
+        <div class="flex items-center justify-between py-1.5">
+          <span>Show Shortcuts</span>
+          <kbd class="kbd kbd-sm">?</kbd>
+        </div>
+      </div>
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn btn-ghost btn-sm">Close</button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <%# Copy Scene Modal %>
+  <% other_projects = @organization.screenshot_projects.where.not(id: @project.id).order(:name) %>
+  <% if other_projects.any? %>
+    <dialog id="copy_scene_modal" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-copy text-primary"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold">Copy Scene to Project</h3>
+            <p class="text-sm text-base-content/60">Duplicate this scene into another project</p>
+          </div>
+        </div>
+        <form id="copy_scene_form" method="post"
+              data-base-url="<%= copy_organization_screenshot_project_screenshot_scene_path(@organization, @project, "__SCENE_ID__") %>">
+          <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
+          <div class="form-control w-full mb-4">
+            <label class="label"><span class="label-text font-medium">Target Project</span></label>
+            <select name="target_project_id" class="select select-bordered w-full" required>
+              <% other_projects.each do |p| %>
+                <option value="<%= p.id %>"><%= p.name %> (<%= p.scenes_count %> scenes)</option>
+              <% end %>
+            </select>
+          </div>
+          <div class="modal-action">
+            <button type="button"
+                    class="btn btn-ghost"
+                    data-action="click->screenshot-editor#closeCopySceneModal">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary gap-2">
+              <i class="fa-solid fa-copy"></i>
+              Copy
+            </button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+  <% end %>
+</section>

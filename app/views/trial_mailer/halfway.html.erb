@@ -1,0 +1,59 @@
+<% @preheader = "You're halfway through your Pro trial. Here's what stays on Free, and what you'd lose without Pro." %>
+
+<%= ms_eyebrow(20, "Trial · Day VII of XIV") %>
+
+<%= ms_display_num(7, "days left") %>
+
+<%= ms_headline("Halfway through <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">your trial.</em>", size: 38) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name.presence || @user.email)},") %>
+
+<%= ms_body("Your Pro trial ends on <strong style=\"color:#f4ede0;\">#{@trial_ends_at.strftime('%B %-d, %Y')}</strong>. After that, the account moves to Free automatically &mdash; nothing's lost, but a few Pro-only conveniences switch off.") %>
+
+<%# Two-column comparison table: Free vs Pro %>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 28px 0;">
+  <tr>
+    <td valign="top" width="50%" style="width:50%; vertical-align:top; padding-right:14px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="ms-callout-success" style="background-color:#102018; border:1px solid #1e3a2c; border-radius:4px; height:100%;">
+        <tr>
+          <td style="padding:18px 20px;">
+            <span class="ms-callout-success-text" style="font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:#7ed4ad;">
+              Stays on Free
+            </span>
+            <ul style="margin: 12px 0 0 0; padding: 0; list-style: none; font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:14.5px; line-height:1.6; color:#5dc299;">
+              <li style="padding:5px 0;">Full CLI · iOS &amp; Android</li>
+              <li style="padding:5px 0;">Basic keyword tracking (5/app)</li>
+              <li style="padding:5px 0;">Review monitoring on 1 app</li>
+              <li style="padding:5px 0;">5 AI translations / month</li>
+              <li style="padding:5px 0;">3 AI rewrites / month</li>
+            </ul>
+          </td>
+        </tr>
+      </table>
+    </td>
+    <td valign="top" width="50%" style="width:50%; vertical-align:top; padding-left:14px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="ms-callout-warning" style="background-color:#1f1810; border:1px solid #3d2f17; border-radius:4px; height:100%;">
+        <tr>
+          <td style="padding:18px 20px;">
+            <span class="ms-callout-warning-text" style="font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:#f7d59b;">
+              Off without Pro
+            </span>
+            <ul style="margin: 12px 0 0 0; padding: 0; list-style: none; font-family:'Instrument Serif', Georgia, 'Times New Roman', serif; font-size:14.5px; line-height:1.6; color:#f0c073;">
+              <li style="padding:5px 0;">Store uploads</li>
+              <li style="padding:5px 0;">50 tracked keywords/app</li>
+              <li style="padding:5px 0;">Response templates</li>
+              <li style="padding:5px 0;">Custom product pages</li>
+              <li style="padding:5px 0;">Analytics history &gt; 7 days</li>
+            </ul>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<%= ms_cta("Upgrade to Pro &mdash; keep everything", pricing_url, variant: :primary, margin_top: 4, margin_bottom: 24) %>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 18) %>
+
+<%= ms_fine_print("No credit card was required to start your trial. Upgrading takes about thirty seconds.") %>

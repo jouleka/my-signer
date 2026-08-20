@@ -1,0 +1,167 @@
+<% content_for(:title) { "Terms of Service" } %>
+<% content_for(:description) { "Terms governing access to MySigner, including subscriptions, billing, acceptable use, and support." } %>
+
+<section class="space-y-6">
+  <%= render "shared/page_header",
+             title: "Terms of Service",
+             description: "These terms govern access to #{legal_business_name}, our website, and any paid subscriptions or related services.",
+             gradient: "from-sky-500/10 via-base-100 to-cyan-500/10",
+             badge_icon: "fa-solid fa-scale-balanced",
+             badge_text: "Legal",
+             actions: (capture do %>
+    <span class="badge badge-outline">Last updated <%= legal_last_updated_label(:terms) %></span>
+    <%= link_to privacy_policy_path, class: "btn btn-sm btn-outline gap-2" do %>
+      <i class="fa-solid fa-shield-halved"></i>
+      Privacy
+    <% end %>
+    <%= link_to refund_policy_path, class: "btn btn-sm btn-outline gap-2" do %>
+      <i class="fa-solid fa-receipt"></i>
+      Refunds
+    <% end %>
+  <% end) %>
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="space-y-4">
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">1. Scope</h2>
+        <p class="text-sm text-base-content/75">
+          These Terms of Service apply to your access to and use of <strong>MySigner</strong> ("the service"), provided by <strong><%= legal_entity_name %></strong> ("we", "us", "the Provider"),
+          including the MySigner website, dashboard, documentation, APIs, command-line interface, and any related software, subscriptions, or support we provide.
+        </p>
+        <p class="text-sm text-base-content/75">
+          By accessing or using the service, you agree to these terms and to our
+          <%= link_to "Privacy Policy", privacy_policy_path, class: "link link-primary" %>, which is incorporated into these terms by reference.
+          If you are using MySigner on behalf of a company or team, you confirm that you have authority to bind that organization to these terms.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">2. Accounts and Acceptable Use</h2>
+        <p class="text-sm text-base-content/75">
+          You are responsible for the accuracy of your account information, the security of your credentials, and activity that occurs under your account.
+        </p>
+        <ul class="list-disc space-y-2 pl-5 text-sm text-base-content/75">
+          <li>Do not use the service for unlawful, fraudulent, or abusive activity.</li>
+          <li>Do not attempt to interfere with the availability, integrity, or security of the service.</li>
+          <li>Do not reverse engineer, scrape, or misuse the service beyond what applicable law and these terms allow.</li>
+          <li>You remain responsible for the content, credentials, builds, screenshots, and metadata you upload or connect, and you represent that you have the rights necessary to upload them and to authorize us to process them on your behalf (including signing keys, store credentials, copyrighted material, and any third-party content).</li>
+          <li>You are responsible for complying with applicable export-control and sanctions laws when using the service. You must not use the service in a jurisdiction subject to comprehensive sanctions or in a manner that would cause us to violate those laws.</li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">3. Plans, Trials, Subscriptions, and Billing</h2>
+        <p class="text-sm text-base-content/75">
+          Current plan details and subscription pricing are published on our public <%= link_to "pricing page", pricing_path, class: "link link-primary" %>.
+          New accounts are enrolled in a 14-day Pro trial that does not require a payment method; if no paid subscription is started, the account automatically reverts to the Free plan at the end of the trial — we never charge a card without an explicit subscription.
+        </p>
+        <p class="text-sm text-base-content/75">
+          Paid plans are recurring subscriptions billed in advance and renew automatically until cancelled. You can cancel before the next renewal date to prevent a future renewal charge;
+          access to paid features continues through the end of the current paid period unless a plan is terminated earlier for misuse, fraud, or legal reasons.
+        </p>
+        <div class="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-base-content/80">
+          <p>
+            Our order process is conducted by our online reseller Paddle.com. Paddle.com is the Merchant of Record for all our orders. Paddle provides all customer service inquiries and handles returns.
+          </p>
+        </div>
+        <p class="text-sm text-base-content/75">
+          Refunds are handled under our <%= link_to "Refund Policy", refund_policy_path, class: "link link-primary" %> and any rights you have under applicable consumer law.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">4. Availability and Service Changes</h2>
+        <p class="text-sm text-base-content/75">
+          We may improve, change, suspend, or discontinue features from time to time. We aim to provide reasonable notice for material changes when practical,
+          especially where they affect paid plans or customer workflows.
+        </p>
+        <p class="text-sm text-base-content/75">
+          We do not guarantee uninterrupted or error-free availability. Planned maintenance, infrastructure incidents, and third-party platform outages (including Apple, Google, and our hosting and payment providers) can affect service performance.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">5. Intellectual Property</h2>
+        <p class="text-sm text-base-content/75">
+          The MySigner software, content, branding, and documentation are owned by <%= legal_entity_name %> or its licensors and are protected by intellectual property laws.
+        </p>
+        <p class="text-sm text-base-content/75">
+          You keep ownership of content you upload, but you grant us the limited, non-exclusive, worldwide rights necessary to host, process, transmit, and display that content solely to operate, secure, and support the service for you.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">6. Termination and Data Retention</h2>
+        <p class="text-sm text-base-content/75">
+          You may stop using the service and cancel any paid subscription at any time. We may suspend or terminate your access for material breach of these terms, fraud, abuse, non-payment, or where required by law, with reasonable notice where practical.
+        </p>
+        <p class="text-sm text-base-content/75">
+          <strong>Cancelling a paid subscription does not delete your account.</strong> When a paid subscription is cancelled or lapses, access to paid features continues until the end of the current billing period and your account then drops to the Free plan; your data is preserved so you can resubscribe later without losing work.
+        </p>
+        <p class="text-sm text-base-content/75">
+          You can request account deletion at any time from your account settings or by emailing
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>. When you confirm deletion, your account is immediately deactivated and we send a personal restoration link by email; you can reactivate within <strong>90 days</strong>. After that 90-day grace period the account and associated personal data are permanently deleted from production systems in accordance with our
+          <%= link_to "Privacy Policy", privacy_policy_path, class: "link link-primary" %>. Some records (billing and invoice records, fraud-prevention logs) may be retained longer where required by law.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">7. Disclaimers and Limitation of Liability</h2>
+        <p class="text-sm text-base-content/75">
+          The service is provided on an "as is" and "as available" basis to the maximum extent permitted by law. Except where required by law, we disclaim implied warranties,
+          including implied warranties of merchantability, fitness for a particular purpose, and non-infringement.
+        </p>
+        <p class="text-sm text-base-content/75">
+          To the maximum extent permitted by law, neither party is liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or for lost profits,
+          revenues, data, or goodwill arising from these terms or your use of the service, even if advised of the possibility of such damages.
+        </p>
+        <p class="text-sm text-base-content/75">
+          To the maximum extent permitted by law, our aggregate liability under or in connection with these terms — whether in contract, tort (including negligence), or any other theory — is limited to the greater of (a) the total fees you paid us for the service in the twelve (12) months immediately preceding the event giving rise to the claim, or (b) one hundred United States dollars (US$100). Nothing in these terms limits liability that cannot be excluded or limited under applicable law (such as liability for fraud, willful misconduct, or, in some jurisdictions, gross negligence).
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">8. Governing Law and Dispute Resolution</h2>
+        <p class="text-sm text-base-content/75">
+          These terms and any dispute arising out of or in connection with them are governed by <%= legal_governing_law %>, without regard to its conflict-of-laws principles.
+          The parties submit to the exclusive jurisdiction of <%= legal_governing_jurisdiction %>, except that nothing in this section prevents either party from seeking interim or injunctive relief in any competent court, and except where mandatory consumer-protection law in your country of residence grants you the right to bring proceedings in your local courts.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">9. Changes to These Terms</h2>
+        <p class="text-sm text-base-content/75">
+          We may update these terms from time to time. We will indicate the date of the latest revision in the "Last updated" badge above. For material changes that affect your rights or obligations, we will give you reasonable advance notice — for example, by an in-app notice or by email to the address on file. Your continued use of the service after the effective date of a revision constitutes acceptance of the revised terms.
+        </p>
+      </div>
+    </div>
+
+    <aside class="space-y-4">
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-3">
+        <div class="text-xs uppercase tracking-[0.2em] text-base-content/50">Support</div>
+        <p class="text-sm text-base-content/75">
+          Billing, account, and legal notices:
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-3">
+        <div class="text-xs uppercase tracking-[0.2em] text-base-content/50">Related Pages</div>
+        <div class="flex flex-col gap-2">
+          <%= link_to pricing_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-tags"></i>
+            Pricing
+          <% end %>
+          <%= link_to privacy_policy_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-shield-halved"></i>
+            Privacy Policy
+          <% end %>
+          <%= link_to refund_policy_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-receipt"></i>
+            Refund Policy
+          <% end %>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>

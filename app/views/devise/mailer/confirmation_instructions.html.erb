@@ -1,0 +1,14 @@
+<% @preheader = "Confirm your email to start shipping with MySigner." %>
+
+<%= ms_eyebrow(1, "Account · Confirmation") %>
+<%= ms_headline("Confirm <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">your email.</em>") %>
+
+<%= ms_lead("Welcome to MySigner. One last step &mdash; confirm the address below and your account is ready to ship.") %>
+
+<%= ms_meta_row("Signing up as", ms_meta_pill(@email)) %>
+
+<%= ms_cta("Confirm my account", confirmation_url(@resource, confirmation_token: @token), variant: :primary, margin_top: 24, margin_bottom: 28) %>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 22) %>
+
+<%= ms_fine_print("Didn't sign up for MySigner? You can safely ignore this message &mdash; the link expires on its own and no account will be created.") %>

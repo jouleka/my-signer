@@ -1,0 +1,72 @@
+<%# Shared paywall for Team-tier-only features (audit log, RBAC permissions,
+    SSO, etc.). Rendered when a user on Free or Pro tries to access a feature
+    that requires Team. The view is responsible for showing the user *why*
+    they'd want to upgrade and giving a clear path to do so.
+
+    Required locals:
+      feature: {
+        name: "Audit Log",                # human-readable feature name
+        icon: "fa-shield-halved",         # Font Awesome icon class (without "fa-solid ")
+        description: "...",               # one-sentence value prop
+        bullets: ["...", "..."]           # array of capability lines
+      }
+      breadcrumb_items: optional override; defaults sensibly.
+
+    Also expects @organization to be set so the "current plan" copy renders.
+%>
+<%= breadcrumbs(local_assigns[:breadcrumb_items] || [
+  { label: @organization&.name || "Organization", path: (@organization && organization_path(@organization)) },
+  { label: feature[:name] }
+]) %>
+
+<div class="space-y-6">
+  <div class="hero min-h-[55vh] rounded-box border border-base-200 bg-gradient-to-br from-primary/[0.05] via-base-100 to-secondary/[0.04] overflow-hidden">
+    <div class="hero-content text-center max-w-2xl px-4 sm:px-6">
+      <div>
+        <div class="mb-5 inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/15 shadow-sm">
+          <i class="fa-solid <%= feature[:icon] %> text-2xl text-primary" aria-hidden="true"></i>
+        </div>
+
+        <div class="mb-3">
+          <span class="badge badge-primary badge-md gap-1.5">
+            <i class="fa-solid fa-crown text-[0.6rem]" aria-hidden="true"></i>
+            Team feature
+          </span>
+        </div>
+
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-[-0.02em] mb-3"><%= feature[:name] %></h1>
+        <p class="text-sm sm:text-base text-base-content/65 mb-6 max-w-xl mx-auto leading-relaxed"><%= feature[:description] %></p>
+
+        <% if feature[:bullets].present? %>
+          <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-7 text-left max-w-lg mx-auto">
+            <% feature[:bullets].each do |bullet| %>
+              <li class="flex items-start gap-2 p-2.5 rounded-lg bg-base-100/70 border border-base-200">
+                <i class="fa-solid fa-check text-success text-xs mt-0.5 shrink-0" aria-hidden="true"></i>
+                <span class="text-xs sm:text-sm text-base-content/80"><%= bullet %></span>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <%= link_to pricing_path, class: btn_primary_classes do %>
+            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            Upgrade to Team
+          <% end %>
+          <% if @organization.present? %>
+            <%= link_to organization_path(@organization), class: btn_ghost_classes do %>
+              Back to organization
+            <% end %>
+          <% end %>
+        </div>
+
+        <% if @organization.present? %>
+          <p class="text-xs text-base-content/40 mt-6">
+            You're currently on <strong class="text-base-content/60"><%= @organization.plan_tier.titleize %></strong>.
+            Upgrade unlocks this and all other Team features.
+          </p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

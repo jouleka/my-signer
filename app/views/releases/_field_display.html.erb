@@ -1,0 +1,44 @@
+<%# Read-only field display for store listing show/edit pages %>
+<% multiline = local_assigns[:multiline] %>
+<% limit = local_assigns[:limit] %>
+<% value = local_assigns[:value] %>
+<% compact = local_assigns[:compact] %>
+<% empty = value.blank? %>
+<% char_count = value.to_s.length %>
+
+<div class="group">
+  <div class="flex items-center justify-between mb-2">
+    <span class="<%= label_uppercase_classes %>"><%= label %></span>
+    <% if limit %>
+      <span class="<%= char_badge_classes(char_count, limit) %>">
+        <%= char_count %>/<%= limit %>
+      </span>
+    <% end %>
+  </div>
+
+  <% if empty %>
+    <div class="<%= empty_inline_classes %>">
+      <i class="fa-solid fa-minus text-[0.5rem] opacity-30"></i>
+      <span>Not set</span>
+    </div>
+  <% elsif multiline %>
+    <%# Heights matched to a rows=8 textarea on the edit side so both columns
+        have a similar vertical footprint. Scrolls on overflow, wraps long
+        unbroken tokens (common with German compound words). %>
+    <div class="<%= field_text_classes %> whitespace-pre-wrap break-words max-h-[12rem] overflow-y-auto pr-1">
+      <%= value %>
+    </div>
+  <% elsif compact %>
+    <p class="<%= field_text_classes %> truncate"><%= value %></p>
+  <% else %>
+    <%# break-words so long tokens wrap inside the column instead of expanding it. %>
+    <p class="<%= field_text_classes %> break-words"><%= value %></p>
+  <% end %>
+
+  <% if limit && !empty %>
+    <% pct = (char_count.to_f / limit * 100).clamp(0, 100) %>
+    <div class="<%= progress_track_classes %> mt-2">
+      <div class="<%= progress_fill_classes(char_count, limit) %>" style="width: <%= [pct, 100].min %>%"></div>
+    </div>
+  <% end %>
+</div>

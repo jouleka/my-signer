@@ -1,0 +1,115 @@
+<%# Structured editor for a translated release note. Visual parity with the
+    base-locale template editor (same colored section borders, same
+    Template/Freeform tabs), but with editable headings since the translated
+    label ("NEU" vs "NEW" vs "NOUVEAU") varies per language. Sections are
+    parsed server-side from the saved translation text. The hidden <textarea>
+    is the actual form field; translation_editor keeps it synced with either
+    the structured inputs or the freeform textarea depending on mode.
+
+    Locals:
+      note — the release_note
+      loc  — the locale string (e.g. "de-DE") %>
+<%
+  base_categories = [
+    { key: "new",      border: "border-l-[var(--color-cat-new)]",      label_color: "text-[var(--color-cat-new)]",      icon: "fa-solid fa-sparkles", placeholder_heading: "NEW",      placeholder_item: "Translation for a NEW item…" },
+    { key: "improved", border: "border-l-[var(--color-cat-improved)]", label_color: "text-[var(--color-cat-improved)]", icon: "fa-solid fa-bolt",     placeholder_heading: "IMPROVED", placeholder_item: "Translation for an IMPROVED item…" },
+    { key: "fixed",    border: "border-l-[var(--color-cat-fixed)]",    label_color: "text-[var(--color-cat-fixed)]",    icon: "fa-solid fa-wrench",   placeholder_heading: "FIXED",    placeholder_item: "Translation for a FIXED item…" }
+  ]
+  sections  = note.parse_translation_sections(loc)
+  raw_text  = (note.translations || {})[loc].to_s
+  # If text exists but we couldn't parse any items, default to Freeform so the
+  # user sees their text. Otherwise default to Template.
+  has_items = sections.any? { |s| s[:items].any? }
+  freeform_initial = raw_text.present? && !has_items
+  # Pad to 3 slots so empty NEW/IMPROVED/FIXED sections are always visible
+  # and fillable even before AI translates anything.
+  while sections.size < 3
+    sections << { heading: "", items: [] }
+  end
+%>
+
+<div data-controller="translation-editor"
+     data-translation-editor-locale-value="<%= loc %>"
+     class="flex flex-col gap-5">
+
+  <%# Hidden textarea = the actual form field. translation-editor writes into
+      it; locale-switcher reads from it to update the preview + autosave. %>
+  <textarea name="translated_text"
+            class="hidden"
+            rows="1"
+            data-translation-editor-target="hiddenInput"
+            data-locale-switcher-target="translationTextarea"
+            data-locale="<%= loc %>"
+            data-action="input->locale-switcher#updateTranslationPreview"><%= raw_text %></textarea>
+
+  <%# ── Template / Freeform tabs — same visual language as base locale ── %>
+  <div class="flex gap-[0.125rem] border-b border-base-content/[0.06]">
+    <button type="button"
+            class="<%= freeform_initial ? 'is-tab-inactive' : 'is-tab-active' %>"
+            data-mode-tab="template"
+            data-action="click->translation-editor#switchToTemplate">
+      <i class="fa-solid fa-list-check"></i> Template
+    </button>
+    <button type="button"
+            class="<%= freeform_initial ? 'is-tab-active' : 'is-tab-inactive' %>"
+            data-mode-tab="freeform"
+            data-action="click->translation-editor#switchToFreeform">
+      <i class="fa-solid fa-pen-nib"></i> Freeform
+    </button>
+  </div>
+
+  <%# ── Template panel (structured sections) ── %>
+  <div class="<%= 'hidden' if freeform_initial %>" data-translation-editor-target="templatePanel">
+    <% sections.each_with_index do |section, idx| %>
+      <% cat = base_categories[idx] || base_categories.last %>
+      <div class="border-l-[3px] pl-4 mb-6 <%= cat[:border] %>">
+        <div class="flex items-center gap-2 mb-2">
+          <i class="<%= cat[:icon] %> <%= cat[:label_color] %> text-xs"></i>
+          <input type="text"
+                 class="bg-transparent border-0 outline-none p-0 text-[0.6875rem] font-bold uppercase tracking-[0.06em] <%= cat[:label_color] %> placeholder:text-base-content/20 focus:ring-0"
+                 value="<%= section[:heading] %>"
+                 placeholder="<%= cat[:placeholder_heading] %>"
+                 aria-label="Section heading"
+                 data-translation-editor-target="heading"
+                 data-action="input->translation-editor#handleInput" />
+        </div>
+
+        <div data-translation-editor-target="itemList">
+          <% section[:items].each do |item| %>
+            <div class="flex gap-2 items-center mb-2" data-bullet-item>
+              <span class="text-sm font-semibold text-base-content/30 shrink-0 w-4 text-center">-</span>
+              <input type="text"
+                     class="<%= input_field_classes %> flex-1"
+                     value="<%= item %>"
+                     placeholder="<%= cat[:placeholder_item] %>"
+                     data-action="input->translation-editor#handleInput" />
+              <button type="button"
+                      class="flex items-center justify-center w-6 h-6 rounded border-0 bg-transparent text-base-content/25 cursor-pointer transition-all hover:bg-error/10 hover:text-error/80 shrink-0"
+                      data-action="click->translation-editor#removeItem"
+                      aria-label="Remove">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          <% end %>
+        </div>
+
+        <button type="button"
+                class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md border border-dashed border-base-content/[0.12] bg-transparent text-base-content/40 cursor-pointer transition-all duration-150 mt-1 hover:border-primary/30 hover:text-primary/80 hover:bg-primary/[0.04]"
+                data-action="click->translation-editor#addItem"
+                data-translation-editor-list-index-param="<%= idx %>">
+          <i class="fa-solid fa-plus"></i> Add <%= cat[:placeholder_heading].downcase %> item
+        </button>
+      </div>
+    <% end %>
+  </div>
+
+  <%# ── Freeform panel (raw translation text) ── %>
+  <div class="<%= 'hidden' unless freeform_initial %>" data-translation-editor-target="freeformPanel">
+    <label class="<%= label_form_classes %> mb-1.5"><span>Translation (freeform)</span></label>
+    <textarea class="<%= textarea_field_classes %> font-mono text-xs"
+              rows="14"
+              data-translation-editor-target="freeformInput"
+              data-action="input->translation-editor#syncFromFreeform"
+              placeholder="Translation text — bullets and section headings will appear on the store exactly as written here."><%= raw_text %></textarea>
+  </div>
+</div>

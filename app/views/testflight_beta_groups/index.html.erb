@@ -1,0 +1,260 @@
+<%= render "shared/ios_breadcrumbs", organization: @organization, active_tab: :testflight %>
+
+<section class="space-y-6">
+  <%= render "shared/page_header",
+             title: "Beta Groups",
+             description: "Monitor TestFlight beta groups, track tester counts, and manage public links across all your apps.",
+             gradient: "from-sky-500/10 via-base-100 to-blue-500/10",
+             badge_icon: "fa-solid fa-paper-plane",
+             badge_text: "TestFlight",
+             stats: (capture do %>
+        <div class="stat py-3 px-5">
+          <div class="stat-title text-xs">Groups</div>
+          <div class="stat-value text-2xl"><%= @total_groups %></div>
+          <div class="stat-desc">total</div>
+        </div>
+        <div class="stat py-3 px-5">
+          <div class="stat-title text-xs">Internal</div>
+          <div class="stat-value text-2xl text-primary"><%= @internal_groups %></div>
+          <div class="stat-desc">team only</div>
+        </div>
+        <div class="stat py-3 px-5">
+          <div class="stat-title text-xs">Testers</div>
+          <div class="stat-value text-2xl text-success"><%= @total_testers %></div>
+          <div class="stat-desc">active</div>
+        </div>
+             <% end),
+             actions: (capture do %>
+      <%= link_to organization_apple_apps_path(@organization), class: "btn btn-ghost gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        Back to Apps
+      <% end %>
+             <% end) %>
+
+  <%# Beta Groups Card %>
+  <%= render "shared/content_card",
+             filter: (capture do %>
+    <%= form_with url: organization_testflight_beta_groups_path(@organization), method: :get, local: true, class: "flex flex-col sm:flex-row gap-4 flex-1" do %>
+      <div class="form-control flex-1 max-w-xs">
+        <label class="label py-1">
+          <span class="label-text text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-magnifying-glass text-[10px] text-base-content/50"></i>
+            Search
+          </span>
+        </label>
+        <input type="text" name="q" value="<%= @q_query %>" placeholder="Group name..." class="input input-bordered input-sm w-full" />
+      </div>
+      <div class="form-control flex-1 max-w-[160px]">
+        <label class="label py-1">
+          <span class="label-text text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-users text-[10px] text-base-content/50"></i>
+            Type
+          </span>
+        </label>
+        <%= render "shared/custom_select", name: "type", options: [["All types", ""], ["Internal", "internal"], ["External", "external"]], selected: @q_type.to_s %>
+      </div>
+      <div class="flex items-end gap-2">
+        <button class="btn btn-primary btn-sm gap-2" type="submit">
+          <i class="fa-solid fa-filter"></i>
+          Apply
+        </button>
+        <% if @q_query.present? || @q_type.present? %>
+          <%= link_to organization_testflight_beta_groups_path(@organization), class: "btn btn-ghost btn-sm gap-2" do %>
+            <i class="fa-solid fa-xmark"></i>
+            Clear
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+             <% end) do %>
+
+    <% if @beta_groups.any? %>
+        <%# Desktop Table %>
+        <div class="hidden lg:block">
+          <div class="overflow-x-auto rounded-2xl border border-base-200">
+            <table class="table">
+              <thead>
+                <tr class="bg-base-200/50 text-xs uppercase text-base-content/60 font-bold tracking-wider">
+                  <th>Group</th>
+                  <th>App</th>
+                  <th>Type</th>
+                  <th>Testers</th>
+                  <th>Public Link</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @beta_groups.each do |group| %>
+                  <tr class="hover:bg-base-200/30 transition-colors">
+                    <td>
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br <%= group.is_internal_group ? 'from-primary/20 to-indigo-500/20' : 'from-sky-500/20 to-blue-500/20' %> flex items-center justify-center">
+                          <i class="fa-solid <%= group.is_internal_group ? 'fa-building' : 'fa-users' %> <%= group.is_internal_group ? 'text-primary' : 'text-sky-600' %>"></i>
+                        </div>
+                        <div>
+                          <div class="font-semibold"><%= group.name %></div>
+                          <% if group.created_at.present? %>
+                            <div class="text-xs text-base-content/50">Created <%= time_ago_in_words(group.created_at) %> ago</div>
+                          <% end %>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <% if group.apple_app %>
+                        <%= link_to organization_apple_app_path(@organization, group.apple_app), class: "flex items-center gap-2 hover:text-primary transition-colors" do %>
+                          <i class="fa-brands fa-apple text-base-content/50"></i>
+                          <span class="text-sm"><%= group.apple_app.name.presence || group.apple_app.bundle_id %></span>
+                        <% end %>
+                      <% else %>
+                        <span class="text-base-content/30">—</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if group.is_internal_group %>
+                        <span class="badge badge-primary badge-sm gap-1.5">
+                          <i class="fa-solid fa-building text-[10px]"></i>
+                          Internal
+                        </span>
+                      <% else %>
+                        <span class="badge badge-info badge-sm gap-1.5">
+                          <i class="fa-solid fa-globe text-[10px]"></i>
+                          External
+                        </span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <span class="badge badge-ghost gap-1.5">
+                        <i class="fa-solid fa-user text-[10px]"></i>
+                        <%= group.tester_count %>
+                      </span>
+                    </td>
+                    <td>
+                      <% if group.public_link_enabled && group.public_link.present? %>
+                        <div class="flex items-center gap-2">
+                          <span class="badge badge-success badge-sm gap-1.5">
+                            <i class="fa-solid fa-link text-[10px]"></i>
+                            Active
+                          </span>
+                          <button type="button" class="btn btn-ghost btn-xs btn-square"
+                                  data-controller="copy"
+                                  data-action="click->copy#copy"
+                                  data-copy-text-value="<%= group.public_link %>">
+                            <i class="fa-solid fa-copy text-base-content/50"></i>
+                          </button>
+                        </div>
+                      <% else %>
+                        <span class="badge badge-ghost badge-sm">Disabled</span>
+                      <% end %>
+                    </td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                              data-controller="raw-json"
+                              data-action="click->raw-json#show"
+                              data-raw-json-content-value="<%= group.raw_json %>"
+                              data-raw-json-title-value="Beta Group: <%= group.name %>">
+                        <i class="fa-solid fa-code"></i>
+                        JSON
+                      </button>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <%# Mobile Cards %>
+        <div class="lg:hidden space-y-3">
+          <% @beta_groups.each do |group| %>
+            <div class="card border <%= group.is_internal_group ? 'border-primary/30 bg-primary/5' : 'border-base-200' %> shadow-sm">
+              <div class="card-body p-4 space-y-3">
+                <div class="flex items-start gap-3">
+                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br <%= group.is_internal_group ? 'from-primary/20 to-indigo-500/20' : 'from-sky-500/20 to-blue-500/20' %> flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid <%= group.is_internal_group ? 'fa-building' : 'fa-users' %> <%= group.is_internal_group ? 'text-primary' : 'text-sky-600' %> text-lg"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold truncate"><%= group.name %></div>
+                    <% if group.apple_app %>
+                      <div class="text-xs text-base-content/50 truncate">
+                        <%= group.apple_app.name.presence || group.apple_app.bundle_id %>
+                      </div>
+                    <% end %>
+                  </div>
+                  <% if group.is_internal_group %>
+                    <span class="badge badge-primary badge-sm">Internal</span>
+                  <% else %>
+                    <span class="badge badge-info badge-sm">External</span>
+                  <% end %>
+                </div>
+
+                <div class="grid gap-2 text-sm bg-base-200/50 rounded-xl p-3">
+                  <div class="flex justify-between items-center">
+                    <span class="text-base-content/60 text-xs">Testers</span>
+                    <span class="font-medium"><%= group.tester_count %></span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-base-content/60 text-xs">Public Link</span>
+                    <% if group.public_link_enabled %>
+                      <span class="badge badge-success badge-xs gap-1">
+                        <i class="fa-solid fa-check text-[8px]"></i>
+                        Active
+                      </span>
+                    <% else %>
+                      <span class="badge badge-ghost badge-xs">Disabled</span>
+                    <% end %>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <% if group.public_link.present? && group.public_link_enabled %>
+                    <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                            data-controller="copy"
+                            data-action="click->copy#copy"
+                            data-copy-text-value="<%= group.public_link %>">
+                      <i class="fa-solid fa-link"></i>
+                      Copy Link
+                    </button>
+                  <% end %>
+                  <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                          data-controller="raw-json"
+                          data-action="click->raw-json#show"
+                          data-raw-json-content-value="<%= group.raw_json %>"
+                          data-raw-json-title-value="Beta Group: <%= group.name %>">
+                    <i class="fa-solid fa-code"></i>
+                    JSON
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <%# Empty State %>
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+          <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-sky-500/20 to-blue-500/20 flex items-center justify-center mb-4">
+            <i class="fa-solid fa-paper-plane text-3xl text-sky-500/50"></i>
+          </div>
+          <h3 class="text-xl font-bold">No Beta Groups Found</h3>
+          <p class="text-base-content/60 max-w-sm mt-2 mb-6">
+            <% if @q_query.present? || @q_type.present? %>
+              No groups match the current filters. Try adjusting your search criteria.
+            <% else %>
+              Sync your App Store Connect credentials to import TestFlight beta groups.
+            <% end %>
+          </p>
+          <div class="flex gap-3">
+            <% if @q_query.present? || @q_type.present? %>
+              <%= link_to organization_testflight_beta_groups_path(@organization), class: "btn btn-ghost gap-2" do %>
+                <i class="fa-solid fa-xmark"></i>
+                Clear Filters
+              <% end %>
+            <% end %>
+            <%= link_to organization_path(@organization), class: "btn btn-primary gap-2" do %>
+              <i class="fa-solid fa-sync"></i>
+              Sync Organization
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+  <% end %>
+</section>

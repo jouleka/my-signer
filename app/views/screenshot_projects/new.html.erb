@@ -1,0 +1,69 @@
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "New Screenshot Project",
+             description: "Set up a new project to generate App Store and Play Store screenshots.",
+             gradient: "from-violet-500/10 via-base-100 to-fuchsia-500/10",
+             badge_icon: "fa-solid fa-images",
+             badge_text: "New Project",
+             actions: (capture do %>
+      <%= link_to organization_screenshot_projects_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back to Projects</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+             <% end) %>
+
+  <div class="grid lg:grid-cols-3 gap-4 sm:gap-6">
+    <div class="lg:col-span-2 min-w-0 overflow-hidden">
+      <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+        <div class="card-body p-4 sm:p-6 md:p-8 min-w-0">
+          <%= render "form", project: @project, upgrade_gate: @project_create_gate %>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+      <div class="card bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-violet-400 text-sm sm:text-base">
+            <i class="fa-solid fa-wand-magic-sparkles shrink-0"></i>
+            How It Works
+          </h3>
+          <ul class="text-xs sm:text-sm space-y-2.5 sm:space-y-3 mt-2">
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-1 text-violet-400 text-xs mt-0.5 shrink-0"></i>
+              <span class="text-base-content/70">Upload your raw app screenshots</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-2 text-violet-400 text-xs mt-0.5 shrink-0"></i>
+              <span class="text-base-content/70">Add captions, backgrounds, and device frames</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-3 text-violet-400 text-xs mt-0.5 shrink-0"></i>
+              <span class="text-base-content/70">Export at all required sizes for App Store and Play Store</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 border border-base-200 shadow-lg overflow-hidden">
+        <div class="card-body p-4 sm:p-5 min-w-0">
+          <h3 class="font-bold flex items-center gap-2 text-sm sm:text-base">
+            <i class="fa-solid fa-ruler-combined text-info shrink-0"></i>
+            Export Sizes
+          </h3>
+          <div class="space-y-3 mt-2 text-sm">
+            <div>
+              <p class="font-medium text-base-content text-xs uppercase tracking-wide mb-1"><i class="fa-brands fa-apple"></i> iOS App Store</p>
+              <p class="text-xs text-base-content/60">1320x2868, 1290x2796, 1242x2688, 1242x2208, iPad sizes</p>
+            </div>
+            <div>
+              <p class="font-medium text-base-content text-xs uppercase tracking-wide mb-1"><i class="fa-brands fa-android"></i> Google Play</p>
+              <p class="text-xs text-base-content/60">1080x1920, 1200x1920 (7"), 1600x2560 (10")</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

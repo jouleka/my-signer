@@ -1,0 +1,308 @@
+@import "tailwindcss" source(none);
+@source "../../../public/*.html";
+@source "../../../app/helpers/**/*.rb";
+@source "../../../app/javascript/**/*.js";
+@source "../../../app/views/**/*";
+
+@plugin "./daisyui.js";
+
+@plugin "./daisyui-theme.js"{
+  name: "my-signer-dark";
+  default: false;
+  prefersdark: false;
+  color-scheme: "dark";
+  --color-base-100: oklch(14% 0.004 49.25);
+  --color-base-200: oklch(21% 0.006 56.043);
+  --color-base-300: oklch(26% 0.007 34.298);
+  --color-base-content: oklch(97% 0.001 106.424);
+  --color-primary: oklch(81% 0.111 293.571);
+  --color-primary-content: oklch(28% 0.141 291.089);
+  --color-secondary: oklch(87% 0.006 286.286);
+  --color-secondary-content: oklch(14% 0.005 285.823);
+  --color-accent: oklch(90% 0.182 98.111);
+  --color-accent-content: oklch(28% 0.066 53.813);
+  --color-neutral: oklch(14% 0.004 49.25);
+  --color-neutral-content: oklch(98% 0.001 106.423);
+  --color-info: oklch(71% 0.143 215.221);
+  --color-info-content: oklch(98% 0.019 200.873);
+  --color-success: oklch(70% 0.14 182.503);
+  --color-success-content: oklch(98% 0.014 180.72);
+  --color-warning: oklch(79% 0.184 86.047);
+  --color-warning-content: oklch(98% 0.026 102.212);
+  --color-error: oklch(65% 0.241 354.308);
+  --color-error-content: oklch(97% 0.014 343.198);
+  --color-cat-new: oklch(0.72 0.19 142.5);
+  --color-cat-improved: oklch(0.65 0.19 255);
+  --color-cat-fixed: oklch(0.75 0.18 75);
+  /* Radii: keep --radius-selector at 2rem so .checkbox/.toggle/.radio stay
+     pill/circular. --radius-field and --radius-box are tuned to match the
+     refined UiHelper aesthetic (see app/helpers/ui_helper.rb). */
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.875rem;
+  --size-selector: 0.28125rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 1;
+}
+
+
+@plugin "./daisyui-theme.js"{
+  name: "my-signer-light";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  /* Editorial cream / warm stone paper — sibling to my-signer-dark.
+     Both palettes share the warm stone hue family (~50-75) and a violet
+     primary in the 293-295 hue range; dark uses the bright lavender end,
+     light uses the deep ink-violet end. Surfaces step in clear tiers so
+     cards and borders are visible without glare. */
+  --color-base-100: oklch(96.5% 0.006 80);
+  --color-base-200: oklch(93.5% 0.008 75);
+  --color-base-300: oklch(87.5% 0.011 70);
+  --color-base-content: oklch(23% 0.013 55);
+  --color-primary: oklch(46% 0.18 295);
+  --color-primary-content: oklch(97% 0.012 90);
+  --color-secondary: oklch(58% 0.12 55);
+  --color-secondary-content: oklch(97% 0.012 90);
+  --color-accent: oklch(20% 0.013 55);
+  --color-accent-content: oklch(96% 0.008 80);
+  --color-neutral: oklch(28% 0.013 50);
+  --color-neutral-content: oklch(96% 0.008 80);
+  --color-info: oklch(50% 0.18 250);
+  --color-info-content: oklch(97% 0.014 254.604);
+  --color-success: oklch(56% 0.14 145);
+  --color-success-content: oklch(97% 0.025 130);
+  --color-warning: oklch(68% 0.155 75);
+  --color-warning-content: oklch(98% 0.026 102.212);
+  --color-error: oklch(54% 0.20 25);
+  --color-error-content: oklch(96% 0.015 12.422);
+  --color-cat-new: oklch(0.72 0.19 142.5);
+  --color-cat-improved: oklch(0.65 0.19 255);
+  --color-cat-fixed: oklch(0.75 0.18 75);
+  /* Radii: keep --radius-selector at 2rem so .checkbox/.toggle/.radio stay
+     pill/circular. --radius-field and --radius-box are tuned to match the
+     refined UiHelper aesthetic (see app/helpers/ui_helper.rb). */
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.875rem;
+  --size-selector: 0.28125rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 1;
+}
+
+@layer utilities {
+  /* Tab state sentinels — toggled by release_note_editor_controller.js#_setActiveTab.
+     Defining these as classes avoids having to toggle 12 utilities per tab. */
+  .is-tab-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    border-bottom: 2px solid var(--color-primary);
+    margin-bottom: -1px;
+    cursor: pointer;
+    background: none;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    transition: color 0.15s ease;
+  }
+  .is-tab-inactive {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: oklch(var(--color-base-content) / 0.4);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    background: none;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    transition: color 0.15s ease;
+  }
+  .is-tab-inactive:hover {
+    color: oklch(var(--color-base-content) / 0.7);
+  }
+}
+
+/* ===== Editorial / landing-page utilities =====
+   Used by the unauthenticated landing pages. Kept outside the daisyUI
+   utilities layer so they're available even when Tailwind purges. */
+@layer utilities {
+  .font-display {
+    font-family: "Instrument Serif", "Times New Roman", serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .font-mono-jb { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  /* Tonal text helpers — quieter siblings of base-content. */
+  .text-mute  { color: color-mix(in oklab, var(--color-base-content) 60%, transparent); }
+  .text-faint { color: color-mix(in oklab, var(--color-base-content) 38%, transparent); }
+  .border-soft { border-color: color-mix(in oklab, var(--color-base-content) 12%, transparent); }
+
+  /* Editorial header rule used by the numbered section markers. */
+  .editorial-rule {
+    background-image: linear-gradient(
+      to right,
+      color-mix(in oklab, var(--color-base-content) 18%, transparent),
+      transparent
+    );
+    height: 1px;
+  }
+  .secnum {
+    font-family: "Instrument Serif", serif;
+    font-style: italic;
+    color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+  }
+
+  /* Capsule pill used for badges next to icons in cards & buttons. */
+  .pill {
+    border-radius: 999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* Tabular numerics for build numbers / sizes / durations. */
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* Soft 3D tilt for hero credential cards. */
+  .tilt-l { transform: perspective(1400px) rotateY(8deg)  rotateX(2deg); }
+  .tilt-r { transform: perspective(1400px) rotateY(-8deg) rotateX(2deg); }
+
+  /* Subtle traveling shimmer used for the active progress bar. */
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+  }
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-primary)  0%, transparent),
+      color-mix(in oklab, var(--color-primary) 60%, transparent),
+      color-mix(in oklab, var(--color-primary)  0%, transparent)
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2.4s linear infinite;
+  }
+
+  /* Blinking caret for the terminal prompt. */
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Pulsing dot — used by the "early access" indicator on the contact
+     section header. The outer ring expands and fades to suggest a live
+     status without being noisy. */
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1;   transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(2.4); }
+  }
+  .pulse-dot { animation: pulseDot 1.4s ease-in-out infinite; }
+  .caret {
+    display: inline-block;
+    width: 0.5em;
+    background: currentColor;
+    margin-left: 2px;
+    animation: blink 1s steps(1) infinite;
+  }
+
+  /* Horizontal marquee for the supported-frameworks strip. The track
+     translates -50% of its own width per cycle; render the items twice
+     so the second copy is in place when the cycle wraps. */
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 40s linear infinite;
+  }
+
+  /* Soft fade on the marquee edges so items dissolve in/out instead of
+     getting hard-cut by the container. */
+  .marquee-mask {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+            mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee { animation: none; }
+  }
+
+  /* Gentle film-grain dot texture, layered behind the hero & finale. */
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, color-mix(in oklab, var(--color-base-content) 5%, transparent) 50%, transparent 51%),
+      radial-gradient(1px 1px at 70% 80%, color-mix(in oklab, var(--color-base-content) 5%, transparent) 50%, transparent 51%),
+      radial-gradient(1px 1px at 40% 60%, color-mix(in oklab, var(--color-base-content) 4%, transparent) 50%, transparent 51%);
+    background-size: 200px 200px, 173px 173px, 137px 137px;
+    mix-blend-mode: overlay;
+    opacity: 0.6;
+  }
+
+  /* Underlined editorial inline link — primary on hover. Used by the
+     auth-shell foot links, but defined here so it's available app-wide
+     (e.g. inline links in marketing pages). */
+  .alink {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: color-mix(in oklab, var(--color-base-content) 30%, transparent);
+  }
+  .alink:hover {
+    text-decoration-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  /* Inline mono pill — for env vars, file paths, breadcrumb tokens
+     ("Settings → API tokens") in editorial copy. Sibling to .pill. */
+  .kbd-mono {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    background: color-mix(in oklab, var(--color-base-content) 6%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-base-content) 14%, transparent);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+
+  /* Generic 4-bar progress meter. Rail is pre-rendered;
+     .meter > span is the fill (width + background set inline by JS,
+     usually password_strength_controller). */
+  .meter {
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-base-content) 10%, transparent);
+    overflow: hidden;
+  }
+  .meter > span {
+    display: block; height: 100%;
+    border-radius: 999px;
+    transition: width 0.2s, background 0.2s;
+  }
+
+  /* Dashed flight-path animation — used by the SVG "email in flight"
+     diagram on confirmations/new. Tailwind v4 can't author @keyframes
+     from utilities, so this lives in CSS. */
+  @keyframes dash { to { stroke-dashoffset: -80; } }
+  .dash { stroke-dasharray: 6 6; animation: dash 4s linear infinite; }
+}

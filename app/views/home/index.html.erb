@@ -1,0 +1,219 @@
+<% if @organization.nil? %>
+  <div class="hero min-h-[auto] py-8 sm:min-h-[60vh] sm:py-0 bg-base-200/30 rounded-box border border-base-200 overflow-hidden">
+    <div class="hero-content text-center px-3 sm:px-6">
+      <div class="max-w-4xl w-full min-w-0">
+        <div class="mb-5 sm:mb-8 inline-flex items-center justify-center p-3 bg-base-100 rounded-full shadow-sm border border-base-200">
+          <i class="fa-solid fa-layer-group text-xl sm:text-2xl text-primary"></i>
+        </div>
+        <h1 class="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-3 sm:mb-6">
+          Welcome to <span class="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">MySigner</span>
+        </h1>
+        <p class="text-base sm:text-xl text-base-content/70 mb-3 sm:mb-4 max-w-2xl mx-auto">
+          Your unified control center for mobile releases. <strong>Use the CLI to ship, use the dashboard to manage.</strong>
+        </p>
+        <p class="text-xs sm:text-sm text-primary mb-8 sm:mb-10">Early access &mdash; no credit card required to start</p>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 text-left mb-6 sm:mb-10">
+          <div class="card bg-base-100 shadow-sm border border-base-200 hover:border-primary/50 transition-colors overflow-hidden">
+            <div class="card-body p-3 sm:p-6">
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-2 sm:mb-3">
+                <i class="fa-brands fa-apple text-base sm:text-xl text-primary"></i>
+              </div>
+              <h3 class="font-bold text-sm sm:text-lg">iOS Management</h3>
+              <p class="text-xs sm:text-sm opacity-70 hidden sm:block">Handle certificates, provisioning profiles, and devices with ease.</p>
+            </div>
+          </div>
+          <div class="card bg-base-100 shadow-sm border border-base-200 hover:border-secondary/50 transition-colors overflow-hidden">
+            <div class="card-body p-3 sm:p-6">
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-secondary/10 flex items-center justify-center mb-2 sm:mb-3">
+                <i class="fa-brands fa-android text-base sm:text-xl text-secondary"></i>
+              </div>
+              <h3 class="font-bold text-sm sm:text-lg">Android Ops</h3>
+              <p class="text-xs sm:text-sm opacity-70 hidden sm:block">Monitor keystores, track releases, and sync with Google Play.</p>
+            </div>
+          </div>
+          <div class="card bg-base-100 shadow-sm border border-base-200 hover:border-accent/50 transition-colors overflow-hidden">
+            <div class="card-body p-3 sm:p-6">
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-2 sm:mb-3">
+                <i class="fa-solid fa-building text-base sm:text-xl text-accent"></i>
+              </div>
+              <h3 class="font-bold text-sm sm:text-lg">Organization First</h3>
+              <p class="text-xs sm:text-sm opacity-70 hidden sm:block">Group your apps and team members under a unified workspace.</p>
+            </div>
+          </div>
+          <div class="card bg-base-100 shadow-sm border border-base-200 hover:border-info/50 transition-colors overflow-hidden">
+            <div class="card-body p-3 sm:p-6">
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-info/10 flex items-center justify-center mb-2 sm:mb-3">
+                <i class="fa-solid fa-terminal text-base sm:text-xl text-info"></i>
+              </div>
+              <h3 class="font-bold text-sm sm:text-lg">CLI-First</h3>
+              <p class="text-xs sm:text-sm opacity-70 hidden sm:block">Ship to TestFlight and Play Store with one command. The dashboard handles the rest.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col items-center gap-3">
+          <%= link_to new_organization_path, class: "btn btn-primary btn-md sm:btn-lg gap-2 shadow-lg hover:scale-105 transition-transform" do %>
+            <i class="fa-solid fa-plus"></i>
+            Create Organization
+          <% end %>
+          <p class="text-xs sm:text-sm text-base-content/60">
+            or ask an admin to invite you
+          </p>
+          <%= link_to "/docs/quickstart/getting-started", class: "link link-primary text-xs sm:text-sm" do %>
+            Or explore the CLI first &rarr;
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <% ios_sync = sync_state(running: @sync_running, credential: @last_cred) %>
+  <% android_sync = sync_state(running: @android_sync_running, credential: @android_last_cred) %>
+  <%# Compute summary stats for the header %>
+  <% total_apps = @release_status_items.size %>
+  <% live_count = @release_status_items.count { |i| i[:computed_status] == "live" } %>
+  <% review_count = @release_status_items.count { |i| i[:computed_status] == "in_review" } %>
+  <% ratings = [@rating_data[:apple_rating], @rating_data[:android_rating]].compact %>
+  <% avg_rating = ratings.any? ? (ratings.sum / ratings.size).round(1) : nil %>
+  <% expiring_count = @expiring_assets.size %>
+
+  <%# ── Hero Header — shared gradient page header ─────────────────────── %>
+  <% stats_html = capture do %>
+    <div class="stat px-4 py-3">
+      <div class="stat-title text-xs">Apps</div>
+      <div class="stat-value text-lg tabular-nums"><%= total_apps %></div>
+      <div class="stat-desc">
+        <% if live_count > 0 %>
+          <span class="text-[var(--color-cat-new)]"><%= live_count %> live</span>
+        <% else %>
+          connected
+        <% end %>
+      </div>
+    </div>
+    <div class="stat px-4 py-3">
+      <div class="stat-title text-xs">Downloads</div>
+      <div class="stat-value text-lg tabular-nums"><%= number_with_delimiter(@analytics_data[:downloads]) %></div>
+      <div class="stat-desc">
+        <% if @analytics_data[:downloads_change] %>
+          <span class="<%= @analytics_data[:downloads_change] > 0 ? 'text-[var(--color-cat-new)]' : 'text-error/80' %>">
+            <%= @analytics_data[:downloads_change] > 0 ? "+" : "" %><%= @analytics_data[:downloads_change] %>%
+          </span> vs prev 30d
+        <% else %>
+          last 30 days
+        <% end %>
+      </div>
+    </div>
+    <% if avg_rating %>
+      <div class="stat px-4 py-3">
+        <div class="stat-title text-xs">Rating</div>
+        <div class="stat-value text-lg tabular-nums"><%= avg_rating %></div>
+        <div class="stat-desc"><%= star_rating_html(avg_rating.round) %></div>
+      </div>
+    <% end %>
+    <% if expiring_count > 0 %>
+      <div class="stat px-4 py-3">
+        <div class="stat-title text-xs">Expiring</div>
+        <div class="stat-value text-lg tabular-nums text-warning"><%= expiring_count %></div>
+        <div class="stat-desc">within 30 days</div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%# The Sync button lives in the navbar only — single source of truth
+      for sync state, one poller, one Turbo.visit on completion. %>
+  <section class="mb-5 sm:mb-8">
+    <%= render "shared/page_header",
+        title: "Ship Apple & Android builds without leaving MySigner",
+        description: "Everything #{@organization.name} needs to monitor releases, ratings, screenshots, and signing assets.",
+        badge_icon: "fa-solid fa-building",
+        badge_text: @organization.name,
+        stats: stats_html %>
+  </section>
+
+  <%# Alerts the user when Play Developer Reporting API is disabled for
+      their Google Cloud project. Analytics sync detected the 403 and
+      stamped the credential; UI gives a one-click path to enable. %>
+  <% gp_credential_for_alerts = @organization.google_play_credentials.active.first %>
+  <% if gp_credential_for_alerts&.play_reporting_api_disabled? %>
+    <%= render "shared/play_reporting_api_alert", credential: gp_credential_for_alerts %>
+  <% end %>
+
+  <%# ── Sync Error Alerts ───────────────────────────────────────────── %>
+  <% if ios_sync[:last_error].present? || android_sync[:last_error].present? || @invalid_profiles_count.to_i.positive? || @other_sync_errors&.any? %>
+    <section id="sync-error-alerts" class="mb-5 space-y-2 scroll-mt-24" aria-label="Attention items">
+      <%# Each error card renders via the shared sync_error_card partial so
+          iOS, Android, and the other-job cards (keyword rankings, reviews,
+          etc.) all surface the same hint + Retry affordance. Without
+          this, the cards were dead-ends -- the user could see what failed
+          but had no in-context way to act on it. %>
+      <% if ios_sync[:last_error].present? %>
+        <%= render "home/sync_error_card",
+                   icon_class: "fa-brands fa-apple",
+                   label: "iOS sync failed",
+                   error_message: ios_sync[:last_error],
+                   hint: sync_error_hint(ios_sync[:last_error]) %>
+      <% end %>
+      <% if android_sync[:last_error].present? %>
+        <%= render "home/sync_error_card",
+                   icon_class: "fa-brands fa-android",
+                   label: "Android sync failed",
+                   error_message: android_sync[:last_error],
+                   hint: sync_error_hint(android_sync[:last_error]) %>
+      <% end %>
+      <%# Other sync-job failures (reviews / analytics / CPP / keyword
+          rankings). Driven by Sync::StatusAggregator -> OrgSyncRun, the
+          same source the navbar polling watches. These cards expose a
+          Dismiss button (iOS/Android cards don't, because their error
+          comes from credential.last_sync_error rather than OrgSyncRun
+          and dismissing would need a different endpoint). %>
+      <% (@other_sync_errors || []).each do |err| %>
+        <%= render "home/sync_error_card",
+                   icon_class: err[:icon],
+                   label: "#{err[:label]} sync failed",
+                   error_message: err[:error_message],
+                   hint: err[:hint],
+                   dismiss_path: organization_sync_run_path(@organization, job_name: err[:key]) %>
+      <% end %>
+      <% if @invalid_profiles_count.to_i.positive? %>
+        <div class="<%= sn_warning_classes %>">
+          <div class="flex items-center gap-2.5 px-3 py-2.5">
+            <div class="<%= sn_icon_warning_classes %>">
+              <i class="fa-solid fa-id-badge text-[0.625rem]"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-semibold text-base-content/70"><%= @invalid_profiles_count %> invalid provisioning profile<%= @invalid_profiles_count == 1 ? "" : "s" %></p>
+              <p class="<%= meta_text_classes %>">These need to be regenerated before your next iOS build.</p>
+            </div>
+            <%= link_to "View", organization_apple_provisioning_profiles_path(@organization, state: "INVALID"), class: btn_ghost_xs_classes %>
+          </div>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+
+  <%# ── Quick Actions Bar ───────────────────────────────────────────── %>
+  <%= render "home/quick_actions" %>
+
+  <%# ── Dashboard Grid ──────────────────────────────────────────────── %>
+  <section class="flex flex-col gap-5 mt-5">
+    <%# Row 1: Release Status + Analytics Overview — 2 columns on lg %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <%= render "home/release_status_cards" %>
+      <%= render "home/analytics_overview" %>
+    </div>
+
+    <%# Row 2: Reviews & Ratings + Expiring Assets — 2 columns on lg %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <%= render "home/recent_reviews" %>
+      <%= render "home/expiring_assets" %>
+    </div>
+
+    <%# Screenshot Studio CTA — full width %>
+    <%= render "home/screenshot_studio_cta" %>
+  </section>
+
+  <%# ── Setup Progress + CLI Modal ──────────────────────────────────── %>
+  <%= render "shared/setup_progress" %>
+  <%= render "shared/cli_setup_modal" %>
+<% end %>

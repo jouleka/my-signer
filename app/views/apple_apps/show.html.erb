@@ -1,0 +1,712 @@
+<% items = [
+  { label: "Organizations", path: organizations_path },
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "iOS" },
+  { label: "Apps", path: organization_apple_apps_path(@organization) },
+  { label: @app.name.presence || @app.bundle_id }
+] %>
+<%= breadcrumbs(items) %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%# App Header %>
+  <div class="rounded-2xl sm:rounded-3xl border border-base-200 bg-gradient-to-br from-secondary/20 via-base-100 to-primary/10 p-4 sm:p-6 md:p-8 shadow-xl overflow-hidden">
+    <div class="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <div class="space-y-2 sm:space-y-3 min-w-0">
+        <span class="badge badge-outline badge-sm sm:badge-lg gap-1.5 sm:gap-2">
+          <i class="fa-brands fa-apple text-xs sm:text-sm"></i>
+          iOS App
+        </span>
+        <h1 class="text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight break-words">
+          <%= @app.name.presence || "Unnamed App" %>
+        </h1>
+        <div class="flex items-center gap-2 flex-wrap min-w-0">
+          <code class="text-xs sm:text-sm bg-base-200 px-2 sm:px-3 py-1 rounded-lg truncate max-w-[calc(100vw-8rem)]"><%= @app.bundle_id %></code>
+          <button type="button" class="btn btn-ghost btn-xs shrink-0"
+                  data-controller="copy"
+                  data-action="click->copy#copy"
+                  data-copy-text-value="<%= @app.bundle_id %>">
+            <i class="fa-solid fa-copy"></i>
+            Copy
+          </button>
+        </div>
+        <% if @app.sku.present? %>
+          <p class="text-xs sm:text-sm text-base-content/70">
+            SKU: <span class="font-medium font-mono"><%= @app.sku %></span>
+          </p>
+        <% end %>
+      </div>
+      <div class="stats stats-horizontal bg-base-100 border border-base-200 shadow w-full sm:w-auto overflow-x-auto">
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Builds</div>
+          <div class="stat-value text-xl sm:text-2xl text-primary"><%= @builds.size %></div>
+          <div class="stat-desc">uploaded</div>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">TestFlight</div>
+          <div class="stat-value text-xl sm:text-2xl text-success"><%= @beta_groups.size %></div>
+          <div class="stat-desc">beta groups</div>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Versions</div>
+          <div class="stat-value text-xl sm:text-2xl text-accent"><%= @versions.size %></div>
+          <div class="stat-desc">app store</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3">
+      <%= link_to organization_apple_apps_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">All Apps</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+      <% if @organization.app_store_connect_credentials.active.exists? && policy(@organization).sync? %>
+        <button type="button"
+                data-controller="sync"
+                data-sync-url-value="<%= sync_app_store_connect_api_v1_organization_path(@organization) %>"
+                data-sync-status-url-value="<%= sync_status_organization_path(@organization) %>"
+                data-action="click->sync#start"
+                data-sync-target="button"
+                class="btn btn-ghost btn-sm sm:btn-md gap-2"
+                title="Sync iOS signing, builds, and store listings only. Use the navbar Sync for everything.">
+          <i class="fa-solid fa-rotate"></i>
+          <span class="hidden sm:inline">Sync iOS</span>
+          <span class="sm:hidden">Sync</span>
+        </button>
+      <% end %>
+      <a href="https://appstoreconnect.apple.com/apps/<%= @app.app_store_id %>/appstore"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="btn btn-ghost btn-sm sm:btn-md gap-2">
+        <i class="fa-solid fa-external-link"></i>
+        <span class="hidden sm:inline">App Store Connect</span>
+        <span class="sm:hidden">Connect</span>
+      </a>
+      <a href="https://appstoreconnect.apple.com/apps/<%= @app.app_store_id %>/testflight"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="btn btn-ghost btn-sm sm:btn-md gap-2">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span class="hidden sm:inline">TestFlight Console</span>
+        <span class="sm:hidden">TestFlight</span>
+      </a>
+      <button type="button" class="btn btn-ghost btn-sm sm:btn-md gap-2"
+              data-controller="raw-json"
+              data-action="click->raw-json#show"
+              data-raw-json-content-value="<%= @app.raw_json %>"
+              data-raw-json-title-value="App: <%= @app.name %>">
+        <i class="fa-solid fa-code"></i>
+        Raw JSON
+      </button>
+    </div>
+  </div>
+
+  <%# CLI Defaults Section — formerly "Release Configuration".
+      These defaults are ONLY read by the MySigner CLI (`mysigner ship appstore`).
+      The web UI submits from Releases > Submission tab and ignores these. %>
+  <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+    <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+      <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+        <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-terminal text-secondary"></i>
+          CLI Defaults
+          <span class="text-xs font-normal text-base-content/40 hidden sm:inline">for <code class="bg-base-200 px-1 rounded">mysigner ship appstore</code></span>
+        </h2>
+        <% if @app.cli_defaults_configured? %>
+          <span class="badge badge-success gap-1 badge-sm sm:badge-md">
+            <i class="fa-solid fa-check text-[10px]"></i>
+            Configured
+          </span>
+        <% else %>
+          <span class="badge badge-ghost gap-1 badge-sm sm:badge-md">
+            <i class="fa-solid fa-minus text-[10px]"></i>
+            Not set
+          </span>
+        <% end %>
+      </div>
+
+      <%# Disambiguation banner: the web UI submits from the Submission tab, not from here. %>
+      <div class="alert alert-info bg-info/5 border border-info/20 text-sm overflow-hidden">
+        <i class="fa-solid fa-circle-info shrink-0"></i>
+        <span class="break-words">
+          Submitting from the web? Use the
+          <%= link_to "Submission tab", organization_release_path(@organization, "apple_app_#{@app.id}", tab: "submission"),
+              class: "link link-info font-medium" %>
+          — it talks to Apple directly. These defaults only affect the CLI.
+        </span>
+      </div>
+
+      <% if @app.cli_defaults_configured? %>
+        <%# Show current CLI defaults %>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <%# Store Listing Content (read from StoreListing, not cli_defaults) %>
+          <div class="col-span-full">
+            <div class="text-xs text-base-content/60 uppercase font-semibold mb-1">Store Content</div>
+            <% if @store_listing %>
+              <div class="bg-base-200/50 rounded-lg p-2 sm:p-3 space-y-1.5">
+                <% if @store_listing.whats_new.present? %>
+                  <div class="text-sm"><span class="text-base-content/60">Release Notes:</span> <span class="break-words"><%= truncate(@store_listing.whats_new, length: 120) %></span></div>
+                <% end %>
+                <% if @store_listing.support_url.present? || @store_listing.marketing_url.present? || @store_listing.privacy_policy_url.present? %>
+                  <div class="text-xs text-base-content/50">
+                    URLs:
+                    <%= [@store_listing.support_url.present? ? "Support" : nil, @store_listing.marketing_url.present? ? "Marketing" : nil, @store_listing.privacy_policy_url.present? ? "Privacy" : nil].compact.join(", ") %>
+                  </div>
+                <% end %>
+                <%= link_to organization_release_path(@organization, "apple_app_#{@app.id}", tab: "listing"), class: "link link-primary text-sm inline-flex items-center gap-1" do %>
+                  <i class="fa-solid fa-pen-to-square text-xs"></i> Edit Store Listing
+                <% end %>
+              </div>
+            <% else %>
+              <div class="flex items-center gap-2 text-sm text-base-content/50">
+                <span class="italic">No store listing yet</span>
+                <span class="text-base-content/30">|</span>
+                <%= link_to "Create one", organization_release_path(@organization, "apple_app_#{@app.id}", tab: "listing"), class: "link link-primary text-sm" %>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Settings %>
+          <div class="col-span-full flex flex-wrap gap-2 sm:gap-3 pt-2 border-t border-base-200">
+            <div class="flex items-center gap-2">
+              <% if @app.cli_auto_submit? %>
+                <span class="badge badge-info gap-1.5 badge-sm">
+                  <i class="fa-solid fa-bolt text-[10px]"></i>
+                  Auto-submit enabled
+                </span>
+              <% else %>
+                <span class="badge badge-ghost gap-1.5 badge-sm">
+                  <i class="fa-solid fa-bolt text-[10px]"></i>
+                  Auto-submit disabled
+                </span>
+              <% end %>
+            </div>
+            <div class="flex items-center gap-2">
+              <% if @app.cli_phased_release? %>
+                <span class="badge badge-info gap-1.5 badge-sm">
+                  <i class="fa-solid fa-chart-line text-[10px]"></i>
+                  Phased release (7 days)
+                </span>
+              <% else %>
+                <span class="badge badge-ghost gap-1.5 badge-sm">
+                  <i class="fa-solid fa-chart-line text-[10px]"></i>
+                  Instant release
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2">
+          <%= link_to edit_organization_app_store_release_path(@organization, @app), class: "btn btn-ghost btn-xs sm:btn-sm gap-2" do %>
+            <i class="fa-solid fa-pen"></i>
+            Edit CLI Defaults
+          <% end %>
+        </div>
+      <% else %>
+        <%# No CLI defaults configured yet %>
+        <div class="flex flex-col items-center justify-center py-6 sm:py-8 text-center px-2">
+          <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center mb-4">
+            <i class="fa-solid fa-terminal text-xl sm:text-2xl text-secondary/50"></i>
+          </div>
+          <h3 class="text-base sm:text-lg font-bold">No CLI Defaults</h3>
+          <p class="text-base-content/60 max-w-md mt-1 mb-4 text-sm break-words">
+            Optional: set defaults for <code class="bg-base-200 px-1 rounded text-xs">mysigner ship appstore</code> unattended CI/CD submissions. Web submissions use the Submission tab and don't need this.
+          </p>
+          <% if @bundle_id_record %>
+            <%= link_to new_organization_app_store_release_path(@organization, bundle_id_id: @bundle_id_record.id), class: "btn btn-primary btn-sm gap-2" do %>
+              <i class="fa-solid fa-plus"></i>
+              Set CLI Defaults
+            <% end %>
+          <% else %>
+            <div class="alert alert-warning text-sm overflow-hidden">
+              <i class="fa-solid fa-triangle-exclamation shrink-0"></i>
+              <span class="break-words">No matching Bundle ID found. Sync your App Store Connect data.</span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# TestFlight Beta Groups Section %>
+  <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+    <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+      <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+        <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-paper-plane text-info"></i>
+          TestFlight Beta Groups
+        </h2>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="badge badge-soft badge-sm sm:badge-md"><%= @beta_groups.size %> groups</span>
+          <span class="badge badge-soft badge-sm sm:badge-md"><%= @beta_groups.sum(:tester_count) %> testers</span>
+        </div>
+      </div>
+
+      <% if @beta_groups.any? %>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <% @beta_groups.each do |group| %>
+            <% group_color = group.is_internal_group ? "border-primary/50 bg-primary/5" : "border-info/50 bg-info/5" %>
+            <div class="card border <%= group_color %> shadow-sm overflow-hidden">
+              <div class="card-body p-3 sm:p-4 space-y-2 sm:space-y-3 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <h3 class="font-semibold text-sm sm:text-base truncate"><%= group.name %></h3>
+                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                      <% if group.is_internal_group %>
+                        <span class="badge badge-primary badge-xs">Internal</span>
+                      <% else %>
+                        <span class="badge badge-info badge-xs">External</span>
+                      <% end %>
+                      <% if group.public_link_enabled %>
+                        <span class="badge badge-success badge-xs gap-1">
+                          <i class="fa-solid fa-link text-[8px]"></i>
+                          Public link
+                        </span>
+                      <% end %>
+                    </div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <span class="text-base sm:text-lg font-bold"><%= group.tester_count %></span>
+                    <p class="text-xs text-base-content/60">testers</p>
+                  </div>
+                </div>
+
+                <% if group.public_link.present? && group.public_link_enabled %>
+                  <div class="flex items-center gap-2 min-w-0">
+                    <code class="text-xs truncate flex-1 bg-base-200 px-2 py-1 rounded"><%= group.public_link %></code>
+                    <button type="button" class="btn btn-ghost btn-xs shrink-0"
+                            data-controller="copy"
+                            data-action="click->copy#copy"
+                            data-copy-text-value="<%= group.public_link %>">
+                      <i class="fa-solid fa-copy"></i>
+                    </button>
+                  </div>
+                <% end %>
+
+                <%# Show testers if available %>
+                <% testers = group.testers.is_a?(Array) ? group.testers : [] %>
+                <% if testers.any? %>
+                  <details class="collapse collapse-arrow bg-base-200/50 rounded-lg overflow-hidden">
+                    <summary class="collapse-title text-xs font-medium py-2 min-h-0">
+                      View testers (<%= testers.size %>)
+                    </summary>
+                    <div class="collapse-content">
+                      <ul class="space-y-1 text-xs">
+                        <% testers.first(10).each do |tester| %>
+                          <li class="flex items-center gap-2 py-1 min-w-0">
+                            <i class="fa-solid fa-user text-base-content/40 shrink-0"></i>
+                            <span class="truncate">
+                              <% if tester["firstName"].present? || tester["lastName"].present? %>
+                                <%= [tester["firstName"], tester["lastName"]].compact.join(" ") %>
+                              <% else %>
+                                <%= tester["email"] || "Unknown" %>
+                              <% end %>
+                            </span>
+                          </li>
+                        <% end %>
+                        <% if testers.size > 10 %>
+                          <li class="text-base-content/60 pt-1">
+                            ... and <%= testers.size - 10 %> more
+                          </li>
+                        <% end %>
+                      </ul>
+                    </div>
+                  </details>
+                <% end %>
+
+                <button type="button" class="btn btn-ghost btn-xs w-fit"
+                        data-controller="raw-json"
+                        data-action="click->raw-json#show"
+                        data-raw-json-content-value="<%= group.raw_json %>"
+                        data-raw-json-title-value="Beta Group: <%= group.name %>">
+                  View raw JSON
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="alert overflow-hidden">
+          <i class="fa-solid fa-info-circle shrink-0"></i>
+          <div class="min-w-0 break-words">
+            <span>No TestFlight beta groups found.</span>
+            <a href="https://appstoreconnect.apple.com/apps/<%= @app.app_store_id %>/testflight/groups"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="link link-primary ml-1">Create a group in App Store Connect &rarr;</a>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Builds Section %>
+  <% latest_build = @builds.first %>
+  <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+    <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+      <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+        <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-cube text-primary"></i>
+          Builds
+        </h2>
+        <div class="flex items-center gap-2 flex-wrap">
+          <% if latest_build %>
+            <div class="badge badge-primary gap-1 badge-sm sm:badge-md">
+              <i class="fa-solid fa-arrow-up text-[10px]"></i>
+              Latest: <%= latest_build.version %> (<%= latest_build.build_number %>)
+            </div>
+          <% end %>
+          <span class="badge badge-soft badge-sm sm:badge-md"><%= @builds.size %> total</span>
+        </div>
+      </div>
+
+      <% if @builds.any? %>
+        <div class="hidden md:block" data-controller="show-more" data-show-more-limit-value="10">
+          <div class="overflow-x-auto rounded-2xl border border-base-200">
+            <table class="table">
+              <thead>
+                <tr class="text-xs uppercase text-base-content/60">
+                  <th>Version</th>
+                  <th>Build Number</th>
+                  <th>Status</th>
+                  <th>Uploaded</th>
+                  <th>Expires</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @builds.each_with_index do |build, idx| %>
+                  <tr class="hover <%= 'bg-primary/5' if idx == 0 %>" data-show-more-target="item">
+                    <td class="font-medium">
+                      <div class="flex items-center gap-2">
+                        <%= build.version.presence || "&mdash;".html_safe %>
+                        <% if idx == 0 %>
+                          <span class="badge badge-primary badge-xs">Latest</span>
+                        <% end %>
+                      </div>
+                    </td>
+                    <td>
+                      <code class="text-xs bg-base-200 px-2 py-1 rounded"><%= build.build_number %></code>
+                    </td>
+                    <td>
+                      <% state = build.processing_state.to_s %>
+                      <%
+                        state_info = case state.upcase
+                          when "VALID" then { class: "badge-success", icon: "fa-check-circle", label: "Valid" }
+                          when "PROCESSING" then { class: "badge-warning", icon: "fa-spinner fa-spin", label: "Processing" }
+                          when "INVALID" then { class: "badge-error", icon: "fa-times-circle", label: "Invalid" }
+                          when "FAILED" then { class: "badge-error", icon: "fa-exclamation-circle", label: "Failed" }
+                          else { class: "badge-ghost", icon: "fa-circle-question", label: state.presence || "Unknown" }
+                        end
+                      %>
+                      <span class="badge <%= state_info[:class] %> gap-1">
+                        <i class="fa-solid <%= state_info[:icon] %> text-[10px]"></i>
+                        <%= state_info[:label] %>
+                      </span>
+                    </td>
+                    <td>
+                      <% if build.uploaded_date %>
+                        <span class="text-xs" title="<%= build.uploaded_date.to_fs(:long) %>">
+                          <%= time_ago_in_words(build.uploaded_date) %> ago
+                        </span>
+                      <% else %>
+                        <span class="opacity-40">&mdash;</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if build.expires_at %>
+                        <% days_remaining = (build.expires_at.to_date - Date.current).to_i %>
+                        <%
+                          expiry_info = if days_remaining <= 0
+                            { class: "badge-error", icon: "fa-skull", label: "Expired" }
+                          elsif days_remaining < 7
+                            { class: "badge-error", icon: "fa-triangle-exclamation", label: "#{days_remaining}d" }
+                          elsif days_remaining < 30
+                            { class: "badge-warning", icon: "fa-clock", label: "#{days_remaining}d" }
+                          else
+                            { class: "badge-ghost", icon: "fa-calendar", label: "#{days_remaining}d" }
+                          end
+                        %>
+                        <span class="badge <%= expiry_info[:class] %> gap-1" title="Expires: <%= build.expires_at.to_date %>">
+                          <i class="fa-solid <%= expiry_info[:icon] %> text-[10px]"></i>
+                          <%= expiry_info[:label] %>
+                        </span>
+                      <% else %>
+                        <span class="opacity-40">&mdash;</span>
+                      <% end %>
+                    </td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-ghost btn-xs"
+                              data-controller="raw-json"
+                              data-action="click->raw-json#show"
+                              data-raw-json-content-value="<%= build.raw_json %>"
+                              data-raw-json-title-value="Build: <%= build.version %> (<%= build.build_number %>)">
+                        Raw JSON
+                      </button>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <% if @builds.size > 10 %>
+            <button type="button" class="btn btn-ghost btn-sm w-full mt-3" data-show-more-target="button" data-action="click->show-more#toggle">
+              <i class="fa-solid fa-chevron-down mr-1"></i> Show <%= @builds.size - 10 %> more
+            </button>
+          <% end %>
+        </div>
+
+        <div class="md:hidden space-y-3" data-controller="show-more" data-show-more-limit-value="5">
+          <% @builds.each_with_index do |build, idx| %>
+            <% state = build.processing_state.to_s %>
+            <%
+              state_info = case state.upcase
+                when "VALID" then { class: "badge-success", icon: "fa-check-circle", label: "Valid" }
+                when "PROCESSING" then { class: "badge-warning", icon: "fa-spinner fa-spin", label: "Processing" }
+                when "INVALID" then { class: "badge-error", icon: "fa-times-circle", label: "Invalid" }
+                when "FAILED" then { class: "badge-error", icon: "fa-exclamation-circle", label: "Failed" }
+                else { class: "badge-ghost", icon: "fa-circle-question", label: state.presence || "Unknown" }
+              end
+            %>
+            <div class="card border <%= idx == 0 ? 'border-primary bg-primary/5' : 'border-base-200' %> shadow-sm overflow-hidden" data-show-more-target="item">
+              <div class="card-body p-3 sm:p-4 space-y-2 sm:space-y-3 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-semibold text-sm sm:text-base truncate"><%= build.version %> (<%= build.build_number %>)</h3>
+                      <% if idx == 0 %>
+                        <span class="badge badge-primary badge-xs shrink-0">Latest</span>
+                      <% end %>
+                    </div>
+                    <code class="text-xs text-base-content/60"><%= build.build_id %></code>
+                  </div>
+                  <span class="badge <%= state_info[:class] %> gap-1 badge-sm shrink-0">
+                    <i class="fa-solid <%= state_info[:icon] %> text-[10px]"></i>
+                    <%= state_info[:label] %>
+                  </span>
+                </div>
+                <div class="grid gap-1 text-xs">
+                  <% if build.uploaded_date %>
+                    <div class="flex justify-between">
+                      <span class="opacity-70">Uploaded</span>
+                      <span><%= time_ago_in_words(build.uploaded_date) %> ago</span>
+                    </div>
+                  <% end %>
+                  <% if build.expires_at %>
+                    <div class="flex justify-between">
+                      <span class="opacity-70">Expires</span>
+                      <% days_remaining = (build.expires_at.to_date - Date.current).to_i %>
+                      <span class="<%= days_remaining < 7 ? 'text-error font-medium' : '' %>">
+                        <%= build.expires_at.to_date %> (<%= days_remaining > 0 ? "#{days_remaining} days" : "Expired" %>)
+                      </span>
+                    </div>
+                  <% end %>
+                </div>
+                <button type="button" class="btn btn-ghost btn-xs w-fit"
+                        data-controller="raw-json"
+                        data-action="click->raw-json#show"
+                        data-raw-json-content-value="<%= build.raw_json %>"
+                        data-raw-json-title-value="Build: <%= build.version %> (<%= build.build_number %>)">
+                  View raw JSON
+                </button>
+              </div>
+            </div>
+          <% end %>
+          <% if @builds.size > 5 %>
+            <button type="button" class="btn btn-ghost btn-sm w-full" data-show-more-target="button" data-action="click->show-more#toggle">
+              <i class="fa-solid fa-chevron-down mr-1"></i> Show <%= @builds.size - 5 %> more
+            </button>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="alert overflow-hidden">
+          <i class="fa-solid fa-info-circle shrink-0"></i>
+          <span class="break-words">No builds have been uploaded yet. Sync your App Store Connect data to import builds.</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# App Store Versions Section %>
+  <%# Sort versions by semantic version (descending) for proper ordering %>
+  <%
+    sorted_versions = @versions.sort_by { |v|
+      # Parse version string into comparable array [major, minor, patch]
+      parts = v.version_string.to_s.split('.').map(&:to_i)
+      # Pad with zeros for comparison (e.g., "1.8" becomes [1, 8, 0])
+      [parts[0] || 0, parts[1] || 0, parts[2] || 0]
+    }.reverse
+
+    # The latest live version is the first READY_FOR_SALE in sorted order
+    live_version = sorted_versions.find { |v| v.app_store_state.to_s.upcase == "READY_FOR_SALE" }
+    pending_review = sorted_versions.find { |v| ["IN_REVIEW", "WAITING_FOR_REVIEW"].include?(v.app_store_state.to_s.upcase) }
+  %>
+  <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+    <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+      <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+        <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-store text-secondary"></i>
+          App Store Versions
+        </h2>
+        <div class="flex items-center gap-2 flex-wrap">
+          <% if live_version %>
+            <div class="badge badge-success gap-1 badge-sm sm:badge-md">
+              <i class="fa-solid fa-circle text-[6px] animate-pulse"></i>
+              Live: v<%= live_version.version_string %>
+            </div>
+          <% end %>
+          <% if pending_review %>
+            <div class="badge badge-info gap-1 badge-sm sm:badge-md">
+              <i class="fa-solid fa-hourglass-half text-[10px]"></i>
+              In Review: v<%= pending_review.version_string %>
+            </div>
+          <% end %>
+          <span class="badge badge-soft badge-sm sm:badge-md"><%= sorted_versions.size %> versions</span>
+        </div>
+      </div>
+
+      <% if sorted_versions.any? %>
+        <%# Desktop Table %>
+        <div class="hidden md:block" data-controller="show-more" data-show-more-limit-value="10">
+          <div class="overflow-x-auto rounded-2xl border border-base-200">
+            <table class="table">
+              <thead>
+                <tr class="text-xs uppercase text-base-content/60">
+                  <th>Version</th>
+                  <th>Platform</th>
+                  <th>State</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% sorted_versions.each do |version| %>
+                <% app_state = version.app_store_state.to_s %>
+                <%# Only mark as "Live" if this is THE live version (first READY_FOR_SALE in sorted order) %>
+                <% is_live = live_version && version.id == live_version.id %>
+                <%
+                  state_info = case app_state.upcase
+                    when "READY_FOR_SALE" then { class: "badge-success", icon: "fa-check-circle", label: "Ready for Sale" }
+                    when "IN_REVIEW" then { class: "badge-info", icon: "fa-magnifying-glass", label: "In Review" }
+                    when "WAITING_FOR_REVIEW" then { class: "badge-info", icon: "fa-clock", label: "Waiting for Review" }
+                    when "PREPARE_FOR_SUBMISSION" then { class: "badge-warning", icon: "fa-pencil", label: "Prepare for Submission" }
+                    when "PENDING_DEVELOPER_RELEASE" then { class: "badge-success", icon: "fa-pause", label: "Pending Release" }
+                    when "REJECTED" then { class: "badge-error", icon: "fa-times-circle", label: "Rejected" }
+                    when "DEVELOPER_REJECTED" then { class: "badge-warning", icon: "fa-ban", label: "Developer Rejected" }
+                    when "REMOVED_FROM_SALE" then { class: "badge-ghost", icon: "fa-eye-slash", label: "Removed" }
+                    else { class: "badge-ghost", icon: "fa-circle-question", label: app_state.titleize }
+                  end
+                %>
+                <tr class="hover <%= 'bg-success/5' if is_live %>" data-show-more-target="item">
+                  <td class="font-medium">
+                    <div class="flex items-center gap-2">
+                      <%= version.version_string %>
+                      <% if is_live %>
+                        <span class="badge badge-success badge-xs gap-1">
+                          <i class="fa-solid fa-circle text-[4px] animate-pulse"></i>
+                          Live
+                        </span>
+                      <% end %>
+                    </div>
+                  </td>
+                  <td><span class="badge badge-ghost badge-sm"><%= version.platform %></span></td>
+                  <td>
+                    <span class="badge <%= state_info[:class] %> gap-1">
+                      <i class="fa-solid <%= state_info[:icon] %> text-[10px]"></i>
+                      <%= state_info[:label] %>
+                    </span>
+                  </td>
+                  <td class="text-right">
+                    <button type="button" class="btn btn-ghost btn-xs"
+                            data-controller="raw-json"
+                            data-action="click->raw-json#show"
+                            data-raw-json-content-value="<%= version.raw_json %>"
+                            data-raw-json-title-value="Version: <%= version.version_string %>">
+                      Raw JSON
+                    </button>
+                  </td>
+                </tr>
+              <% end %>
+              </tbody>
+            </table>
+          </div>
+          <% if sorted_versions.size > 10 %>
+            <button type="button" class="btn btn-ghost btn-sm w-full mt-3" data-show-more-target="button" data-action="click->show-more#toggle">
+              <i class="fa-solid fa-chevron-down mr-1"></i> Show <%= sorted_versions.size - 10 %> more
+            </button>
+          <% end %>
+        </div>
+
+        <%# Mobile Cards %>
+        <div class="md:hidden space-y-3" data-controller="show-more" data-show-more-limit-value="5">
+          <% sorted_versions.each_with_index do |version, idx| %>
+            <% app_state = version.app_store_state.to_s %>
+            <% is_live = live_version && version.id == live_version.id %>
+            <%
+              state_info = case app_state.upcase
+                when "READY_FOR_SALE" then { class: "badge-success", icon: "fa-check-circle", label: "Ready for Sale" }
+                when "IN_REVIEW" then { class: "badge-info", icon: "fa-magnifying-glass", label: "In Review" }
+                when "WAITING_FOR_REVIEW" then { class: "badge-info", icon: "fa-clock", label: "Waiting for Review" }
+                when "PREPARE_FOR_SUBMISSION" then { class: "badge-warning", icon: "fa-pencil", label: "Draft" }
+                when "PENDING_DEVELOPER_RELEASE" then { class: "badge-success", icon: "fa-pause", label: "Pending Release" }
+                when "REJECTED" then { class: "badge-error", icon: "fa-times-circle", label: "Rejected" }
+                when "DEVELOPER_REJECTED" then { class: "badge-warning", icon: "fa-ban", label: "Dev Rejected" }
+                when "REMOVED_FROM_SALE" then { class: "badge-ghost", icon: "fa-eye-slash", label: "Removed" }
+                else { class: "badge-ghost", icon: "fa-circle-question", label: app_state.titleize }
+              end
+            %>
+            <div class="card border <%= is_live ? 'border-success bg-success/5' : 'border-base-200' %> shadow-sm overflow-hidden" data-show-more-target="item">
+              <div class="card-body p-3 sm:p-4 space-y-2 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-semibold text-sm sm:text-base">v<%= version.version_string %></h3>
+                      <% if is_live %>
+                        <span class="badge badge-success badge-xs gap-1 shrink-0">
+                          <i class="fa-solid fa-circle text-[4px] animate-pulse"></i>
+                          Live
+                        </span>
+                      <% end %>
+                    </div>
+                    <% if version.platform.present? %>
+                      <span class="text-xs text-base-content/60"><%= version.platform %></span>
+                    <% end %>
+                  </div>
+                  <span class="badge <%= state_info[:class] %> gap-1 badge-sm shrink-0">
+                    <i class="fa-solid <%= state_info[:icon] %> text-[10px]"></i>
+                    <%= state_info[:label] %>
+                  </span>
+                </div>
+                <% if version.apple_build&.build_number.present? %>
+                  <div class="text-xs text-base-content/60">
+                    Build: <%= version.apple_build.build_number %>
+                  </div>
+                <% end %>
+                <button type="button" class="btn btn-ghost btn-xs w-fit"
+                        data-controller="raw-json"
+                        data-action="click->raw-json#show"
+                        data-raw-json-content-value="<%= version.raw_json %>"
+                        data-raw-json-title-value="Version: <%= version.version_string %>">
+                  View raw JSON
+                </button>
+              </div>
+            </div>
+          <% end %>
+          <% if sorted_versions.size > 5 %>
+            <button type="button" class="btn btn-ghost btn-sm w-full" data-show-more-target="button" data-action="click->show-more#toggle">
+              <i class="fa-solid fa-chevron-down mr-1"></i> Show <%= sorted_versions.size - 5 %> more
+            </button>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="alert overflow-hidden">
+          <i class="fa-solid fa-info-circle shrink-0"></i>
+          <span class="break-words">No App Store versions found. Create a version in App Store Connect to get started.</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Version History Section %>
+  <%= render partial: "version_history", locals: { versions: @versions } %>
+</section>

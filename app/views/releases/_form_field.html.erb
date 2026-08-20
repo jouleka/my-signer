@@ -1,0 +1,51 @@
+<%# Editable form field with progress-bar character counter %>
+<% limit = listing.char_limit_for(field) %>
+<% current_value = listing.send(field) %>
+<% current_length = current_value.to_s.length %>
+<% over_limit = limit && current_length > limit %>
+<% hint_text = local_assigns[:hint] %>
+<% rows = local_assigns[:rows] || 3 %>
+<% input_type = local_assigns[:type] || :input %>
+<% pct = limit ? (current_length.to_f / limit * 100).clamp(0, 100) : 0 %>
+
+<div class="mb-5 last:mb-0" data-controller="char-counter" data-char-counter-limit-value="<%= limit || 0 %>">
+  <div class="flex items-center justify-between mb-1.5">
+    <label class="<%= label_form_classes %>" for="store_listing_<%= field %>"><%= label %></label>
+    <% if limit %>
+      <span class="<%= char_badge_classes(current_length, limit) %>"
+            data-char-counter-target="display">
+        <span data-char-counter-target="count"><%= current_length %></span>/<%= limit %>
+      </span>
+    <% end %>
+  </div>
+
+  <% if input_type == :textarea %>
+    <%= f.text_area field,
+        class: "#{textarea_field_classes} #{over_limit ? input_error_extra_classes : ''}",
+        rows: rows,
+        data: { action: "input->char-counter#update input->store-listing-editor#updatePreview", char_counter_target: "input" } %>
+  <% else %>
+    <%= f.text_field field,
+        class: "#{input_field_classes} #{over_limit ? input_error_extra_classes : ''}",
+        data: { action: "input->char-counter#update input->store-listing-editor#updatePreview", char_counter_target: "input" } %>
+  <% end %>
+
+  <% if limit %>
+    <div class="<%= progress_track_classes %> mt-2" data-char-counter-target="track">
+      <div class="<%= progress_fill_classes(current_length, limit) %>"
+           data-char-counter-target="bar"
+           style="width: <%= [pct, 100].min %>%"></div>
+    </div>
+  <% end %>
+
+  <% if hint_text %>
+    <p class="<%= hint_text_classes %> mt-1.5"><%= hint_text %></p>
+  <% end %>
+
+  <% if over_limit %>
+    <p class="<%= error_text_classes %> mt-1.5">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <%= current_length - limit %> character<%= (current_length - limit) == 1 ? '' : 's' %> over the limit
+    </p>
+  <% end %>
+</div>

@@ -1,0 +1,901 @@
+<% can_manage_members = policy(@organization).manage_members? %>
+<% can_invite_members = policy(@organization).invite_members? %>
+<% can_manage_credentials = policy(@organization).manage_credentials? %>
+<% creds = @organization.app_store_connect_credentials %>
+<% gcreds = @organization.google_play_credentials %>
+<% scheduled_change_impact = scheduled_plan_change_impact(current_user&.current_billing_subscription, organization: @organization, only_if_affected: true) if user_signed_in? %>
+<% plan_tier = @organization.plan_tier.to_s %>
+<% seat_pct = @usage_stats[:seats][:limit].to_i.positive? ? [(@usage_stats[:seats][:current].to_f * 100 / @usage_stats[:seats][:limit]).round, 100].min : 0 %>
+<% proj_pct = @usage_stats[:screenshot_projects][:limit].to_i.positive? ? [(@usage_stats[:screenshot_projects][:current].to_f * 100 / @usage_stats[:screenshot_projects][:limit]).round, 100].min : 0 %>
+<% storage_pct = @usage_stats[:media_storage][:limit].to_i.positive? ? [(@usage_stats[:media_storage][:current].to_f * 100 / @usage_stats[:media_storage][:limit]).round, 100].min : 0 %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%# ───────── Header ───────── %>
+  <header class="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div class="flex items-start gap-3 sm:gap-4 min-w-0">
+      <div class="avatar avatar-placeholder shrink-0">
+        <div class="bg-primary text-primary-content rounded-xl sm:rounded-2xl w-11 h-11 sm:w-14 sm:h-14 text-lg sm:text-xl font-bold flex items-center justify-center">
+          <%= @organization.name.to_s.first&.upcase || "?" %>
+        </div>
+      </div>
+      <div class="min-w-0">
+        <nav class="text-xs text-base-content/50 mb-1" aria-label="Breadcrumb">
+          <%= link_to "Organizations", organizations_path, class: "hover:text-base-content" %> / Settings
+        </nav>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="text-xl sm:text-2xl font-bold tracking-tight truncate"><%= @organization.name %></h1>
+          <% if plan_tier == "free" %>
+            <span class="badge badge-ghost badge-sm"><%= plan_tier.titleize %></span>
+          <% else %>
+            <span class="badge badge-primary badge-sm gap-1">
+              <i class="fa-solid fa-crown" style="font-size: 0.55rem" aria-hidden="true"></i>
+              <%= plan_tier.titleize %>
+            </span>
+          <% end %>
+          <% if @trial_days_remaining %>
+            <span class="badge badge-warning badge-sm gap-1">
+              <i class="fa-solid fa-hourglass-half" style="font-size: 0.55rem" aria-hidden="true"></i>
+              Trial · <%= @trial_days_remaining %>d left
+            </span>
+          <% end %>
+        </div>
+        <p class="text-xs sm:text-sm text-base-content/60 mt-0.5 truncate">
+          <i class="fa-solid fa-user text-base-content/50" aria-hidden="true"></i>
+          Owner: <%= @organization.owner.email %>
+          · Created <%= @organization.created_at.to_date %>
+        </p>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2 flex-shrink-0">
+      <%= link_to switch_organization_path(@organization),
+                  method: :post,
+                  data: { turbo_method: :post },
+                  class: "btn btn-primary btn-xs sm:btn-sm gap-2",
+                  title: "Switch to this organization and open dashboard" do %>
+        <i class="fa-solid fa-gauge" aria-hidden="true"></i>
+        Dashboard
+      <% end %>
+      <%= link_to organization_api_tokens_path(@organization),
+                  class: "btn btn-ghost btn-xs sm:btn-sm gap-2",
+                  title: "Manage API tokens for CLI access" do %>
+        <i class="fa-solid fa-key" aria-hidden="true"></i>
+        API Tokens
+      <% end %>
+    </div>
+  </header>
+
+  <%= render "shared/plan_overage_banner", status: pricing_overage_status(@organization) %>
+  <% if scheduled_change_impact.present? %>
+    <%= render "shared/scheduled_plan_change_banner", impact: scheduled_change_impact, compact: true, current_only: true %>
+  <% end %>
+
+  <%# ───────── Stats strip ───────── %>
+  <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-base-200/60 border border-base-200">
+      <i class="fa-solid fa-users text-base-content/60" aria-hidden="true"></i>
+      <span class="font-semibold"><%= @usage_stats[:seats][:current] %></span>
+      <span class="text-base-content/60"><%= 'member'.pluralize(@usage_stats[:seats][:current]) %></span>
+    </span>
+    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-base-200/60 border border-base-200">
+      <i class="fa-brands fa-apple text-base-content/70" aria-hidden="true"></i>
+      <span class="font-semibold"><%= @ios_creds_count %></span>
+      <span class="text-base-content/60">iOS cred<%= "s" if @ios_creds_count != 1 %></span>
+    </span>
+    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-base-200/60 border border-base-200">
+      <i class="fa-brands fa-android text-green-500" aria-hidden="true"></i>
+      <span class="font-semibold"><%= @android_creds_count %></span>
+      <span class="text-base-content/60">Android cred<%= "s" if @android_creds_count != 1 %></span>
+    </span>
+    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-base-200/60 border border-base-200">
+      <i class="fa-solid fa-mobile-screen text-base-content/60" aria-hidden="true"></i>
+      <span class="font-semibold"><%= @ios_apps_count + @android_apps_count %></span>
+      <span class="text-base-content/60"><%= 'app'.pluralize(@ios_apps_count + @android_apps_count) %></span>
+    </span>
+  </div>
+
+  <%# ───────── Row 1: Members + Credentials ───────── %>
+  <div class="grid gap-4 sm:gap-6 lg:grid-cols-2">
+
+    <%# Members card %>
+    <article class="card bg-base-100 border border-base-200 shadow-md overflow-hidden" aria-labelledby="members-heading">
+      <div class="card-body p-3 sm:p-5">
+        <header class="flex items-center justify-between gap-2 mb-3 sm:mb-4">
+          <div class="min-w-0">
+            <h2 id="members-heading" class="font-bold text-base sm:text-lg">Team Members</h2>
+            <p class="text-[10px] sm:text-xs text-base-content/50">
+              <%= @usage_stats[:seats][:current] %> of <%= @usage_stats[:seats][:limit] %> <%= 'seat'.pluralize(@usage_stats[:seats][:limit]) %>
+            </p>
+          </div>
+          <% if can_invite_members %>
+            <button type="button"
+                    class="btn btn-primary btn-xs sm:btn-sm gap-2"
+                    data-controller="modal"
+                    data-action="click->modal#open"
+                    data-modal-target-value="invite_member_modal"
+                    title="Invite a new team member">
+              <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
+              Invite
+            </button>
+          <% end %>
+        </header>
+
+        <div class="space-y-2">
+          <% @organization.memberships.includes(:user).each do |m| %>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center p-3 rounded-xl hover:bg-base-200/50 transition-colors">
+              <div class="flex items-center gap-3 flex-1 min-w-0">
+                <% if m.user.avatar_url.present? %>
+                  <div class="avatar flex-shrink-0">
+                    <div class="w-9 rounded-full">
+                      <%= image_tag m.user.avatar_url, alt: "", class: "object-cover" %>
+                    </div>
+                  </div>
+                <% else %>
+                  <div class="avatar avatar-placeholder flex-shrink-0">
+                    <div class="bg-base-300 text-base-content/70 rounded-full w-9">
+                      <span class="text-sm"><%= m.user.email.first.upcase %></span>
+                    </div>
+                  </div>
+                <% end %>
+
+                <div class="min-w-0">
+                  <p class="font-medium text-sm truncate"><%= m.user.name.presence || m.user.email %></p>
+                  <% if m.user.name.present? %>
+                    <p class="text-xs text-base-content/50 truncate"><%= m.user.email %></p>
+                  <% end %>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 flex-shrink-0 pl-12 sm:pl-0">
+                <% if m.user_id == @organization.owner_id %>
+                  <span class="badge badge-primary badge-sm">Owner</span>
+                <% elsif can_manage_members %>
+                  <%= form_with model: [@organization, m], method: :patch, class: "flex items-center gap-2" do |f| %>
+                    <%= render "shared/custom_select", name: "membership[role]", options: Membership.roles.keys, selected: m.role, size: "xs", width: "w-24", auto_submit: true %>
+                    <noscript><%= f.submit "Save", class: "btn btn-xs" %></noscript>
+                  <% end %>
+                  <%= button_to organization_membership_path(@organization, m),
+                                method: :delete,
+                                class: "btn btn-ghost btn-xs text-error",
+                                title: "Remove member",
+                                data: { turbo_confirm: "Remove #{m.user.email} from this organization?" } do %>
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                  <% end %>
+                <% else %>
+                  <span class="badge badge-ghost badge-sm"><%= m.role.humanize %></span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @pending_invitations.any? %>
+          <div class="divider text-xs text-base-content/50">Pending (<%= @pending_invitations.count %>)</div>
+          <div class="space-y-2">
+            <% @pending_invitations.each do |inv| %>
+              <div class="flex items-center justify-between text-sm p-2 rounded-lg bg-base-200/50">
+                <div class="min-w-0">
+                  <p class="font-medium truncate text-xs"><%= inv.email %></p>
+                  <p class="text-xs text-base-content/50">Expires <%= time_ago_in_words(inv.expires_at) %></p>
+                </div>
+                <%= button_to organization_invitation_path(inv),
+                              method: :delete,
+                              class: "btn btn-ghost btn-xs",
+                              title: "Cancel invitation" do %>
+                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </article>
+
+    <%# Credentials card (tabbed iOS / Android) %>
+    <% if can_manage_credentials %>
+      <article class="card bg-base-100 border border-base-200 shadow-md overflow-hidden" aria-labelledby="credentials-heading">
+        <div class="card-body p-3 sm:p-5">
+          <header class="flex items-center justify-between gap-2 mb-3 sm:mb-4">
+            <div class="min-w-0">
+              <h2 id="credentials-heading" class="font-bold text-base sm:text-lg">Store Credentials</h2>
+              <p class="text-[10px] sm:text-xs text-base-content/50">iOS &amp; Android signing and publishing keys</p>
+            </div>
+          </header>
+
+          <div role="tablist" class="tabs tabs-border">
+            <%# iOS tab %>
+            <input type="radio" name="creds_tabs" role="tab" class="tab" aria-label="iOS" checked="checked" />
+            <div role="tabpanel" class="tab-content pt-4 space-y-3">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 text-xs text-base-content/60">
+                  <i class="fa-brands fa-apple" aria-hidden="true"></i>
+                  <span><%= @ios_creds_count %> <%= 'credential'.pluralize(@ios_creds_count) %></span>
+                </div>
+                <button type="button"
+                        class="btn btn-primary btn-xs gap-2"
+                        data-controller="modal"
+                        data-action="click->modal#open"
+                        data-modal-target-value="add_ios_credential_modal">
+                  <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                  Add iOS credential
+                </button>
+              </div>
+
+              <% if creds.any? %>
+                <div class="space-y-2">
+                  <% creds.order(active: :desc, created_at: :desc).each do |c| %>
+                    <div class="p-2 sm:p-3 rounded-xl border border-base-200 <%= c.active? ? 'bg-success/5 border-success/20' : 'bg-base-200/30' %>">
+                      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="font-medium truncate text-xs sm:text-sm"><%= c.name %></span>
+                          <% if c.active? %>
+                            <span class="badge badge-success badge-xs">Active</span>
+                          <% end %>
+                          <% if c.last_sync_status == 'error' %>
+                            <span class="badge badge-error badge-xs">Error</span>
+                          <% end %>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                          <% unless c.active? %>
+                            <%= button_to activate_organization_app_store_connect_credential_path(@organization, c),
+                                          method: :post,
+                                          class: "btn btn-ghost btn-xs",
+                                          title: "Set as active credential" do %>
+                              <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <% end %>
+                          <% end %>
+                          <%= button_to test_organization_app_store_connect_credential_path(@organization, c),
+                                        method: :post,
+                                        class: "btn btn-ghost btn-xs",
+                                        title: "Test connection" do %>
+                            <i class="fa-solid fa-plug" aria-hidden="true"></i>
+                          <% end %>
+                          <%= button_to organization_app_store_connect_credential_path(@organization, c),
+                                        method: :delete,
+                                        class: "btn btn-ghost btn-xs text-error",
+                                        title: "Remove credential",
+                                        data: { turbo_confirm: "Remove this credential?" } do %>
+                            <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                          <% end %>
+                        </div>
+                      </div>
+                      <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-base-content/60">
+                        <span>Key: <%= mask_middle(c.key_id, show_start: 0, show_end: 4) %></span>
+                        <% if c.team_id.present? %>
+                          <span>Team: <%= c.team_id %></span>
+                        <% end %>
+                        <span>Synced: <%= c.last_synced_at ? time_ago_in_words(c.last_synced_at) + " ago" : "never" %></span>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <div class="py-6 text-center rounded-xl border border-dashed border-base-300 bg-base-200/30">
+                  <i class="fa-brands fa-apple text-2xl text-base-content/30 mb-2" aria-hidden="true"></i>
+                  <p class="text-sm font-medium text-base-content/70">No iOS credentials yet</p>
+                  <p class="text-xs text-base-content/50 mt-1">Add an App Store Connect API key to publish to the App Store.</p>
+                </div>
+              <% end %>
+            </div>
+
+            <%# Android tab %>
+            <input type="radio" name="creds_tabs" role="tab" class="tab" aria-label="Android" />
+            <div role="tabpanel" class="tab-content pt-4 space-y-3">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 text-xs text-base-content/60">
+                  <i class="fa-brands fa-android text-green-500" aria-hidden="true"></i>
+                  <span><%= @android_creds_count %> <%= 'credential'.pluralize(@android_creds_count) %></span>
+                </div>
+                <button type="button"
+                        class="btn btn-primary btn-xs gap-2"
+                        data-controller="modal"
+                        data-action="click->modal#open"
+                        data-modal-target-value="add_android_credential_modal">
+                  <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                  Add Android credential
+                </button>
+              </div>
+
+              <% if gcreds.any? %>
+                <div class="space-y-2">
+                  <% gcreds.order(active: :desc, created_at: :desc).each do |c| %>
+                    <div class="p-2 sm:p-3 rounded-xl border border-base-200 <%= c.active? ? 'bg-success/5 border-success/20' : 'bg-base-200/30' %>">
+                      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="font-medium truncate text-xs sm:text-sm"><%= c.name %></span>
+                          <% if c.active? %>
+                            <span class="badge badge-success badge-xs">Active</span>
+                          <% end %>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                          <% unless c.active? %>
+                            <%= button_to activate_organization_google_play_credential_path(@organization, c),
+                                          method: :post,
+                                          class: "btn btn-ghost btn-xs",
+                                          title: "Set as active credential" do %>
+                              <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <% end %>
+                          <% end %>
+                          <%= button_to test_organization_google_play_credential_path(@organization, c),
+                                        method: :post,
+                                        class: "btn btn-ghost btn-xs",
+                                        title: "Test connection" do %>
+                            <i class="fa-solid fa-plug" aria-hidden="true"></i>
+                          <% end %>
+                          <%= button_to organization_google_play_credential_path(@organization, c),
+                                        method: :delete,
+                                        class: "btn btn-ghost btn-xs text-error",
+                                        title: "Remove credential",
+                                        data: { turbo_confirm: "Remove this credential?" } do %>
+                            <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                          <% end %>
+                        </div>
+                      </div>
+                      <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-base-content/60">
+                        <span>Client: <%= c.client_email || "(unknown)" %></span>
+                        <% if c.developer_account_id.present? %>
+                          <span>Dev ID: <%= c.developer_account_id %></span>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <div class="py-6 text-center rounded-xl border border-dashed border-base-300 bg-base-200/30">
+                  <i class="fa-brands fa-android text-2xl text-base-content/30 mb-2" aria-hidden="true"></i>
+                  <p class="text-sm font-medium text-base-content/70">No Android credentials yet</p>
+                  <p class="text-xs text-base-content/50 mt-1">Add a Google Play service account to publish to the Play Store.</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </article>
+    <% end %>
+  </div>
+
+  <%# ───────── Row 2: Plan & Usage ───────── %>
+  <article class="card bg-base-100 border border-base-200 shadow-md overflow-hidden" aria-labelledby="plan-usage-heading">
+    <div class="card-body p-3 sm:p-5">
+      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <div class="min-w-0">
+          <h2 id="plan-usage-heading" class="font-bold text-base sm:text-lg flex items-center gap-2">
+            <i class="fa-solid fa-gauge-high text-primary" aria-hidden="true"></i>
+            Plan &amp; Usage
+          </h2>
+          <p class="text-[10px] sm:text-xs text-base-content/50">
+            Current entitlements for this organization.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <% if plan_tier == "free" %>
+            <span class="badge badge-ghost"><%= plan_tier.titleize %></span>
+          <% else %>
+            <span class="badge badge-primary gap-1">
+              <i class="fa-solid fa-crown" style="font-size: 0.55rem" aria-hidden="true"></i>
+              <%= plan_tier.titleize %>
+            </span>
+          <% end %>
+          <% if @trial_days_remaining %>
+            <span class="badge badge-warning gap-1">
+              <i class="fa-solid fa-hourglass-half" style="font-size: 0.55rem" aria-hidden="true"></i>
+              Trial · <%= @trial_days_remaining %>d left
+            </span>
+          <% end %>
+          <%= link_to pricing_path, class: "btn btn-ghost btn-xs sm:btn-sm gap-2" do %>
+            <i class="fa-solid fa-credit-card" aria-hidden="true"></i>
+            <%= plan_tier == "team" ? "Manage billing" : "Upgrade" %>
+          <% end %>
+        </div>
+      </header>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        <%# Seats bar %>
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-medium flex items-center gap-1.5">
+              <i class="fa-solid fa-users text-base-content/50" aria-hidden="true"></i>
+              Seats
+            </span>
+            <span class="text-base-content/60">
+              <%= @usage_stats[:seats][:current] %> / <%= @usage_stats[:seats][:limit] %>
+            </span>
+          </div>
+          <progress class="progress <%= seat_pct >= 90 ? 'progress-warning' : 'progress-primary' %> w-full h-1.5"
+                    value="<%= seat_pct %>" max="100"></progress>
+        </div>
+
+        <%# Screenshot projects bar %>
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-medium flex items-center gap-1.5">
+              <i class="fa-solid fa-images text-base-content/50" aria-hidden="true"></i>
+              Screenshot projects
+            </span>
+            <span class="text-base-content/60">
+              <%= @usage_stats[:screenshot_projects][:current] %> / <%= @usage_stats[:screenshot_projects][:limit] %>
+            </span>
+          </div>
+          <progress class="progress <%= proj_pct >= 90 ? 'progress-warning' : 'progress-primary' %> w-full h-1.5"
+                    value="<%= proj_pct %>" max="100"></progress>
+        </div>
+
+        <%# Media storage bar %>
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <span class="font-medium flex items-center gap-1.5">
+              <i class="fa-solid fa-database text-base-content/50" aria-hidden="true"></i>
+              Media storage
+            </span>
+            <span class="text-base-content/60">
+              <%= number_to_human_size(@usage_stats[:media_storage][:current]) %>
+              / <%= number_to_human_size(@usage_stats[:media_storage][:limit]) %>
+            </span>
+          </div>
+          <progress class="progress <%= storage_pct >= 90 ? 'progress-warning' : 'progress-primary' %> w-full h-1.5"
+                    value="<%= storage_pct %>" max="100"></progress>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <%# ───────── Row 3: Brand Kit ───────── %>
+  <% if can_manage_credentials %>
+    <article id="brand-kit" class="card bg-base-100 border border-base-200 shadow-md overflow-visible" aria-labelledby="brand-heading">
+      <div class="card-body p-3 sm:p-5">
+        <header class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
+          <div class="min-w-0">
+            <h2 id="brand-heading" class="font-bold text-base sm:text-lg flex items-center gap-2">
+              <i class="fa-solid fa-swatchbook text-violet-500" aria-hidden="true"></i>
+              Brand Kit
+            </h2>
+            <p class="text-xs text-base-content/50 mt-0.5">Organization-wide colors and fonts applied to screenshot projects.</p>
+          </div>
+        </header>
+
+        <%= form_with model: @organization, method: :patch, class: "space-y-4" do |f| %>
+          <% bs = @organization.brand_settings || {} %>
+
+          <div class="grid gap-3 grid-cols-2 md:grid-cols-5">
+            <div class="form-control">
+              <label class="label py-1"><span class="label-text text-xs">Primary</span></label>
+              <div class="flex items-center gap-2" data-controller="color-sync">
+                <input type="color" name="organization[brand_settings][primary_color]" value="<%= bs['primary_color'] || '#6366F1' %>" class="w-8 h-8 rounded border border-base-200 cursor-pointer shrink-0" data-action="input->color-sync#sync">
+                <input type="text" value="<%= bs['primary_color'] || '#6366F1' %>" class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0" data-action="input->color-sync#sync">
+              </div>
+            </div>
+            <div class="form-control">
+              <label class="label py-1"><span class="label-text text-xs">Secondary</span></label>
+              <div class="flex items-center gap-2" data-controller="color-sync">
+                <input type="color" name="organization[brand_settings][secondary_color]" value="<%= bs['secondary_color'] || '#8B5CF6' %>" class="w-8 h-8 rounded border border-base-200 cursor-pointer shrink-0" data-action="input->color-sync#sync">
+                <input type="text" value="<%= bs['secondary_color'] || '#8B5CF6' %>" class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0" data-action="input->color-sync#sync">
+              </div>
+            </div>
+            <div class="form-control">
+              <label class="label py-1"><span class="label-text text-xs">Text</span></label>
+              <div class="flex items-center gap-2" data-controller="color-sync">
+                <input type="color" name="organization[brand_settings][text_color]" value="<%= bs['text_color'] || '#FFFFFF' %>" class="w-8 h-8 rounded border border-base-200 cursor-pointer shrink-0" data-action="input->color-sync#sync">
+                <input type="text" value="<%= bs['text_color'] || '#FFFFFF' %>" class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0" data-action="input->color-sync#sync">
+              </div>
+            </div>
+            <div class="form-control">
+              <label class="label py-1"><span class="label-text text-xs">Background</span></label>
+              <div class="flex items-center gap-2" data-controller="color-sync">
+                <input type="color" name="organization[brand_settings][background_color]" value="<%= bs['background_color'] || '#000000' %>" class="w-8 h-8 rounded border border-base-200 cursor-pointer shrink-0" data-action="input->color-sync#sync">
+                <input type="text" value="<%= bs['background_color'] || '#000000' %>" class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0" data-action="input->color-sync#sync">
+              </div>
+            </div>
+            <div class="form-control">
+              <label class="label py-1"><span class="label-text text-xs">Accent</span></label>
+              <div class="flex items-center gap-2" data-controller="color-sync">
+                <input type="color" name="organization[brand_settings][accent_color]" value="<%= bs['accent_color'] || '#EC4899' %>" class="w-8 h-8 rounded border border-base-200 cursor-pointer shrink-0" data-action="input->color-sync#sync">
+                <input type="text" value="<%= bs['accent_color'] || '#EC4899' %>" class="input input-bordered input-xs flex-1 font-mono text-[10px] min-w-0" data-action="input->color-sync#sync">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <div class="form-control">
+              <label class="label py-1"><span class="label-text text-xs">Heading Font</span></label>
+              <%= render "shared/custom_select",
+                         name: "organization[brand_settings][heading_font]",
+                         options: ScreenshotProject::GOOGLE_FONTS.map { |f| [f, f] },
+                         selected: bs['heading_font'] || "Inter",
+                         size: "xs" %>
+            </div>
+            <div class="form-control">
+              <label class="label py-1"><span class="label-text text-xs">Body Font</span></label>
+              <%= render "shared/custom_select",
+                         name: "organization[brand_settings][body_font]",
+                         options: ScreenshotProject::GOOGLE_FONTS.map { |f| [f, f] },
+                         selected: bs['body_font'] || "Inter",
+                         size: "xs" %>
+            </div>
+            <%= f.submit "Save Brand Kit", class: "btn btn-primary btn-sm" %>
+          </div>
+        <% end %>
+      </div>
+    </article>
+  <% end %>
+
+  <%# ───────── Row 4: Security & Integrations ───────── %>
+  <article class="card bg-base-100 border border-base-200 shadow-md overflow-hidden" aria-labelledby="security-heading">
+    <div class="card-body p-3 sm:p-5">
+      <header class="mb-4">
+        <h2 id="security-heading" class="font-bold text-base sm:text-lg flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-primary" aria-hidden="true"></i>
+          Security &amp; Integrations
+        </h2>
+        <p class="text-[10px] sm:text-xs text-base-content/50">Org-wide identity, audit, automation, and billing.</p>
+      </header>
+
+      <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+        <%# SSO tile %>
+        <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-200/30">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <i class="fa-solid fa-id-card-clip text-base-content/70" aria-hidden="true"></i>
+              <span class="font-semibold text-sm">SSO</span>
+            </div>
+            <% if !@sso_enabled_for_tier %>
+              <span class="badge badge-outline badge-xs gap-1">
+                <i class="fa-solid fa-crown" style="font-size: 0.5rem" aria-hidden="true"></i>
+                Team
+              </span>
+            <% elsif @sso_configuration_present %>
+              <span class="badge badge-success badge-xs">Configured</span>
+            <% else %>
+              <span class="badge badge-ghost badge-xs">Not set</span>
+            <% end %>
+          </div>
+          <p class="text-xs text-base-content/60 mb-3">
+            <% if !@sso_enabled_for_tier %>
+              SAML 2.0 Single Sign-On is available on the Team plan.
+            <% elsif @sso_configuration_present %>
+              SAML 2.0 is configured with your identity provider.
+            <% else %>
+              Connect Okta, Microsoft Entra, Google Workspace, or any SAML 2.0 IdP.
+            <% end %>
+          </p>
+          <%= link_to organization_sso_configuration_path(@organization),
+                      class: "btn btn-ghost btn-xs gap-2 w-full justify-start" do %>
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            <%= @sso_configuration_present ? "Manage SSO" : "Configure SSO" %>
+          <% end %>
+        </div>
+
+        <%# Audit Log tile %>
+        <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-200/30">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <i class="fa-solid fa-clipboard-list text-base-content/70" aria-hidden="true"></i>
+              <span class="font-semibold text-sm">Audit Log</span>
+            </div>
+            <% if !@audit_log_enabled_for_tier %>
+              <span class="badge badge-outline badge-xs gap-1">
+                <i class="fa-solid fa-crown" style="font-size: 0.5rem" aria-hidden="true"></i>
+                Team
+              </span>
+            <% elsif @last_audit_event_at %>
+              <span class="badge badge-ghost badge-xs"><%= time_ago_in_words(@last_audit_event_at) %> ago</span>
+            <% else %>
+              <span class="badge badge-ghost badge-xs">No events</span>
+            <% end %>
+          </div>
+          <p class="text-xs text-base-content/60 mb-3">
+            <% if !@audit_log_enabled_for_tier %>
+              Tamper-resistant audit trail for sensitive actions. Team plan.
+            <% else %>
+              Track sensitive actions across your organization. 365-day retention, CSV export.
+            <% end %>
+          </p>
+          <%= link_to organization_audit_events_path(@organization),
+                      class: "btn btn-ghost btn-xs gap-2 w-full justify-start" do %>
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            View audit log
+          <% end %>
+        </div>
+
+        <%# API Tokens tile %>
+        <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-200/30">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <i class="fa-solid fa-key text-base-content/70" aria-hidden="true"></i>
+              <span class="font-semibold text-sm">API Tokens</span>
+            </div>
+            <span class="badge badge-ghost badge-xs">
+              <%= @api_tokens_count %> <%= 'token'.pluralize(@api_tokens_count) %>
+            </span>
+          </div>
+          <p class="text-xs text-base-content/60 mb-3">
+            Programmatic access for CLI, CI/CD, and automation. Read, write, and admin scopes.
+          </p>
+          <%= link_to organization_api_tokens_path(@organization),
+                      class: "btn btn-ghost btn-xs gap-2 w-full justify-start" do %>
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            Manage tokens
+          <% end %>
+        </div>
+
+        <%# Subscription tile %>
+        <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-200/30">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <i class="fa-solid fa-credit-card text-base-content/70" aria-hidden="true"></i>
+              <span class="font-semibold text-sm">Subscription</span>
+            </div>
+            <% if @owner_billing_subscription&.status_active? %>
+              <span class="badge badge-success badge-xs">Active</span>
+            <% elsif @trial_days_remaining %>
+              <span class="badge badge-warning badge-xs">Trial</span>
+            <% else %>
+              <span class="badge badge-ghost badge-xs">Free</span>
+            <% end %>
+          </div>
+          <p class="text-xs text-base-content/60 mb-3">
+            <% if @owner_billing_subscription&.status_active? && @owner_billing_subscription.current_period_ends_at %>
+              Renews <%= @owner_billing_subscription.current_period_ends_at.to_date %>.
+            <% elsif @trial_days_remaining %>
+              <%= @trial_days_remaining %> <%= 'day'.pluralize(@trial_days_remaining) %> left on your Pro trial.
+            <% else %>
+              You're on the Free plan. Upgrade to unlock store uploads and more.
+            <% end %>
+          </p>
+          <%= link_to pricing_path, class: "btn btn-ghost btn-xs gap-2 w-full justify-start" do %>
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            <%= plan_tier == "free" ? "See plans" : "Manage billing" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <%# ───────── Row 4b: BYOK (Bring Your Own Key) ─────────
+       BYOK is a Team-tier, admin/owner-only feature.
+       - Team admin/owner (`manage_byok?` true) → full manage panel
+         (Verify / Save / Clear).
+       - Free/Pro admin/owner → upgrade prompt (the controller renders the
+         Team-feature paywall on the actual routes; this is the dashboard
+         teaser, mirroring how the SSO/Audit Log tiles show a Team badge).
+       - Developers/viewers → nothing (gated by the admin/owner check). %>
+  <% if policy(@organization).manage_byok? %>
+    <% byok_configured = @organization.byok_kms_key_arn.present? %>
+    <% mysigner_account_id = mysigner_aws_account_id %>
+    <article class="card bg-base-100 border border-base-200 shadow-md overflow-hidden" aria-labelledby="byok-heading">
+      <div class="card-body p-3 sm:p-5">
+        <header class="mb-4 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 id="byok-heading" class="font-bold text-base sm:text-lg flex items-center gap-2">
+              <i class="fa-solid fa-key text-primary" aria-hidden="true"></i>
+              Bring Your Own Key (BYOK)
+            </h2>
+            <p class="text-[10px] sm:text-xs text-base-content/50">
+              Wrap your signing-credential DEKs with a CMK in your own AWS account. Revoke MySigner's access at any time from your AWS key policy.
+            </p>
+          </div>
+          <% if byok_configured %>
+            <span class="badge badge-success badge-sm">Configured</span>
+          <% else %>
+            <span class="badge badge-ghost badge-sm">Not set</span>
+          <% end %>
+        </header>
+
+        <%# Read-only details the customer pastes into their key policy %>
+        <div class="grid gap-3 sm:grid-cols-2 mb-4">
+          <div class="p-3 rounded-md border border-base-200 bg-base-200/30">
+            <div class="text-[10px] uppercase tracking-wider text-base-content/50 mb-1">Your MySigner organization ID</div>
+            <div class="font-mono text-xs break-all"><%= @organization.id %></div>
+          </div>
+          <div class="p-3 rounded-md border border-base-200 bg-base-200/30">
+            <div class="text-[10px] uppercase tracking-wider text-base-content/50 mb-1">MySigner AWS account ID</div>
+            <div class="font-mono text-xs break-all">
+              <%= mysigner_account_id || "Contact support — account ID not available in this environment." %>
+            </div>
+          </div>
+        </div>
+
+        <% if byok_configured %>
+          <div class="p-3 rounded-md border border-success/30 bg-success/5 mb-4">
+            <div class="text-[10px] uppercase tracking-wider text-success/80 mb-1">Active CMK ARN</div>
+            <div class="font-mono text-xs break-all text-success/90"><%= @organization.byok_kms_key_arn %></div>
+          </div>
+        <% end %>
+
+        <%# Save form. The Verify button POSTs to the verify endpoint via a
+            small inline script so we can show the result without leaving the
+            page. Save submits the form normally (PATCH) and reloads. Clear
+            is a separate form with a confirm prompt. %>
+        <%= form_with url: organization_update_byok_settings_path(@organization),
+                       method: :patch,
+                       data: { controller: "byok-settings", "byok-settings-verify-url-value": organization_verify_byok_settings_path(@organization) } do |f| %>
+          <label class="block">
+            <span class="text-[10px] uppercase tracking-wider text-base-content/50">CMK ARN</span>
+            <input type="text"
+                   name="byok_kms_key_arn"
+                   value="<%= @organization.byok_kms_key_arn %>"
+                   placeholder="arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000"
+                   class="input input-bordered w-full font-mono text-xs mt-1"
+                   data-byok-settings-target="arn"
+                   autocomplete="off"
+                   spellcheck="false" />
+          </label>
+          <div data-byok-settings-target="result" class="mt-2 text-xs hidden"></div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button type="button"
+                    class="btn btn-ghost btn-sm gap-2"
+                    data-action="click->byok-settings#verify">
+              <i class="fa-solid fa-vial" aria-hidden="true"></i>
+              Verify
+            </button>
+            <%= f.submit "Save", class: "btn btn-primary btn-sm gap-2" %>
+          </div>
+        <% end %>
+
+        <% if byok_configured %>
+          <div class="mt-3 pt-3 border-t border-base-200">
+            <%= form_with url: organization_update_byok_settings_path(@organization), method: :patch, local: true,
+                          data: { turbo_confirm: "Clear the BYOK CMK ARN? Your existing credential envelopes will be re-wrapped under the MySigner default CMK before the ARN is removed." } do |f| %>
+              <input type="hidden" name="byok_kms_key_arn" value="" />
+              <%= f.submit "Clear BYOK", class: "btn btn-ghost btn-sm text-error gap-2" %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </article>
+  <% elsif policy(@organization).update? %>
+    <%# Free/Pro admin/owner: BYOK is gated behind the Team tier. Show an
+        upgrade teaser instead of the manage panel — the actual BYOK routes
+        render the shared Team-feature paywall. %>
+    <article class="card bg-base-100 border border-base-200 shadow-md overflow-hidden" aria-labelledby="byok-heading">
+      <div class="card-body p-3 sm:p-5">
+        <header class="mb-2 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 id="byok-heading" class="font-bold text-base sm:text-lg flex items-center gap-2">
+              <i class="fa-solid fa-key text-primary" aria-hidden="true"></i>
+              Bring Your Own Key (BYOK)
+            </h2>
+            <p class="text-[10px] sm:text-xs text-base-content/50">
+              Wrap your signing-credential DEKs with a CMK in your own AWS account. Revoke MySigner's access at any time from your AWS key policy.
+            </p>
+          </div>
+          <span class="badge badge-outline badge-sm gap-1">
+            <i class="fa-solid fa-crown" style="font-size: 0.5rem" aria-hidden="true"></i>
+            Team
+          </span>
+        </header>
+        <p class="text-xs text-base-content/60 mb-3">
+          Bring Your Own Key is available on the Team plan.
+        </p>
+        <%= link_to pricing_path, class: "btn btn-primary btn-sm gap-2" do %>
+          <i class="fa-solid fa-arrow-up-right-dots" aria-hidden="true"></i>
+          Upgrade to Team
+        <% end %>
+      </div>
+    </article>
+  <% end %>
+
+  <%# ───────── Row 5: Organization Info + Danger Zone ───────── %>
+  <div class="grid gap-4 sm:gap-6 sm:grid-cols-2">
+    <%# Organization Info %>
+    <article class="card bg-base-100 border border-base-200 shadow-md overflow-hidden" aria-labelledby="info-heading">
+      <div class="card-body p-3 sm:p-5">
+        <h2 id="info-heading" class="font-bold text-base sm:text-lg mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-base-content/60" aria-hidden="true"></i>
+          Organization Info
+        </h2>
+        <dl class="space-y-2 text-sm">
+          <div class="flex justify-between gap-2">
+            <dt class="text-base-content/50 flex-shrink-0">ID</dt>
+            <dd class="font-mono text-xs truncate"><%= @organization.id %></dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-base-content/50">Created</dt>
+            <dd><%= @organization.created_at.to_date %></dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-base-content/50">Plan</dt>
+            <dd><%= plan_tier.titleize %></dd>
+          </div>
+        </dl>
+      </div>
+    </article>
+
+    <%# Danger Zone %>
+    <% if policy(@organization).destroy? %>
+      <article class="card bg-base-100 border border-error/30 shadow-md overflow-hidden" aria-labelledby="danger-heading">
+        <div class="card-body p-3 sm:p-5">
+          <h2 id="danger-heading" class="font-bold text-base sm:text-lg mb-1 flex items-center gap-2 text-error">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            Danger Zone
+          </h2>
+          <p class="text-xs text-base-content/60 mb-4">
+            Permanently remove this organization and all its credentials, provisioning data, and audit history. This cannot be undone.
+          </p>
+          <% modal_id = dom_id(@organization, :delete_modal) %>
+          <button type="button"
+                  class="btn btn-error btn-outline btn-sm w-full gap-2"
+                  data-controller="modal"
+                  data-action="click->modal#open"
+                  data-modal-target-value="<%= modal_id %>"
+                  title="Permanently delete this organization">
+            <i class="fa-solid fa-trash" aria-hidden="true"></i>
+            Delete Organization
+          </button>
+        </div>
+      </article>
+    <% end %>
+  </div>
+
+  <%# ───────── Modals ───────── %>
+  <% if can_invite_members %>
+    <dialog id="invite_member_modal" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box">
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Close">✕</button>
+        </form>
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-primary" aria-hidden="true"></i>
+          Invite Member
+        </h3>
+        <%= render "invite_member_form",
+                   organization: @organization,
+                   invite_member_gate: @invite_member_gate,
+                   can_manage_members: can_manage_members %>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+  <% end %>
+
+  <% if can_manage_credentials %>
+    <dialog id="add_ios_credential_modal" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box max-w-2xl">
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Close">✕</button>
+        </form>
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+          <i class="fa-brands fa-apple" aria-hidden="true"></i>
+          Add App Store Connect Credential
+        </h3>
+        <%= render "app_store_connect_form", organization: @organization %>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <dialog id="add_android_credential_modal" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box max-w-2xl">
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Close">✕</button>
+        </form>
+        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+          <i class="fa-brands fa-android text-green-500" aria-hidden="true"></i>
+          Add Google Play Credential
+        </h3>
+        <%= render "google_play_form", organization: @organization %>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+  <% end %>
+
+  <% if policy(@organization).destroy? %>
+    <% modal_id = dom_id(@organization, :delete_modal) %>
+    <dialog id="<%= modal_id %>" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">Delete <%= @organization.name %>?</h3>
+        <p class="py-4 text-base-content/70">
+          This will permanently remove all credentials, provisioning data, and audit history. This cannot be undone.
+        </p>
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn btn-ghost">Cancel</button>
+          </form>
+          <%= button_to organization_path(@organization),
+                        method: :delete,
+                        class: "btn btn-error gap-2" do %>
+            <i class="fa-solid fa-trash" aria-hidden="true"></i>
+            Delete
+          <% end %>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+  <% end %>
+</section>

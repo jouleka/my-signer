@@ -1,0 +1,71 @@
+<%#
+  Partial: pricing/trial_end_modal
+  Rendered from show.html.erb when the viewer is on an active 14-day
+  reverse trial (no Paddle subscription, plan_tier=pro, trial_ends_at
+  in the future). Trial users land on the Free card's "End trial"
+  button -> openEndTrial Stimulus action -> this modal.
+
+  This is intentionally simpler than the cancellation modal (no exit
+  survey, no Paddle round-trip) because trial-end carries no billing
+  consequences. The form posts to billing/trials#destroy which drops
+  the user to Free immediately.
+%>
+<% if current_user&.on_active_trial? %>
+  <dialog id="trial-end-modal" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box w-full max-w-md border border-base-content/[0.08] bg-base-100 p-0 overflow-hidden rounded-[0.875rem]">
+      <div class="px-6 pt-6 pb-5 sm:px-8 sm:pt-8 border-b border-base-content/[0.06]">
+        <button type="button"
+                class="absolute top-4 right-4 inline-flex items-center justify-center w-7 h-7 rounded-md text-base-content/40 hover:text-base-content/80 hover:bg-base-content/[0.06] transition-colors"
+                data-controller="modal"
+                data-action="click->modal#close"
+                data-modal-target-value="trial-end-modal"
+                aria-label="Close">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+        <h2 class="text-lg font-semibold text-base-content">End your Pro trial?</h2>
+        <p class="text-sm text-base-content/70 mt-2 leading-relaxed">
+          You'll drop to the Free plan right now. You'll keep your account, your apps, and your data — Pro-only features (store uploads, custom product pages, larger keyword tracking, &amp; more) will lock until you start a paid subscription.
+        </p>
+      </div>
+
+      <div class="px-6 py-5 sm:px-8 bg-base-200/30 text-sm text-base-content/75">
+        <ul class="space-y-2.5">
+          <li class="flex items-start gap-2.5">
+            <i class="fa-solid fa-check text-[0.7rem] mt-1.5 text-success" aria-hidden="true"></i>
+            <span>You're not charged — your trial doesn't include any billing.</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <i class="fa-solid fa-check text-[0.7rem] mt-1.5 text-success" aria-hidden="true"></i>
+            <span>You can subscribe to Pro any time from this page.</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <i class="fa-solid fa-circle-info text-[0.7rem] mt-1.5 text-base-content/50" aria-hidden="true"></i>
+            <span>Trials are one-per-account, so reactivating a trial later isn't possible.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-6 py-4 sm:px-8 border-t border-base-content/[0.06]">
+        <button type="button"
+                class="inline-flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-md border border-base-content/15 bg-transparent text-base-content/80 hover:bg-base-content/[0.04] transition"
+                data-controller="modal"
+                data-action="click->modal#close"
+                data-modal-target-value="trial-end-modal">
+          Keep my trial
+        </button>
+        <%= button_to billing_trial_path,
+              method: :delete,
+              form: { data: { turbo: false } },
+              class: "inline-flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2 rounded-md border border-transparent bg-error text-error-content hover:brightness-110 transition cursor-pointer" do %>
+          <i class="fa-solid fa-arrow-down text-xs" aria-hidden="true"></i>
+          End trial &amp; downgrade
+        <% end %>
+      </div>
+    </div>
+
+    <%# daisyUI's <dialog> backdrop close — clicking outside closes %>
+    <form method="dialog" class="modal-backdrop">
+      <button type="submit" aria-label="Close">close</button>
+    </form>
+  </dialog>
+<% end %>

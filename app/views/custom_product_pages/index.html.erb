@@ -1,0 +1,108 @@
+<%= breadcrumbs([
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "Custom Product Pages" }
+]) %>
+
+<section class="flex flex-col gap-6">
+  <%# Header %>
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-[1.375rem] font-extrabold leading-tight tracking-[-0.02em] text-base-content/95">
+        <i class="fa-solid fa-palette text-primary/50 mr-1"></i>
+        Custom Product Pages
+      </h1>
+      <p class="text-xs text-base-content/40 mt-1">Create and manage Custom Product Pages for your iOS apps <span class="<%= platform_badge_classes %> ml-0.5"><i class="fa-brands fa-apple"></i> iOS only</span></p>
+    </div>
+    <% if @entitlements.custom_product_pages_enabled? %>
+      <div class="flex items-center gap-2">
+        <% if @apple_apps.any? %>
+          <% first_cpp = @organization.custom_product_pages.first %>
+          <% if first_cpp %>
+            <%= button_to sync_organization_custom_product_page_path(@organization, first_cpp),
+                method: :post,
+                class: btn_ghost_sm_classes do %>
+              <i class="fa-solid fa-arrows-rotate"></i> Sync from Apple
+            <% end %>
+          <% end %>
+        <% end %>
+        <%= link_to new_organization_custom_product_page_path(@organization),
+            class: btn_primary_sm_classes do %>
+          <i class="fa-solid fa-plus"></i> Create CPP
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% unless @entitlements.custom_product_pages_enabled? %>
+    <%# Free plan upgrade prompt %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <span class="<%= card_title_classes %>">Upgrade to unlock Custom Product Pages</span>
+      </div>
+      <div class="<%= card_body_classes %>">
+        <p class="text-sm text-base-content/60 leading-relaxed mb-4">
+          Custom Product Pages let you create unique App Store product pages for different audiences on iOS.
+          Target specific keywords, demographics, or campaigns with tailored screenshots and messaging.
+          This feature is available for Apple apps only — Android does not yet offer API support for Custom Store Listings.
+          Requires a Pro plan or higher.
+        </p>
+        <%= link_to pricing_path, class: btn_primary_sm_classes do %>
+          <i class="fa-solid fa-arrow-up-right"></i> View Plans
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <% if @apple_apps.empty? %>
+      <%# No apps empty state %>
+      <div class="<%= empty_state_classes %>">
+        <div class="<%= empty_state_icon_classes %>">
+          <i class="fa-brands fa-apple text-2xl"></i>
+        </div>
+        <h2 class="<%= empty_state_title_classes %>">No Apple Apps Found</h2>
+        <p class="<%= empty_state_text_classes %>">
+          Connect your App Store Connect credentials and sync your apps to start creating Custom Product Pages.
+        </p>
+      </div>
+    <% elsif @cpps_by_app.empty? %>
+      <%# No CPPs empty state %>
+      <div class="<%= empty_state_classes %>">
+        <div class="<%= empty_state_icon_classes %>">
+          <i class="fa-solid fa-palette text-2xl"></i>
+        </div>
+        <h2 class="<%= empty_state_title_classes %>">No Custom Product Pages Yet</h2>
+        <p class="<%= empty_state_text_classes %>">
+          Custom Product Pages allow you to create up to 35 targeted App Store experiences per iOS app.
+          Each page can have its own screenshots, promotional text, and keywords.
+          This feature is available for Apple apps only.
+        </p>
+        <%= link_to new_organization_custom_product_page_path(@organization),
+            class: btn_primary_sm_classes do %>
+          <i class="fa-solid fa-plus"></i> Create Your First CPP
+        <% end %>
+      </div>
+    <% else %>
+      <%# CPPs grouped by app %>
+      <% @cpps_by_app.each do |app, cpps| %>
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_header_split_classes %>">
+            <div class="flex items-center gap-2.5">
+              <div class="<%= card_icon_classes %>">
+                <i class="fa-brands fa-apple"></i>
+              </div>
+              <span class="<%= card_title_classes %>"><%= app.name.presence || app.bundle_id %></span>
+              <span class="<%= count_badge_classes %>"><%= cpps.size %></span>
+            </div>
+          </div>
+          <div class="divide-y divide-base-content/[0.04]">
+            <% cpps.each do |cpp| %>
+              <%= render "custom_product_pages/cpp_card", cpp: cpp %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</section>

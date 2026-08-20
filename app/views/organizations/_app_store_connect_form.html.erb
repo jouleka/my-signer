@@ -1,0 +1,66 @@
+<%# App Store Connect credential form with the "where do I find these values"
+    help panel. Rendered inside the Add iOS Credential modal. Requires local:
+    organization. %>
+<details class="mb-4 rounded-lg border border-info/30 bg-info/5">
+  <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-info flex items-center gap-2">
+    <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+    Where do I find these values?
+  </summary>
+  <div class="px-3 pb-3 text-sm space-y-3">
+    <div class="divider my-1"></div>
+    <div>
+      <p class="font-semibold text-xs mb-1">1. Go to App Store Connect</p>
+      <p class="text-xs text-base-content/70">
+        Visit <a href="https://appstoreconnect.apple.com/access/integrations/api" target="_blank" rel="noopener" class="link link-primary">App Store Connect &rarr; Users and Access &rarr; Integrations &rarr; App Store Connect API</a>
+      </p>
+    </div>
+    <div>
+      <p class="font-semibold text-xs mb-1">2. Generate or use an existing key</p>
+      <p class="text-xs text-base-content/70">
+        Click the <strong>+</strong> button to create a new key, or use an existing one. Select <strong>Admin</strong> or <strong>App Manager</strong> access.
+      </p>
+    </div>
+    <div>
+      <p class="font-semibold text-xs mb-1">3. Copy the values</p>
+      <ul class="text-xs text-base-content/70 list-disc list-inside space-y-1">
+        <li><strong>Issuer ID</strong> &mdash; shown at the top of the page</li>
+        <li><strong>Key ID</strong> &mdash; shown in the keys table</li>
+        <li><strong>Private Key (.p8)</strong> &mdash; download when creating the key (only available once!)</li>
+      </ul>
+    </div>
+    <div class="alert alert-warning py-2 text-xs">
+      <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+      <span>The .p8 file can only be downloaded once. Store it securely.</span>
+    </div>
+  </div>
+</details>
+
+<%= form_with url: organization_app_store_connect_credentials_path(organization),
+              scope: :app_store_connect_credential,
+              class: "space-y-3" do |f| %>
+  <div class="grid gap-3 md:grid-cols-2">
+    <div class="form-control">
+      <label class="label py-1"><span class="label-text text-xs">Name</span></label>
+      <%= f.text_field :name, class: "input input-bordered input-sm w-full", placeholder: "e.g. Production Key" %>
+    </div>
+    <div class="form-control">
+      <label class="label py-1"><span class="label-text text-xs">Key ID</span></label>
+      <%= f.text_field :key_id, class: "input input-bordered input-sm w-full" %>
+    </div>
+    <div class="form-control md:col-span-2">
+      <label class="label py-1"><span class="label-text text-xs">Issuer ID</span></label>
+      <%= f.text_field :issuer_id, class: "input input-bordered input-sm w-full" %>
+    </div>
+    <div class="form-control md:col-span-2">
+      <label class="label py-1">
+        <span class="label-text text-xs">Private Key (.p8)</span>
+        <span class="label-text-alt text-warning text-xs">Include headers</span>
+      </label>
+      <%= f.text_area :private_key,
+                      class: "textarea textarea-bordered w-full font-mono text-xs",
+                      rows: 5,
+                      placeholder: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----" %>
+    </div>
+  </div>
+  <%= f.submit "Add Credential", class: "btn btn-primary btn-sm w-full" %>
+<% end %>

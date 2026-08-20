@@ -1,0 +1,54 @@
+<%# Reply form for a single review %>
+<details class="group">
+  <summary class="<%= btn_ghost_sm_classes %> cursor-pointer list-none inline-flex">
+    <i class="fa-solid fa-reply"></i> Reply
+  </summary>
+
+  <div class="mt-3 p-3 rounded-lg border border-base-content/[0.06] bg-base-content/[0.02]"
+       data-controller="review-reply"
+       data-review-reply-max-length-value="350">
+
+    <%= form_with url: reply_organization_review_path(@organization, review), method: :post, class: "flex flex-col gap-2" do |f| %>
+      <%# Template picker %>
+      <% if response_templates.any? %>
+        <div>
+          <label class="<%= label_form_classes %> mb-1">Use Template</label>
+          <select data-review-reply-target="templateSelect"
+                  data-action="change->review-reply#selectTemplate"
+                  class="select select-bordered select-sm w-full">
+            <option value="">Select a template...</option>
+            <% response_templates.each do |template| %>
+              <option value="<%= template.body %>"><%= template.name %> (<%= template.category.humanize %>)</option>
+            <% end %>
+          </select>
+        </div>
+      <% end %>
+
+      <%# Reply textarea %>
+      <div>
+        <label class="<%= label_form_classes %> mb-1">Reply</label>
+        <textarea name="reply_text"
+                  data-review-reply-target="textarea"
+                  data-action="input->review-reply#input"
+                  class="<%= textarea_field_classes %>"
+                  rows="3"
+                  maxlength="350"
+                  placeholder="Write your response (max 350 chars)..."></textarea>
+        <div class="flex items-center justify-between mt-1">
+          <span class="<%= hint_text_classes %>">Google Play limits replies to 350 characters</span>
+          <span data-review-reply-target="counter" class="text-xs tabular-nums text-base-content/40">0/350</span>
+        </div>
+      </div>
+
+      <%# Actions %>
+      <div class="flex items-center gap-2">
+        <button type="submit"
+                data-review-reply-target="submitBtn"
+                class="<%= btn_primary_sm_classes %>"
+                disabled>
+          <i class="fa-solid fa-paper-plane"></i> Send Reply
+        </button>
+      </div>
+    <% end %>
+  </div>
+</details>

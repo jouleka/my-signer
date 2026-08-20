@@ -1,0 +1,280 @@
+<%# Editorial sign-up — two-column auth shell. Mirrors the visual
+    system from app/views/landing/_hero.html.erb (Instrument Serif
+    headline + italic primary accent, numbered editorial markers,
+    JetBrains Mono terminal, warm-stone tokens). The right rail is
+    hidden under lg so the form always has room. Form keeps the
+    Devise/Rails wiring + form-validator stimulus + omniauth row. %>
+<% minimum_password_length = @minimum_password_length || Devise.password_length.min %>
+
+<div class="auth-shell grid lg:grid-cols-2 h-screen w-full overflow-hidden">
+
+  <%# ── Left: editorial form ─────────────────────────────────────── %>
+  <div class="relative flex flex-col h-full overflow-y-auto bg-base-100">
+    <%# Top chrome — Back to Home %>
+    <div class="absolute top-5 left-5 sm:top-6 sm:left-8 z-20">
+      <%= link_to unauthenticated_root_path,
+            class: "inline-flex items-center gap-2 text-xs text-base-content/60 hover:text-base-content transition-colors" do %>
+        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+        <span>Back to Home</span>
+      <% end %>
+    </div>
+
+    <%# Both columns center vertically — content blocks are roughly
+        the same height so the wordmark and the right rail's section
+        marker land on similar y-positions while leaving balanced
+        breathing room top + bottom. %>
+    <div class="flex flex-col min-h-full px-6 sm:px-12 lg:px-14 xl:px-20 pt-20 lg:pt-12 pb-12">
+      <div class="w-full max-w-[440px] mx-auto my-auto">
+
+        <%# Wordmark — official MySigner logo + Instrument Serif wordmark %>
+        <div class="mb-8">
+          <div class="flex items-center gap-2.5 mb-6">
+            <img src="/icon.svg" alt="" class="h-7 w-7" aria-hidden="true">
+            <span class="font-display text-[26px] tracking-tight">MySigner</span>
+          </div>
+          <%# Editorial section marker %>
+          <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em]" style="color: color-mix(in oklab, var(--color-base-content) 55%, transparent);">
+            <span class="secnum text-[14px] normal-case tracking-normal">№ 01</span>
+            <span class="editorial-rule w-10"></span>
+            <span>Create your account</span>
+          </div>
+        </div>
+
+        <%# Headline + lede %>
+        <h1 class="font-display leading-[0.96] tracking-tight" style="font-size: clamp(48px, 5.5vw, 64px);">
+          Start <span class="italic" style="color: var(--color-primary);">shipping.</span>
+        </h1>
+        <p class="mt-4 text-[14.5px] leading-relaxed text-mute max-w-[420px]">
+          Free forever for one app &mdash; TestFlight or Play internal track. No credit card to start your 14-day Pro trial.
+        </p>
+
+        <%= render "devise/shared/error_messages", resource: resource %>
+
+        <%= form_for(resource, as: resource_name, url: registration_path(resource_name),
+              html: { class: "mt-8 space-y-0",
+                      data: { controller: "form-validator",
+                              form_validator_min_password_length_value: minimum_password_length } }) do |f| %>
+
+          <%# Email %>
+          <div class="form-control mb-4">
+            <div class="label-row">
+              <span class="lbl"><%= t('.email_label') %></span>
+            </div>
+            <%= f.label :email, class: "input input-bordered field #{'input-error' if resource.errors[:email].any?}" do %>
+              <i class="fa-solid fa-envelope lead"></i>
+              <%= f.email_field :email, autofocus: true, autocomplete: "email", required: true,
+                    placeholder: "you@studio.com",
+                    data: { action: "input->form-validator#validate blur->form-validator#validate", field: "email" } %>
+            <% end %>
+            <div class="validator-error text-error text-[11px] mt-1.5 hidden items-center gap-1.5">
+              <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+              <span></span>
+            </div>
+            <div class="validator-hint hint">We'll send a confirmation here.</div>
+          </div>
+
+          <%# Password + 4-bar strength meter %>
+          <div class="form-control mb-3"
+               data-controller="password-strength"
+               data-password-strength-min-length-value="<%= minimum_password_length %>">
+            <div class="label-row">
+              <span class="lbl"><%= t('.password_label') %></span>
+              <span class="alt">min <%= minimum_password_length %> characters</span>
+            </div>
+            <%= f.label :password, class: "input input-bordered field #{'input-error' if resource.errors[:password].any?}" do %>
+              <i class="fa-solid fa-lock lead"></i>
+              <%= f.password_field :password, autocomplete: "new-password", required: true,
+                    minlength: minimum_password_length,
+                    placeholder: "••••••••••••",
+                    data: { action: "input->form-validator#validate blur->form-validator#validate input->password-strength#update", field: "password" } %>
+            <% end %>
+            <div class="validator-error text-error text-[11px] mt-1.5 hidden items-center gap-1.5">
+              <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+              <span></span>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5 mt-2.5">
+              <div class="meter" data-password-strength-target="bar"><span style="width: 0%;"></span></div>
+              <div class="meter" data-password-strength-target="bar"><span style="width: 0%;"></span></div>
+              <div class="meter" data-password-strength-target="bar"><span style="width: 0%;"></span></div>
+              <div class="meter" data-password-strength-target="bar"><span style="width: 0%;"></span></div>
+            </div>
+            <div class="validator-hint hint" data-password-strength-target="summary">
+              Use <%= minimum_password_length %>+ characters with letters, numbers, and a symbol.
+            </div>
+          </div>
+
+          <%# Confirm password %>
+          <div class="form-control mb-4">
+            <div class="label-row">
+              <span class="lbl"><%= t('.password_confirmation_label') %></span>
+            </div>
+            <%= f.label :password_confirmation, class: "input input-bordered field #{'input-error' if resource.errors[:password_confirmation].any?}" do %>
+              <i class="fa-solid fa-lock-open lead"></i>
+              <%= f.password_field :password_confirmation, autocomplete: "new-password", required: true,
+                    placeholder: "••••••••••••",
+                    data: { action: "input->form-validator#validate blur->form-validator#validate", field: "password_confirmation" } %>
+            <% end %>
+            <div class="validator-error text-error text-[11px] mt-1.5 hidden items-center gap-1.5">
+              <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+              <span></span>
+            </div>
+          </div>
+
+          <%# Terms / consent — split into two unchecked boxes:
+              - Terms + Privacy is REQUIRED (browser-validated via `required`,
+                server-validated via User#terms_must_be_accepted). Acceptance
+                is timestamped into `terms_accepted_at`.
+              - Marketing email opt-in is OPTIONAL and unchecked by default
+                (granular consent per GDPR Art. 7(4)). Stored as a boolean
+                column for an audit trail. %>
+          <label class="flex items-start gap-2.5 mt-4 text-[12px] cursor-pointer">
+            <%= f.check_box :accepts_terms, { class: "checkbox checkbox-sm mt-0.5", required: true,
+                                              checked: ActiveModel::Type::Boolean.new.cast(resource.accepts_terms) },
+                            "1", "0" %>
+            <span class="text-mute leading-relaxed">
+              I agree to the
+              <%= link_to "Terms", terms_of_service_path, class: "alink", target: "_blank", rel: "noopener" %>
+              and
+              <%= link_to "Privacy Policy", privacy_policy_path, class: "alink", target: "_blank", rel: "noopener" %>.
+            </span>
+          </label>
+          <% if resource.errors[:accepts_terms].any? %>
+            <p class="text-error text-[11px] mt-1.5 ml-7"><%= resource.errors[:accepts_terms].first %></p>
+          <% end %>
+
+          <label class="flex items-start gap-2.5 mt-2 mb-4 text-[12px] cursor-pointer">
+            <%= f.check_box :marketing_emails_opt_in, { class: "checkbox checkbox-sm mt-0.5",
+                                                       checked: ActiveModel::Type::Boolean.new.cast(resource.marketing_emails_opt_in) },
+                            "1", "0" %>
+            <span class="text-mute leading-relaxed">
+              Send me occasional release-notes emails — unsubscribe in one click. (Optional.)
+            </span>
+          </label>
+
+          <button type="submit" class="btn-primary-ms" data-form-validator-target="submit">
+            <i class="fa-solid fa-arrow-right text-[11px]"></i>
+            <%= t('.submit') %>
+          </button>
+        <% end %>
+
+        <%# Editorial divider %>
+        <div class="flex items-center gap-3 my-6">
+          <span class="editorial-rule flex-1"></span>
+          <span class="text-[10.5px] uppercase tracking-[0.18em] text-faint">or sign up with</span>
+          <span class="editorial-rule flex-1"></span>
+        </div>
+
+        <%# OAuth row — 3 equal columns %>
+        <div class="grid grid-cols-3 gap-2">
+          <%= button_to user_apple_omniauth_authorize_path, data: { turbo: false }, class: "btn-oauth" do %>
+            <i class="fa-brands fa-apple text-[15px]"></i>
+            <span>Apple</span>
+          <% end %>
+          <%= button_to user_google_oauth2_omniauth_authorize_path, data: { turbo: false }, class: "btn-oauth" do %>
+            <svg width="14" height="14" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">
+              <g>
+                <path fill="#34a853" d="M153 292c30 82 118 95 171 60h62v48A192 192 0 0190 341"/>
+                <path fill="#4285f4" d="m386 400a140 175 0 0053-179H260v74h102q-7 37-38 57"/>
+                <path fill="#fbbc02" d="m90 341a208 200 0 010-171l63 49q-12 37 0 73"/>
+                <path fill="#ea4335" d="m153 219c22-69 116-109 179-50l55-54c-78-75-230-72-297 55"/>
+              </g>
+            </svg>
+            <span>Google</span>
+          <% end %>
+          <%= button_to user_github_omniauth_authorize_path, data: { turbo: false }, class: "btn-oauth" do %>
+            <i class="fa-brands fa-github text-[15px]"></i>
+            <span>GitHub</span>
+          <% end %>
+        </div>
+
+        <%# Foot links %>
+        <div class="mt-6 text-[12.5px] text-mute space-y-1.5">
+          <div>
+            Already shipping with us?
+            <%= link_to "Sign in", new_user_session_path, class: "alink" %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── Right: editorial right rail (hidden under lg) ────────────── %>
+  <div class="editorial-right hidden lg:block h-full overflow-hidden relative">
+    <div class="absolute inset-0 grain p-12 flex flex-col justify-center">
+      <%# Editorial header %>
+      <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em] text-mute">
+        <span class="secnum text-[14px] normal-case tracking-normal">№ 02</span>
+        <span class="editorial-rule w-10"></span>
+        <span>From <span class="kbd-mono">gem install</span> to TestFlight</span>
+      </div>
+
+      <h2 class="mt-6 font-display leading-[0.96] tracking-tight" style="font-size: 56px;">
+        Five minutes,<br>
+        <span class="italic" style="color: var(--color-primary);">one command.</span>
+      </h2>
+
+      <%# Onboarding terminal %>
+      <div class="mt-10 rounded-[var(--radius-box)] border border-soft overflow-hidden"
+           style="background: color-mix(in oklab, var(--color-base-200) 80%, transparent);">
+        <div class="flex items-center gap-2 px-4 py-2.5 border-b border-soft">
+          <span class="h-2.5 w-2.5 rounded-full bg-error/70"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-warning/70"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-success/70"></span>
+          <span class="ml-3 text-[10.5px] text-mute">welcome — zsh</span>
+        </div>
+        <div class="p-5 font-mono-jb text-[12.5px] leading-[1.85]">
+          <div><span class="text-faint mr-2">$</span>gem install mysigner</div>
+          <div class="mt-1.5 text-mute">Successfully installed mysigner-<%= MySigner::CLI_VERSION %></div>
+          <div class="mt-3"><span class="text-faint mr-2">$</span>mysigner login</div>
+          <div class="mt-1.5 text-mute">Paste your API token from the dashboard</div>
+          <div class="mt-1.5"><span class="kbd-mono">MYSIGNER_API_TOKEN=••••••••••••••••••••••</span></div>
+          <div class="mt-3"><span class="text-faint mr-2">$</span>mysigner ship testflight</div>
+          <div class="mt-1.5 grid gap-x-4 text-mute" style="grid-template-columns: 110px 1fr;">
+            <span class="text-faint">[ 1/3 ]</span>
+            <span><span style="color: var(--color-success);">&check;</span> Building Archive</span>
+            <span class="text-faint">[ 2/3 ]</span>
+            <span><span style="color: var(--color-success);">&check;</span> Exporting IPA</span>
+            <span class="text-faint">[ 3/3 ]</span>
+            <span class="flex items-center gap-2 flex-wrap">
+              <span class="flex items-center gap-1.5"><span style="color: var(--color-warning);">&rsaquo;</span> Uploading to TestFlight</span>
+              <span class="inline-block w-32 h-1.5 rounded-full overflow-hidden align-middle"
+                    style="background: color-mix(in oklab, var(--color-base-content) 12%, transparent);">
+                <span class="block h-full rounded-full shimmer" style="width: 66%; background-color: var(--color-primary);"></span>
+              </span>
+            </span>
+          </div>
+          <div class="mt-2"><span class="text-faint mr-2">$</span><span class="caret">&nbsp;</span></div>
+        </div>
+      </div>
+
+      <%# What you get on day one %>
+      <div class="mt-3 rounded-[var(--radius-box)] border border-soft p-5"
+           style="background: var(--color-base-100);">
+        <div class="text-[10.5px] uppercase tracking-[0.18em] text-faint mb-3">What you get on day one</div>
+        <ul class="grid grid-cols-2 gap-y-2 text-[12.5px] text-mute">
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            1 app, free forever
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            Full CLI &middot; iOS &amp; Android
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            1 Screenshot Studio project
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-[10px]" style="color: var(--color-success);"></i>
+            14-day Pro trial &mdash; no card
+          </li>
+        </ul>
+      </div>
+
+      <div class="mt-6 text-[11px] text-faint">
+        <i class="fa-solid fa-shield-halved mr-1"></i>
+        Build runs on your machine. Signing credentials are encrypted at rest on our server.
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,20 @@
+<% @preheader = "Your card was declined. A quick visit to billing keeps your plan intact." %>
+
+<%= ms_eyebrow(11, "Billing · Payment past due") %>
+<%= ms_headline("A small <em style=\"font-style:italic; color:#f57c97;\" class=\"ms-callout-danger-text\">hiccup.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name.presence || @user.email)},") %>
+
+<%= ms_callout(
+  "We couldn't charge the card on file for your MySigner subscription. If we don't get a successful charge in the next few days, your account will downgrade to <strong style=\"color:inherit;\">Free</strong> automatically.",
+  variant: :danger,
+  accent_label: "Card declined"
+) %>
+
+<%= ms_body("A quick update in the billing portal usually takes under a minute &mdash; expired card, new bank, freshly-issued security code. Your data and settings stay put either way; we'd just hate to see you lose Pro features over a declined card.") %>
+
+<%= ms_cta("Update payment method", pricing_url, variant: :primary, margin_top: 18, margin_bottom: 28) %>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 20) %>
+
+<%= ms_fine_print("Manage notification preferences any time at #{ms_link(settings_url(tab: 'notifications'), settings_url(tab: 'notifications'))}.") %>

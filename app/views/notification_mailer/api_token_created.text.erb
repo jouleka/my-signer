@@ -1,0 +1,13 @@
+New API Token Created
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+<%= @creator.name || @creator.email %> created a new API token "<%= @token_name %>" in "<%= @organization.name %>".
+
+If this wasn't expected, please review the API tokens for your organization.
+
+Review tokens: <%= organization_api_tokens_url(@organization) %>
+
+Thanks,
+My Signer Team

@@ -1,0 +1,26 @@
+<% @preheader = "Sync completed for #{@organization.name}. Here's what changed." %>
+
+<%= ms_eyebrow(38, "Sync · Completed") %>
+<%= ms_headline("Sync <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">completed.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_meta_row("Organization", ms_meta_pill(@organization.name)) %>
+<%= ms_meta_row("Finished", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{Time.current.strftime('%B %-d, %Y · %H:%M %Z')}</span>".html_safe) %>
+
+<%# Terminal-style change list — mono, hairlined %>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 18px 0 28px 0;">
+  <tr>
+    <td class="ms-token-block ms-mono" style="padding:18px 22px; background-color:#1a1612; border:1px solid #2c2820; border-radius:4px; font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size:13px; line-height:1.7; color:#f4ede0;">
+      <% @changes_summary.each do |change| %>
+        <div style="padding:3px 0;">
+          <span class="ms-primary" style="color:#c8a8f5; padding-right:10px;">+</span><%= ERB::Util.h(change) %>
+        </div>
+      <% end %>
+    </td>
+  </tr>
+</table>
+
+<%= ms_cta("Open organization", organization_url(@organization), variant: :primary, margin_top: 4, margin_bottom: 22) %>
+
+<%= ms_fine_print("Sync receipts are sent on every successful sync. You can dial them down to weekly summaries in <em>Settings → Notifications</em>.") %>

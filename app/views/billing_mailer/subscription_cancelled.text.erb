@@ -1,0 +1,18 @@
+Subscription cancelled
+
+Hi <%= @user.name.presence || @user.email %>,
+
+Your MySigner subscription has been cancelled. You'll keep full access until
+the end of the current billing period, then your account moves to the Free
+plan automatically.
+
+If this was unintentional — or you change your mind — you can re-subscribe
+any time. All your data and settings stay in place.
+
+Re-subscribe: <%= pricing_url %>
+
+The CLI stays free for everyone — signing, builds, TestFlight, and Play Store
+uploads keep working on Free.
+
+—
+Change notification preferences: <%= settings_url(tab: "notifications") %>

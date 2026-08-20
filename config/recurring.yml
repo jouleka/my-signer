@@ -1,0 +1,238 @@
+# examples:
+#   periodic_cleanup:
+#     class: CleanSoftDeletedRecordsJob
+#     queue: background
+#     args: [ 1000, { batch_size: 500 } ]
+#     schedule: every hour
+#   periodic_cleanup_with_command:
+#     command: "SoftDeletedRecord.due.delete_all"
+#     priority: 2
+#     schedule: at 5am every day
+
+production:
+  clear_solid_queue_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    schedule: every hour at minute 12
+
+  # Tiered scheduled sync cadence. Cron firing rate IS the tier's promised
+  # refresh rate — Team every 3h, Pro every 6h, Free once daily off-peak.
+  # Per-org advisory locks in the sync jobs prevent overlap if a previous run
+  # is still in flight.
+  sync_app_store_connect_team:
+    command: "Organization.enqueue_scheduled_sync_for('app_store_connect', tier: 'team')"
+    schedule: every 3 hours
+
+  sync_app_store_connect_pro:
+    command: "Organization.enqueue_scheduled_sync_for('app_store_connect', tier: 'pro')"
+    schedule: every 6 hours
+
+  sync_app_store_connect_free:
+    command: "Organization.enqueue_scheduled_sync_for('app_store_connect', tier: 'free')"
+    schedule: every day at 3am
+
+  sync_google_play_team:
+    command: "Organization.enqueue_scheduled_sync_for('google_play', tier: 'team')"
+    schedule: every 3 hours
+
+  sync_google_play_pro:
+    command: "Organization.enqueue_scheduled_sync_for('google_play', tier: 'pro')"
+    schedule: every 6 hours
+
+  sync_google_play_free:
+    command: "Organization.enqueue_scheduled_sync_for('google_play', tier: 'free')"
+    schedule: every day at 3:30am
+
+  # Review sync — tiered cadence. Reviews change continuously and Team users
+  # rely on fast response cycles, so Team keeps the 30-min cadence; Pro every
+  # 2h is fresh enough for daily ops; Free daily off-peak respects free-tier cost.
+  sync_reviews_team:
+    command: "Organization.enqueue_review_syncs(tier: 'team')"
+    schedule: every 30 minutes
+
+  sync_reviews_pro:
+    command: "Organization.enqueue_review_syncs(tier: 'pro')"
+    schedule: every 2 hours
+
+  sync_reviews_free:
+    command: "Organization.enqueue_review_syncs(tier: 'free')"
+    schedule: every day at 4am
+
+  # Analytics sync — Apple/Google publish daily reports, so daily IS the
+  # natural cadence for paid tiers. Free runs weekly (matches the 7-day
+  # retention window — they only see ~7 days of data anyway).
+  sync_analytics_team:
+    command: "Organization.enqueue_analytics_syncs(tier: 'team')"
+    schedule: every day at 6am
+
+  sync_analytics_pro:
+    command: "Organization.enqueue_analytics_syncs(tier: 'pro')"
+    schedule: every day at 6:30am
+
+  sync_analytics_free:
+    command: "Organization.enqueue_analytics_syncs(tier: 'free')"
+    schedule: every Sunday at 5am
+
+  expiry_notification_job:
+    class: ExpiryNotificationJob
+    schedule: every day at 9am
+
+  notification_cleanup_job:
+    class: NotificationCleanupJob
+    schedule: every day at 3am
+
+  # Downgrade users whose 14-day reverse trial has expired. Runs at 2am so
+  # users see the new "Free" UX first thing in the morning, not mid-workday.
+  trial_expiration_job:
+    class: TrialExpirationJob
+    schedule: every day at 2am
+
+  # Send day-7, day-3, day-1 trial reminder emails. Runs at 8am. By this
+  # time TrialExpirationJob (2am) has already downgraded any users whose
+  # trial ended overnight, so TrialReminderJob only picks up still-Pro
+  # users whose trial_ends_at is later today (scoped by
+  # trial_users_expiring_on). Users whose trial ended between midnight
+  # and 2am were already downgraded and won't receive a last-day email.
+  trial_reminder_job:
+    class: TrialReminderJob
+    schedule: every day at 8am
+
+  # Delete audit events older than 365 days. Runs weekly at 4am Sunday.
+  audit_event_retention_job:
+    class: AuditEventRetentionJob
+    schedule: every Sunday at 4am
+
+  # Garbage-collect terminal asc_build_uploads older than 90d; mark pending
+  # orphans abandoned after 24h. Weekly Sunday 4:15am to sit beside the audit
+  # retention sweep without overlap.
+  asc_build_upload_retention_job:
+    class: AscBuildUploadRetentionJob
+    schedule: every Sunday at 4:15am
+
+  # Hard-delete users whose self-requested account deletion was made more
+  # than 90 days ago and never restored. Daily at 4:30am — must run daily
+  # so the data-removal lag never exceeds 24h past the 90-day mark.
+  pending_deletion_purge_job:
+    class: PendingDeletionPurgeJob
+    schedule: every day at 4:30am
+
+  # Reap OrgSyncRun rows stuck at status=running after a worker crash or
+  # SIGKILL (ensure blocks don't run on hard kills). Sync::StatusAggregator
+  # already hides stranded rows from the UI after STALE_RUN_THRESHOLD, so
+  # the reaper is DB hygiene — it converts the relic into a terminal
+  # error row so the history is clean. Runs every 15 min to match the
+  # aggregator's staleness window.
+  sync_run_reaper_job:
+    class: SyncRunReaperJob
+    schedule: every 15 minutes
+
+  # ASO keyword rank tracker — nightly fan-out. Midnight UTC enqueues one
+  # KeywordRankCheckJob per org with tracked keywords, each with a random
+  # 0-22h wait so MZStore traffic is spread across the day.
+  aso_rank_check_scheduler:
+    class: Aso::RankCheckSchedulerJob
+    schedule: every day at 12am
+
+  # ASO Apple Ads Search Popularity refresh. 2am UTC enqueues one
+  # PopularityRefreshJob per org with a working Apple Ads credential, each
+  # with a random 0-20h wait.
+  aso_popularity_refresh_scheduler:
+    class: Aso::PopularityRefreshSchedulerJob
+    schedule: every day at 2am
+
+  # Weekly pruning of KeywordRanking rows older than each org's tier-specific
+  # max_keyword_history_days (Free: 7, Pro: 90, Team: 365). Sunday 3am UTC so
+  # it lands between the midnight rank-check fan-out and the Monday 8am digest.
+  aso_keyword_history_retention:
+    class: Aso::KeywordHistoryRetentionJob
+    schedule: every Sunday at 3am
+
+  # Weekly Team-tier digest of significant keyword rank movements. Monday 8am
+  # UTC — once the weekend's scrapes have settled so the Sunday data is final.
+  aso_rank_alert_digest:
+    class: Aso::RankAlertDigestJob
+    schedule: every Monday at 8am
+
+development:
+  sync_app_store_connect_team:
+    command: "Organization.enqueue_scheduled_sync_for('app_store_connect', tier: 'team')"
+    schedule: every 3 hours
+
+  sync_app_store_connect_pro:
+    command: "Organization.enqueue_scheduled_sync_for('app_store_connect', tier: 'pro')"
+    schedule: every 6 hours
+
+  sync_app_store_connect_free:
+    command: "Organization.enqueue_scheduled_sync_for('app_store_connect', tier: 'free')"
+    schedule: every day at 3am
+
+  sync_google_play_team:
+    command: "Organization.enqueue_scheduled_sync_for('google_play', tier: 'team')"
+    schedule: every 3 hours
+
+  sync_google_play_pro:
+    command: "Organization.enqueue_scheduled_sync_for('google_play', tier: 'pro')"
+    schedule: every 6 hours
+
+  sync_google_play_free:
+    command: "Organization.enqueue_scheduled_sync_for('google_play', tier: 'free')"
+    schedule: every day at 3:30am
+
+  sync_reviews_team:
+    command: "Organization.enqueue_review_syncs(tier: 'team')"
+    schedule: every 30 minutes
+
+  sync_reviews_pro:
+    command: "Organization.enqueue_review_syncs(tier: 'pro')"
+    schedule: every 2 hours
+
+  sync_reviews_free:
+    command: "Organization.enqueue_review_syncs(tier: 'free')"
+    schedule: every day at 4am
+
+  sync_analytics_team:
+    command: "Organization.enqueue_analytics_syncs(tier: 'team')"
+    schedule: every day at 6am
+
+  sync_analytics_pro:
+    command: "Organization.enqueue_analytics_syncs(tier: 'pro')"
+    schedule: every day at 6:30am
+
+  sync_analytics_free:
+    command: "Organization.enqueue_analytics_syncs(tier: 'free')"
+    schedule: every Sunday at 5am
+
+  expiry_notification_job:
+    class: ExpiryNotificationJob
+    schedule: every day at 9am
+
+  notification_cleanup_job:
+    class: NotificationCleanupJob
+    schedule: every day at 3am
+
+  trial_expiration_job:
+    class: TrialExpirationJob
+    schedule: every day at 2am
+
+  trial_reminder_job:
+    class: TrialReminderJob
+    schedule: every day at 8am
+
+  aso_rank_check_scheduler:
+    class: Aso::RankCheckSchedulerJob
+    schedule: every day at 12am
+
+  aso_popularity_refresh_scheduler:
+    class: Aso::PopularityRefreshSchedulerJob
+    schedule: every day at 2am
+
+  aso_keyword_history_retention:
+    class: Aso::KeywordHistoryRetentionJob
+    schedule: every Sunday at 3am
+
+  aso_rank_alert_digest:
+    class: Aso::RankAlertDigestJob
+    schedule: every Monday at 8am
+
+  sync_run_reaper_job:
+    class: SyncRunReaperJob
+    schedule: every 15 minutes

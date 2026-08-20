@@ -1,0 +1,39 @@
+<turbo-frame id="notifications_dropdown">
+  <div class="card-body p-3 sm:p-4">
+    <div class="flex items-center justify-between gap-2">
+      <span class="font-bold text-sm sm:text-lg truncate"><%= current_user.notifications.visible.unread.count %> Unread</span>
+      <% if current_user.notifications.visible.unread.any? %>
+        <%= button_to "Mark all read", mark_all_as_read_notifications_path, class: "btn btn-ghost btn-xs text-primary shrink-0" %>
+      <% end %>
+    </div>
+
+    <div class="max-h-60 overflow-y-auto -mx-3 sm:-mx-4 px-3 sm:px-4">
+      <% if @notifications.any? %>
+        <% @notifications.each do |notification| %>
+          <%= link_to click_notification_path(notification), class: "block py-2 border-b border-base-200 last:border-0 hover:bg-base-200/50 transition-colors group", data: { turbo_frame: "_top" } do %>
+            <div class="flex gap-2 items-start">
+              <% unless notification.read? %>
+                <span class="mt-1.5 w-2 h-2 rounded-full bg-primary shrink-0"></span>
+              <% end %>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs sm:text-sm <%= notification.read? ? 'font-normal text-base-content/60' : 'font-bold text-base-content' %> line-clamp-1">
+                  <%= notification.title %>
+                </p>
+                <p class="text-[10px] sm:text-xs text-base-content/70 truncate"><%= notification.message %></p>
+                <p class="text-[10px] text-base-content/50 mt-0.5 sm:mt-1"><%= time_ago_in_words(notification.created_at) %> ago</p>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      <% else %>
+        <div class="py-6 sm:py-8 text-center text-base-content/60 text-xs sm:text-sm">
+          No notifications
+        </div>
+      <% end %>
+    </div>
+
+    <div class="card-actions mt-1">
+      <%= link_to "View all", notifications_path, class: "btn btn-primary btn-block btn-xs sm:btn-sm", data: { turbo_frame: "_top" } %>
+    </div>
+  </div>
+</turbo-frame>

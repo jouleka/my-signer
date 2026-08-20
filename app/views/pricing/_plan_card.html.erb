@@ -1,0 +1,168 @@
+<%# app/views/pricing/_plan_card.html.erb
+    Plan card — uniform heights, highlight current plan (or Pro when on Free).
+    Locals:
+      tier: String — "free" / "pro" / "team"
+      viewer_context: Pricing::ViewerContext
+      billing_offering: Hash (from Billing::PlanCatalog.offerings[tier]) or nil for free
+      interval: String — "monthly" or "yearly"
+      subscription: BillingSubscription or nil (optional — enables subscription-aware CTAs)
+%>
+
+<% subscription ||= nil %>
+<% is_current = viewer_context.current_tier == tier %>
+<% is_recommended = viewer_context.show_most_popular_on?(tier) %>
+
+<%# Which card gets the ring: user's current paid plan, else Pro for free/prospect. %>
+<% current_effective = viewer_context.current_tier %>
+<% highlight_tier = (current_effective.present? && current_effective != "free") ? current_effective : "pro" %>
+<% is_highlighted = (tier == highlight_tier) %>
+
+<% accent = pricing_tier_accent_classes(tier) %>
+<% badge_html = pricing_context_badge(tier: tier, viewer_context: viewer_context) %>
+
+<%# Subscription-aware change options %>
+<% change_option = nil %>
+<% secondary_cta = nil %>
+<% if subscription.present? && tier != "free" && !is_current %>
+  <% change_option = billing_change_option(current_subscription: subscription, target_tier: tier, target_interval: interval) %>
+<% end %>
+
+<% if subscription.present? && is_current %>
+  <% current_interval_match = subscription.billing_interval.to_s == interval.to_s %>
+  <% keep_plan_option = current_interval_match ? billing_change_option(current_subscription: subscription, target_tier: tier, target_interval: interval) : nil %>
+
+  <% if current_interval_match && keep_plan_option.present? && keep_plan_option[:items_unchanged] %>
+    <%# User on this plan with a pending schedule → primary Keep-plan CTA.
+        Detection via policy's items_unchanged field (not label string). %>
+    <% cta = { label: keep_plan_option[:label], style: :primary_pro, disabled: false, action: :open_preview, tier: keep_plan_option[:plan_tier], interval: keep_plan_option[:billing_interval] } %>
+  <% elsif current_interval_match %>
+    <% interval_label = "Current plan (#{interval})" %>
+    <% yearly_switch = (interval == "monthly") ? billing_change_option(current_subscription: subscription, target_tier: tier, target_interval: "yearly") : nil %>
+    <% secondary_cta = yearly_switch %>
+    <% cta = { label: interval_label, style: :ghost, disabled: true, action: :none } %>
+  <% else %>
+    <% switch_option = billing_change_option(current_subscription: subscription, target_tier: tier, target_interval: interval) %>
+    <% if switch_option.present? %>
+      <% cta = { label: switch_option[:label], style: :primary_pro, disabled: false, action: :open_preview, tier: switch_option[:plan_tier], interval: switch_option[:billing_interval] } %>
+    <% else %>
+      <% cta = { label: "Current plan (#{subscription.billing_interval})", style: :ghost, disabled: true, action: :none } %>
+    <% end %>
+  <% end %>
+<% elsif subscription.present? && tier != "free" && subscription.respond_to?(:scheduled_change_matches?) && subscription.scheduled_change_matches?(tier: tier, interval: interval) %>
+  <%# This card matches the scheduled downgrade target → informational
+      badge, no CTA. User is instructed to cancel from the banner if they
+      want to stay on the current plan. %>
+  <% scheduled_date = subscription.scheduled_change_effective_at&.to_date %>
+  <% scheduled_label = scheduled_date ? "Scheduled for #{l(scheduled_date, format: :long)}" : "Scheduled change" %>
+  <% cta = { label: scheduled_label, style: :ghost, disabled: true, action: :none } %>
+<% elsif subscription.present? && tier != "free" && change_option.present? %>
+  <% cta = { label: change_option[:label], style: (is_highlighted ? :primary_pro : :ghost), disabled: false, action: :open_preview, tier: change_option[:plan_tier], interval: change_option[:billing_interval] } %>
+<% else %>
+  <% cta = pricing_cta(tier: tier, viewer_context: viewer_context) %>
+<% end %>
+
+<% price_display = resolve_price(tier, interval, billing_offering) %>
+
+<%# Wrapping div stretches to the grid row height so badges can float above the card edge. %>
+<div class="relative h-full min-w-0" data-pricing-plans-target="card" data-tier="<%= tier %>">
+
+  <%# Enterprise-ready ribbon above the Team card (only shown for Team). %>
+  <% if tier == "team" %>
+    <div class="absolute -top-3 left-5 sm:left-6 z-10 inline-flex items-center gap-1.5 text-[0.6rem] font-bold uppercase tracking-[0.12em] px-2.5 py-[0.3rem] rounded-md bg-warning text-warning-content shadow-sm">
+      <i class="fa-solid fa-lock text-[0.55rem]" aria-hidden="true"></i>
+      Enterprise-ready
+    </div>
+  <% end %>
+
+  <%# Context badge: "Your plan" / "Most popular" / "Your trial" — anchored top-right of wrapper %>
+  <%= badge_html %>
+
+  <article class="<%= pricing_card_classes(tier: tier, is_current: is_current, is_recommended: is_recommended, is_highlighted: is_highlighted) %>">
+
+    <%# Header — tier name + tagline %>
+    <header class="flex flex-col gap-2">
+      <h3 class="text-lg font-semibold <%= is_highlighted ? accent[:accent_text] : 'text-base-content/90' %>">
+        <%= tier.capitalize %>
+      </h3>
+      <p class="text-sm leading-relaxed text-base-content/55">
+        <%= t("pricing.tiers.#{tier}.tagline", default: tier_default_tagline(tier)) %>
+      </p>
+    </header>
+
+    <%# Price — hero block %>
+    <div class="flex flex-col gap-2 min-w-0">
+      <div class="flex items-baseline gap-1.5 flex-wrap min-w-0">
+        <span class="text-[2.75rem] sm:text-[3rem] lg:text-[3.25rem] leading-none font-bold tabular-nums tracking-[-0.03em] text-base-content break-words">
+          <%= price_display[:amount] %>
+        </span>
+        <% if price_display[:suffix].present? %>
+          <span class="text-xs font-semibold text-base-content/45 pb-1">
+            <%= price_display[:suffix] %>
+          </span>
+        <% end %>
+      </div>
+
+      <% if price_display[:detail].present? %>
+        <p class="text-xs text-base-content/50 break-words"><%= price_display[:detail] %></p>
+      <% end %>
+
+      <% if price_display[:savings].present? %>
+        <span class="inline-flex items-center self-start gap-1.5 text-[0.6875rem] font-semibold px-2 py-[0.2rem] rounded-md bg-success/[0.12] text-success border border-success/25 mt-1">
+          <i class="fa-solid fa-tag text-[0.5rem]" aria-hidden="true"></i>
+          <%= price_display[:savings] %>
+        </span>
+      <% end %>
+    </div>
+
+    <%# Capability block — usage bars or iconified highlights %>
+    <div>
+      <%= render "pricing/plan_card_capability", tier: tier, viewer_context: viewer_context %>
+    </div>
+
+    <%# CTA zone + INCLUDES — the 1fr row, bottom-aligned so all cards share the same CTA baseline %>
+    <div class="flex flex-col gap-6 justify-end">
+      <div class="flex flex-col gap-2.5">
+        <% cta_tier = cta[:tier] || tier %>
+        <% cta_interval = cta[:interval] || interval %>
+        <%= tag.button cta[:label],
+                       type: "button",
+                       class: pricing_cta_button_classes(cta[:style]),
+                       disabled: cta[:disabled] ? true : false,
+                       data: cta_data_attrs(cta, cta_tier, cta_interval) %>
+
+        <% if secondary_cta.present? %>
+          <button type="button"
+                  class="<%= pricing_cta_button_classes(:outline_pro) %>"
+                  data-action="pricing-plans#openPreview"
+                  data-pricing-plans-plan-tier-param="<%= secondary_cta[:plan_tier] %>"
+                  data-pricing-plans-billing-interval-param="<%= secondary_cta[:billing_interval] %>"
+                  data-pricing-plans-label-param="<%= secondary_cta[:label] %>">
+            <i class="fa-solid fa-calendar-check text-xs" aria-hidden="true"></i>
+            <%= secondary_cta[:label] %>
+          </button>
+        <% end %>
+
+<%# Pre-existing "Queued for next renewal" caption is now redundant with
+    the new "Scheduled for {date}" CTA label set in the branching block
+    above — removed to avoid double-communication of the same state. %>
+      </div>
+
+      <%# INCLUDES — editorial section label with hairline %>
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-3">
+          <span class="text-[0.6rem] font-bold uppercase tracking-[0.16em] text-base-content/40">Includes</span>
+          <div class="flex-1 h-px bg-base-content/[0.08]" aria-hidden="true"></div>
+        </div>
+
+        <ul class="flex flex-col gap-2 list-none">
+          <% feature_bullets(tier).each do |bullet| %>
+            <li class="flex items-start gap-2.5 text-[0.8125rem] text-base-content/75 leading-snug">
+              <i class="fa-solid fa-check text-[0.6rem] mt-1 <%= is_highlighted ? accent[:accent_text] : 'text-base-content/30' %>" aria-hidden="true"></i>
+              <span><%= bullet %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </article>
+</div>

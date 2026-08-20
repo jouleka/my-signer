@@ -1,0 +1,33 @@
+<%# Tracking tab: list of tracked keywords with inline rank data +
+    lazy-loaded history charts. New-keyword flow is a modal at the
+    bottom of the partial, opened via the generic modal controller. %>
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_classes %>">
+    <div class="<%= card_icon_classes %>">
+      <i class="fa-solid fa-chart-line"></i>
+    </div>
+    <span class="<%= card_title_classes %>">Tracking</span>
+    <div class="flex-1"></div>
+    <button data-controller="modal"
+            data-action="click->modal#open"
+            data-modal-target-value="add-tracked-keyword-modal"
+            class="<%= btn_primary_classes %>">
+      <i class="fa-solid fa-plus"></i> Add keyword
+    </button>
+  </div>
+
+  <div class="<%= card_body_classes %>">
+    <% usage = TrackedKeywordCountry
+                 .joins(:tracked_keyword)
+                 .where(tracked_keywords: { apple_app_id: @app.id, enabled: true })
+                 .where(tracked_keyword_countries: { enabled: true })
+                 .count %>
+    <% estimate = Aso::NextCheckEstimator.for(organization: @organization) %>
+    <%# Target for the post-add confirmation toast (Turbo Stream prepends here). %>
+    <div id="tracked-keywords-flash-zone"></div>
+    <%= render "keywords/tracking_limits_banner", app: @app, entitlements: @entitlements, usage: usage, estimate: estimate %>
+    <%= render "keywords/tracked_keywords_list", app: @app %>
+  </div>
+</div>
+
+<%= render "keywords/add_tracked_keyword_modal" %>

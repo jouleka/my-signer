@@ -1,0 +1,66 @@
+<%# Google Play credential form with the "where do I find these values" help
+    panel. Rendered inside the Add Android Credential modal. Requires local:
+    organization. %>
+<details class="mb-4 rounded-lg border border-info/30 bg-info/5">
+  <summary class="cursor-pointer px-3 py-2 text-sm font-medium text-info flex items-center gap-2">
+    <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+    Where do I find these values?
+  </summary>
+  <div class="px-3 pb-3 text-sm space-y-3">
+    <div class="divider my-1"></div>
+    <div>
+      <p class="font-semibold text-xs mb-1">1. Create a Service Account in Google Cloud</p>
+      <p class="text-xs text-base-content/70">
+        Go to <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener" class="link link-primary">Google Cloud Console &rarr; IAM & Admin &rarr; Service Accounts</a>. Create a new service account or use an existing one.
+      </p>
+    </div>
+    <div>
+      <p class="font-semibold text-xs mb-1">2. Create and download a JSON key</p>
+      <p class="text-xs text-base-content/70">
+        Click on your service account &rarr; <strong>Keys</strong> tab &rarr; <strong>Add Key</strong> &rarr; <strong>Create new key</strong> &rarr; Select <strong>JSON</strong> format.
+      </p>
+    </div>
+    <div>
+      <p class="font-semibold text-xs mb-1">3. Link to Google Play Console</p>
+      <p class="text-xs text-base-content/70">
+        Go to <a href="https://play.google.com/console" target="_blank" rel="noopener" class="link link-primary">Google Play Console</a> &rarr; <strong>Setup</strong> &rarr; <strong>API access</strong>. Link your Google Cloud project and grant <strong>Admin</strong> access to your service account.
+      </p>
+    </div>
+    <div>
+      <p class="font-semibold text-xs mb-1">4. Paste the JSON content</p>
+      <p class="text-xs text-base-content/70">
+        Open the downloaded JSON file and paste its entire contents into the field below.
+      </p>
+    </div>
+    <div class="alert alert-info py-2 text-xs">
+      <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+      <span>The Developer Account ID is optional and can be found in Play Console under <strong>Setup &rarr; Developer account &rarr; Developer account details</strong>.</span>
+    </div>
+  </div>
+</details>
+
+<%= form_with url: organization_google_play_credentials_path(organization),
+              scope: :google_play_credential,
+              class: "space-y-3" do |f| %>
+  <div class="grid gap-3 md:grid-cols-2">
+    <div class="form-control">
+      <label class="label py-1"><span class="label-text text-xs">Name</span></label>
+      <%= f.text_field :name, class: "input input-bordered input-sm w-full", placeholder: "e.g. Production Service Account" %>
+    </div>
+    <div class="form-control">
+      <label class="label py-1"><span class="label-text text-xs">Developer Account ID</span></label>
+      <%= f.text_field :developer_account_id, class: "input input-bordered input-sm w-full", placeholder: "Optional" %>
+    </div>
+    <div class="form-control md:col-span-2">
+      <label class="label py-1">
+        <span class="label-text text-xs">Service Account JSON</span>
+        <span class="label-text-alt text-warning text-xs">Full JSON file</span>
+      </label>
+      <%= f.text_area :service_account_json,
+                      class: "textarea textarea-bordered w-full font-mono text-xs",
+                      rows: 6,
+                      placeholder: '{"type": "service_account", ...}' %>
+    </div>
+  </div>
+  <%= f.submit "Add Credential", class: "btn btn-primary btn-sm w-full" %>
+<% end %>

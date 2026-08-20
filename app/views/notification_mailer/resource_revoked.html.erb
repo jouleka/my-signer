@@ -1,0 +1,31 @@
+<% @preheader = "Your #{@resource_type_label.to_s.downcase} \"#{@resource_name}\" was revoked. Replace it before your next build." %>
+
+<%= ms_eyebrow(35, "Credentials · #{@resource_type_label} revoked") %>
+
+<%= ms_stamp("Revoked") %>
+
+<%= ms_headline("#{ERB::Util.h(@resource_type_label)} <em style=\"font-style:italic; color:#f57c97;\" class=\"ms-callout-danger-text\">revoked.</em>", size: 40) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_meta_row("Resource", "<span class=\"ms-ink\" style=\"color:#f4ede0;\">#{ERB::Util.h(@resource_name)}</span>".html_safe) %>
+<%= ms_meta_row("Type", "<span class=\"ms-mute\" style=\"color:#cdc4b6; font-style:italic;\">#{ERB::Util.h(@resource_type_label)}</span>".html_safe) %>
+
+<%= ms_callout(
+  "This #{ERB::Util.h(@resource_type_label.to_s.downcase)} has been revoked or marked as invalid. CI/CD pipelines and signing operations using it will fail until you create a replacement.",
+  variant: :danger,
+  accent_label: "Action required"
+) %>
+
+<% url = case @resource
+         when AppleCertificate
+           organization_apple_certificates_url(@resource.organization)
+         when AppleProvisioningProfile
+           organization_apple_provisioning_profiles_url(@resource.organization)
+         else
+           polymorphic_url([@resource.organization, @resource])
+         end %>
+
+<%= ms_cta("Review now", url, variant: :danger, margin_top: 4, margin_bottom: 24) %>
+
+<%= ms_fine_print("Apple typically allows you to issue a replacement immediately from the developer portal. Re-upload it here when you do.") %>

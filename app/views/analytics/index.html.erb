@@ -1,0 +1,488 @@
+<%
+def pct_change(current, previous)
+  return nil if previous.nil? || previous.zero?
+  ((current.to_f - previous.to_f) / previous.to_f * 100).round(1)
+end
+%>
+
+<%= breadcrumbs([
+  { label: @organization.name, path: organization_path(@organization) },
+  { label: "Analytics" }
+]) %>
+
+<section class="flex flex-col gap-5">
+  <%# ── Header row ── %>
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-[1.375rem] font-extrabold leading-tight tracking-[-0.02em] text-base-content/95">
+        <i class="fa-solid fa-chart-line text-primary/50 mr-1"></i>
+        Analytics
+      </h1>
+      <p class="text-xs text-base-content/40 mt-1">Performance overview across your apps</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <%= button_to sync_organization_analytics_path(@organization, days: @days, app: @app_filter, tab: @tab),
+          method: :post,
+          class: btn_ghost_sm_classes do %>
+        <i class="fa-solid fa-arrows-rotate"></i> Sync
+      <% end %>
+      <div class="flex items-center gap-1">
+        <% [7, 14, 30, 90, 365].each do |d| %>
+          <% if @allowed_analytics_days.include?(d) %>
+            <%= link_to organization_analytics_path(@organization, days: d, app: @app_filter, tab: @tab),
+                class: "#{@days == d ? btn_primary_sm_classes : btn_ghost_sm_classes}" do %>
+              <%= d %>d
+            <% end %>
+          <% else %>
+            <span class="<%= btn_ghost_sm_classes %> opacity-40 cursor-not-allowed select-none">
+              <%= d %>d <%= pro_badge_html %>
+            </span>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <% if @daily_data.any? %>
+
+    <%# ── Hero KPIs: the 4 numbers that matter most ── %>
+    <div class="stats stats-horizontal w-full border border-base-content/[0.06] bg-base-content/[0.02]">
+      <div class="stat">
+        <div class="stat-title text-[0.6rem] uppercase tracking-widest opacity-50">Downloads</div>
+        <div class="stat-value text-xl"><%= number_with_delimiter(@totals[:first_time_downloads] + @totals[:redownloads]) %></div>
+        <div class="stat-desc">
+          <% change = pct_change(@totals[:first_time_downloads] + @totals[:redownloads], @prev_totals[:first_time_downloads] + @prev_totals[:redownloads]) %>
+          <% if change %>
+            <span class="font-semibold <%= change >= 0 ? 'text-success' : 'text-error' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+            <span class="opacity-60">vs prev <%= @days %>d</span>
+          <% end %>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-[0.6rem] uppercase tracking-widest opacity-50">Revenue</div>
+        <div class="stat-value text-xl"><%= number_to_currency(@totals[:total_proceeds], precision: 0) %></div>
+        <div class="stat-desc">
+          <% change = pct_change(@totals[:total_proceeds], @prev_totals[:total_proceeds]) %>
+          <% if change %>
+            <span class="font-semibold <%= change >= 0 ? 'text-success' : 'text-error' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+          <% end %>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-[0.6rem] uppercase tracking-widest opacity-50">Crash Rate</div>
+        <div class="stat-value text-xl"><%= (@totals[:avg_crash_rate] * 100).round(3) %>%</div>
+        <div class="stat-desc">
+          <% change = pct_change(@totals[:avg_crash_rate], @prev_totals[:avg_crash_rate]) %>
+          <% if change %>
+            <span class="font-semibold <%= change <= 0 ? 'text-success' : 'text-error' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+          <% end %>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-[0.6rem] uppercase tracking-widest opacity-50">Retention D1</div>
+        <div class="stat-value text-xl"><%= @totals[:avg_retention_day_1] %>%</div>
+        <div class="stat-desc opacity-60">
+          D7 <%= @totals[:avg_retention_day_7] %>% · D28 <%= @totals[:avg_retention_day_28] %>%
+        </div>
+      </div>
+    </div>
+
+    <%# ── Filter + sync info row ── %>
+    <div class="flex flex-wrap items-center gap-3">
+      <form method="get" action="<%= organization_analytics_path(@organization) %>" class="flex items-center gap-2">
+        <input type="hidden" name="days" value="<%= @days %>">
+        <input type="hidden" name="tab" value="<%= @tab %>">
+        <select name="app" class="select select-bordered select-sm"
+                data-controller="submit-on-change"
+                data-action="change->submit-on-change#submit">
+          <option value="">All Apps</option>
+          <% @apple_apps.each do |app| %>
+            <option value="apple_<%= app.id %>" <%= "selected" if @app_filter == "apple_#{app.id}" %>>
+              <i class="fa-brands fa-apple"></i> <%= app.name.presence || app.bundle_id %>
+            </option>
+          <% end %>
+          <% @android_apps.each do |app| %>
+            <option value="android_<%= app.id %>" <%= "selected" if @app_filter == "android_#{app.id}" %>>
+              <%= app.name.presence || app.package_name %>
+            </option>
+          <% end %>
+        </select>
+        <% if @app_filter.present? %>
+          <%= link_to organization_analytics_path(@organization, days: @days, tab: @tab),
+              class: "text-xs text-base-content/40 hover:text-base-content/70" do %>
+            <i class="fa-solid fa-xmark"></i> Clear
+          <% end %>
+        <% end %>
+      </form>
+      <% if @last_synced_at %>
+        <span class="<%= hint_text_classes %> ml-auto">
+          <i class="fa-solid fa-clock mr-0.5"></i> Last synced: <%= time_ago_in_words(@last_synced_at) %> ago
+        </span>
+      <% end %>
+    </div>
+
+    <%# ── Tabs ── %>
+    <% tabs = [
+      { key: "acquisition", label: "Acquisition", icon: "fa-solid fa-arrow-trend-up" },
+      { key: "engagement",  label: "Engagement",  icon: "fa-solid fa-chart-bar" },
+      { key: "quality",     label: "Quality",     icon: "fa-solid fa-shield-halved" },
+      { key: "revenue",     label: "Revenue",     icon: "fa-solid fa-coins" }
+    ] %>
+    <div class="<%= tab_bar_classes %>">
+      <% tabs.each do |t| %>
+        <%= link_to organization_analytics_path(@organization, days: @days, app: @app_filter, tab: t[:key]),
+            class: (@tab == t[:key] ? tab_active_classes : tab_inactive_classes) do %>
+          <i class="<%= t[:icon] %> text-[0.6rem]"></i> <%= t[:label] %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <%# ════════════════════════════════════════════════════════════════ %>
+    <%# TAB: Acquisition                                               %>
+    <%# ════════════════════════════════════════════════════════════════ %>
+    <% if @tab == "acquisition" %>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <%# First-Time Downloads — large chart card spanning full width %>
+        <div class="<%= card_container_classes %> md:col-span-2">
+          <div class="<%= card_body_classes %>">
+            <div class="flex items-baseline justify-between mb-3">
+              <div>
+                <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-0.5">First-Time Downloads</p>
+                <span class="text-2xl font-extrabold text-base-content/90"><%= number_with_delimiter(@totals[:first_time_downloads]) %></span>
+                <% change = pct_change(@totals[:first_time_downloads], @prev_totals[:first_time_downloads]) %>
+                <% if change %>
+                  <span class="text-xs font-semibold ml-2 <%= change >= 0 ? 'text-success' : 'text-error' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+                <% end %>
+              </div>
+              <p class="<%= hint_text_classes %>">Last <%= @days %> days</p>
+            </div>
+            <div class="h-[120px]"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| d.first_time_downloads.to_i }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.72 0.19 142.5)">
+            </div>
+          </div>
+        </div>
+
+        <%# Conversion rate — tall single card %>
+        <div class="<%= card_container_classes %> flex flex-col">
+          <div class="<%= card_body_classes %> flex-1 flex flex-col justify-between">
+            <div>
+              <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-0.5">Conversion Rate</p>
+              <span class="text-3xl font-extrabold text-base-content/90"><%= @totals[:avg_conversion_rate] %><span class="text-lg">%</span></span>
+              <% change = pct_change(@totals[:avg_conversion_rate], @prev_totals[:avg_conversion_rate]) %>
+              <% if change %>
+                <span class="text-xs font-semibold ml-1 <%= change >= 0 ? 'text-success' : 'text-error' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+              <% end %>
+              <p class="<%= hint_text_classes %> mt-1">Daily Average</p>
+            </div>
+            <div class="h-[60px] mt-3"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| d.conversion_rate.to_f.round(1) }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.65 0.19 255)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Secondary metrics row %>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <% [
+          { label: "Redownloads", value: @totals[:redownloads], prev: @prev_totals[:redownloads], data: @daily_data.map { |d| d.redownloads.to_i } },
+          { label: "Impressions", value: @totals[:impressions], prev: @prev_totals[:impressions], data: @daily_data.map { |d| d.impressions.to_i } },
+          { label: "Page Views",  value: @totals[:product_page_views], prev: @prev_totals[:product_page_views], data: @daily_data.map { |d| d.product_page_views.to_i } },
+          { label: "Updates",     value: @totals[:updates], prev: @prev_totals[:updates], data: @daily_data.map { |d| d.updates.to_i } }
+        ].each do |metric| %>
+          <div class="border border-base-content/[0.05] rounded-[0.875rem] bg-base-content/[0.015] p-4">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/30 mb-1"><%= metric[:label] %></p>
+            <span class="text-lg font-extrabold text-base-content/80"><%= number_with_delimiter(metric[:value]) %></span>
+            <% change = pct_change(metric[:value], metric[:prev]) %>
+            <% if change %>
+              <span class="text-[0.65rem] font-semibold ml-1 <%= change >= 0 ? 'text-success/70' : 'text-error/70' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+            <% end %>
+            <div class="h-[28px] mt-1.5 opacity-40"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= metric[:data].to_json %>">
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+    <%# ════════════════════════════════════════════════════════════════ %>
+    <%# TAB: Engagement                                                %>
+    <%# ════════════════════════════════════════════════════════════════ %>
+    <% elsif @tab == "engagement" %>
+
+      <%# Retention funnel — the headline visual %>
+      <div class="<%= card_container_classes %>">
+        <div class="<%= card_header_classes %>">
+          <div class="<%= card_icon_classes %>"><i class="fa-solid fa-users"></i></div>
+          <span class="<%= card_title_classes %>">Retention Funnel</span>
+          <span class="<%= muted_badge_classes %> ml-1">Opt-in Only</span>
+        </div>
+        <div class="<%= card_body_classes %>">
+          <div class="flex items-end gap-3 h-[140px]">
+            <% [
+              { label: "Day 1", value: @totals[:avg_retention_day_1], color: "bg-primary" },
+              { label: "Day 7", value: @totals[:avg_retention_day_7], color: "bg-primary/75" },
+              { label: "Day 14", value: @totals[:avg_retention_day_14], color: "bg-primary/50" },
+              { label: "Day 28", value: @totals[:avg_retention_day_28], color: "bg-primary/30" }
+            ].each do |bar| %>
+              <% height_pct = bar[:value].to_f.clamp(0, 100) %>
+              <div class="flex-1 flex flex-col items-center gap-1.5">
+                <span class="text-sm font-extrabold text-base-content/85"><%= bar[:value] %>%</span>
+                <div class="w-full rounded-t-lg <%= bar[:color] %> transition-all duration-500" style="height: <%= [height_pct * 0.9, 4].max %>px;"></div>
+                <span class="text-[0.6rem] font-semibold text-base-content/40 uppercase tracking-wider"><%= bar[:label] %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%# Usage row %>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_body_classes %>">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-1">Installs</p>
+            <span class="text-2xl font-extrabold text-base-content/90"><%= number_with_delimiter(@totals[:installs]) %></span>
+            <% change = pct_change(@totals[:installs], @prev_totals[:installs]) %>
+            <% if change %>
+              <span class="text-xs font-semibold ml-1 <%= change >= 0 ? 'text-success' : 'text-error' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+            <% end %>
+            <div class="h-[40px] mt-2"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| d.installs.to_i }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.72 0.19 142.5)">
+            </div>
+          </div>
+        </div>
+
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_body_classes %>">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-1">Deletions</p>
+            <span class="text-2xl font-extrabold text-base-content/90"><%= number_with_delimiter(@totals[:deletions]) %></span>
+            <div class="h-[40px] mt-2"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| d.deletions.to_i }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.75 0.18 75)">
+            </div>
+          </div>
+        </div>
+
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_body_classes %>">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-1">Net Installs</p>
+            <% net = @totals[:installs] - @totals[:deletions] %>
+            <span class="text-2xl font-extrabold <%= net >= 0 ? 'text-success' : 'text-error' %>"><%= net >= 0 ? '+' : '' %><%= number_with_delimiter(net) %></span>
+            <div class="h-[40px] mt-2"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| d.installs.to_i - d.deletions.to_i }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.65 0.19 255)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Retention sparkline trends %>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <% [
+          { label: "D1 Trend", data: @daily_data.map { |d| d.retention_day_1.to_f.round(1) } },
+          { label: "D7 Trend", data: @daily_data.map { |d| d.retention_day_7.to_f.round(1) } },
+          { label: "D14 Trend", data: @daily_data.map { |d| d.retention_day_14.to_f.round(1) } },
+          { label: "D28 Trend", data: @daily_data.map { |d| d.retention_day_28.to_f.round(1) } }
+        ].each do |metric| %>
+          <div class="border border-base-content/[0.05] rounded-[0.875rem] bg-base-content/[0.015] p-4">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/30 mb-2"><%= metric[:label] %></p>
+            <div class="h-[32px] opacity-50"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= metric[:data].to_json %>"
+                 data-analytics-chart-color-value="oklch(0.65 0.19 255)">
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+    <%# ════════════════════════════════════════════════════════════════ %>
+    <%# TAB: Quality                                                   %>
+    <%# ════════════════════════════════════════════════════════════════ %>
+    <% elsif @tab == "quality" %>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <%# Crash Rate — hero card %>
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_body_classes %>">
+            <div class="flex items-baseline justify-between mb-3">
+              <div>
+                <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-0.5">Crash Rate</p>
+                <span class="text-2xl font-extrabold text-base-content/90"><%= (@totals[:avg_crash_rate] * 100).round(3) %><span class="text-sm opacity-60">%</span></span>
+                <% change = pct_change(@totals[:avg_crash_rate], @prev_totals[:avg_crash_rate]) %>
+                <% if change %>
+                  <span class="text-xs font-semibold ml-1 <%= change <= 0 ? 'text-success' : 'text-error' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+                <% end %>
+              </div>
+              <div class="<%= muted_badge_classes %>">All Platforms</div>
+            </div>
+            <div class="h-[100px]"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| (d.crash_rate.to_f * 100).round(3) }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.65 0.25 25)">
+            </div>
+          </div>
+        </div>
+
+        <%# ANR Rate — hero card %>
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_body_classes %>">
+            <div class="flex items-baseline justify-between mb-3">
+              <div>
+                <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-0.5">ANR Rate</p>
+                <span class="text-2xl font-extrabold text-base-content/90"><%= (@totals[:avg_anr_rate] * 100).round(3) %><span class="text-sm opacity-60">%</span></span>
+              </div>
+              <div class="<%= muted_badge_classes %>">Android</div>
+            </div>
+            <div class="h-[100px]"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| (d.anr_rate.to_f * 100).round(3) }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.75 0.18 75)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Crash count + quality summary %>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div class="border border-base-content/[0.05] rounded-[0.875rem] bg-base-content/[0.015] p-4">
+          <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/30 mb-1">Total Crashes</p>
+          <span class="text-lg font-extrabold text-base-content/80"><%= number_with_delimiter(@totals[:crashes]) %></span>
+          <% change = pct_change(@totals[:crashes], @prev_totals[:crashes]) %>
+          <% if change %>
+            <span class="text-[0.65rem] font-semibold ml-1 <%= change <= 0 ? 'text-success/70' : 'text-error/70' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+          <% end %>
+        </div>
+        <div class="border border-base-content/[0.05] rounded-[0.875rem] bg-base-content/[0.015] p-4">
+          <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/30 mb-1">Installs / Crash</p>
+          <% installs_per_crash = @totals[:crashes] > 0 ? (@totals[:installs].to_f / @totals[:crashes]).round(0) : 0 %>
+          <span class="text-lg font-extrabold text-base-content/80"><%= number_with_delimiter(installs_per_crash) %></span>
+          <p class="<%= hint_text_classes %> mt-0.5">Higher is better</p>
+        </div>
+        <div class="border border-base-content/[0.05] rounded-[0.875rem] bg-base-content/[0.015] p-4">
+          <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/30 mb-1">Crash-Free Rate</p>
+          <% crash_free = @totals[:avg_crash_rate] > 0 ? (100 - (@totals[:avg_crash_rate] * 100)).round(2) : 100.0 %>
+          <span class="text-lg font-extrabold <%= crash_free >= 99 ? 'text-success' : 'text-base-content/80' %>"><%= crash_free %>%</span>
+        </div>
+      </div>
+
+    <%# ════════════════════════════════════════════════════════════════ %>
+    <%# TAB: Revenue                                                   %>
+    <%# ════════════════════════════════════════════════════════════════ %>
+    <% elsif @tab == "revenue" %>
+
+      <%# Revenue hero card %>
+      <div class="<%= card_container_classes %>">
+        <div class="<%= card_body_classes %>">
+          <div class="flex items-baseline justify-between mb-3">
+            <div>
+              <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-0.5">Proceeds</p>
+              <span class="text-3xl font-extrabold text-base-content/90"><%= number_to_currency(@totals[:total_proceeds], precision: 0) %></span>
+              <% change = pct_change(@totals[:total_proceeds], @prev_totals[:total_proceeds]) %>
+              <% if change %>
+                <span class="text-xs font-semibold ml-2 <%= change >= 0 ? 'text-success' : 'text-error' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+              <% end %>
+            </div>
+            <p class="<%= hint_text_classes %>">Last <%= @days %> days</p>
+          </div>
+          <div class="h-[120px]"
+               data-controller="analytics-chart"
+               data-analytics-chart-data-value="<%= @daily_data.map { |d| d.proceeds.to_f.round(2) }.to_json %>"
+               data-analytics-chart-color-value="oklch(0.72 0.19 142.5)">
+          </div>
+        </div>
+      </div>
+
+      <%# Subscription metrics %>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_body_classes %>">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-1">New Subscriptions</p>
+            <span class="text-2xl font-extrabold text-base-content/90"><%= number_with_delimiter(@totals[:new_subscriptions]) %></span>
+            <% change = pct_change(@totals[:new_subscriptions], @prev_totals[:new_subscriptions]) %>
+            <% if change %>
+              <span class="text-xs font-semibold ml-1 <%= change >= 0 ? 'text-success' : 'text-error' %>"><%= change >= 0 ? '+' : '' %><%= change %>%</span>
+            <% end %>
+            <div class="h-[36px] mt-2"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| d.new_subscriptions.to_i }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.72 0.19 142.5)">
+            </div>
+          </div>
+        </div>
+
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_body_classes %>">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-1">Churned</p>
+            <span class="text-2xl font-extrabold text-base-content/90"><%= number_with_delimiter(@totals[:churned_subscriptions]) %></span>
+            <div class="h-[36px] mt-2"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| d.churned_subscriptions.to_i }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.65 0.25 25)">
+            </div>
+          </div>
+        </div>
+
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_body_classes %>">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-1">Trial Starts</p>
+            <span class="text-2xl font-extrabold text-base-content/90"><%= number_with_delimiter(@totals[:trial_starts]) %></span>
+            <div class="h-[36px] mt-2"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| d.trial_starts.to_i }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.65 0.19 255)">
+            </div>
+          </div>
+        </div>
+
+        <div class="<%= card_container_classes %>">
+          <div class="<%= card_body_classes %>">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/35 mb-1">Conversions</p>
+            <span class="text-2xl font-extrabold text-base-content/90"><%= number_with_delimiter(@totals[:trial_conversions]) %></span>
+            <% conv_rate = @totals[:trial_starts] > 0 ? ((@totals[:trial_conversions].to_f / @totals[:trial_starts]) * 100).round(1) : 0 %>
+            <p class="<%= hint_text_classes %> mt-0.5"><%= conv_rate %>% of trials</p>
+            <div class="h-[36px] mt-2"
+                 data-controller="analytics-chart"
+                 data-analytics-chart-data-value="<%= @daily_data.map { |d| d.trial_conversions.to_i }.to_json %>"
+                 data-analytics-chart-color-value="oklch(0.72 0.19 142.5)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Net subscriber growth %>
+      <div class="border border-base-content/[0.05] rounded-[0.875rem] bg-base-content/[0.015] p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/30 mb-1">Net Subscriber Growth</p>
+            <% net_subs = @totals[:new_subscriptions] - @totals[:churned_subscriptions] %>
+            <span class="text-lg font-extrabold <%= net_subs >= 0 ? 'text-success' : 'text-error' %>"><%= net_subs >= 0 ? '+' : '' %><%= number_with_delimiter(net_subs) %></span>
+          </div>
+          <div class="text-right">
+            <p class="text-[0.6rem] font-bold uppercase tracking-widest text-base-content/30 mb-1">Avg Daily Revenue</p>
+            <span class="text-lg font-extrabold text-base-content/80"><%= number_to_currency(@totals[:total_proceeds] / [@days, 1].max, precision: 0) %></span>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+  <% else %>
+    <%# ── Empty state ── %>
+    <div class="<%= empty_state_classes %>">
+      <div class="<%= empty_state_icon_classes %>">
+        <i class="fa-solid fa-chart-line text-2xl"></i>
+      </div>
+      <h2 class="<%= empty_state_title_classes %>">No analytics data yet</h2>
+      <p class="<%= empty_state_text_classes %>">
+        Analytics data will appear here once your apps start receiving downloads and impressions.
+        Data is synced automatically from App Store Connect and Google Play Console.
+      </p>
+    </div>
+  <% end %>
+</section>

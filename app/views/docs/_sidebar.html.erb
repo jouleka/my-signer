@@ -1,0 +1,29 @@
+<%# Docs navigation sidebar %>
+<nav class="space-y-6 lg:sticky lg:top-6">
+  <% categories.each do |slug, category| %>
+    <div>
+      <% is_current_category = slug == current_category %>
+      <%= link_to category_docs_path(slug), 
+          class: "flex items-center gap-2 font-medium text-sm mb-2 #{is_current_category ? 'text-primary' : 'text-base-content/80 hover:text-primary'} transition-colors",
+          data: { action: "click->docs-mobile#closeSidebar" } do %>
+        <i class="<%= category[:icon] %> w-4"></i>
+        <%= category[:title] %>
+      <% end %>
+
+      <% if is_current_category && pages.any? %>
+        <ul class="ml-6 border-l border-base-200 space-y-1">
+          <% pages.each do |page| %>
+            <li>
+              <% is_current = page[:slug] == current_slug %>
+              <%= link_to page_docs_path(slug, page[:slug]),
+                  class: "block pl-4 py-1.5 text-sm border-l-2 -ml-px transition-colors #{is_current ? 'border-primary text-primary font-medium' : 'border-transparent text-base-content/70 hover:text-base-content hover:border-base-300'}",
+                  data: { action: "click->docs-mobile#closeSidebar" } do %>
+                <%= page[:title] %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+  <% end %>
+</nav>

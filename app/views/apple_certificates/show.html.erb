@@ -1,0 +1,279 @@
+<%= render "shared/ios_breadcrumbs", organization: @organization, active_tab: :certificates %>
+
+<%
+  expires_at = @certificate.expires_at
+  days = expires_at.present? ? (expires_at.to_date - Date.current).to_i : nil
+  expiry_info = if days.nil?
+    { badge: "badge-ghost", icon: nil, text: "Unknown", status: "unknown" }
+  elsif days <= 0
+    { badge: "badge-error", icon: "fa-circle-exclamation", text: "Expired", status: "expired" }
+  elsif days <= 30
+    { badge: "badge-warning", icon: "fa-triangle-exclamation", text: "#{days} days", status: "warning" }
+  elsif days <= 90
+    { badge: "badge-info", icon: "fa-clock", text: "#{days} days", status: "info" }
+  else
+    { badge: "badge-success", icon: "fa-check", text: "#{days} days", status: "healthy" }
+  end
+%>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: @certificate.name,
+             description: @certificate.certificate_type,
+             gradient: "from-pink-500/10 via-base-100 to-rose-500/10",
+             badge_icon: "fa-solid fa-certificate",
+             badge_text: @certificate.platform || "Certificate",
+             stats: (capture do %>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Status</div>
+          <div class="stat-value text-xl sm:text-2xl">
+            <% if @certificate.status == "VALID" %>
+              <span class="text-success">Valid</span>
+            <% else %>
+              <span class="text-warning"><%= @certificate.status %></span>
+            <% end %>
+          </div>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Expires In</div>
+          <div class="stat-value text-xl sm:text-2xl <%= expiry_info[:status] == 'expired' ? 'text-error' : expiry_info[:status] == 'warning' ? 'text-warning' : '' %>">
+            <%= expiry_info[:text] %>
+          </div>
+          <% if expires_at.present? %>
+            <div class="stat-desc"><%= expires_at.strftime("%b %d, %Y") %></div>
+          <% end %>
+        </div>
+        <div class="stat py-2 px-3 sm:py-3 sm:px-5">
+          <div class="stat-title text-xs">Profiles</div>
+          <div class="stat-value text-xl sm:text-2xl"><%= @profiles.size %></div>
+          <div class="stat-desc">using this cert</div>
+        </div>
+             <% end),
+             actions: (capture do %>
+      <%= link_to download_organization_apple_certificate_path(@organization, @certificate), class: "btn btn-primary btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-download"></i>
+        <span class="hidden sm:inline">Download .cer</span>
+        <span class="sm:hidden">.cer</span>
+      <% end %>
+      <button type="button" class="btn btn-ghost btn-sm sm:btn-md gap-2"
+              data-controller="copy"
+              data-action="click->copy#copy"
+              data-copy-text-value="<%= @certificate.serial_number %>">
+        <i class="fa-solid fa-copy"></i>
+        <span class="hidden sm:inline">Copy Serial</span>
+        <span class="sm:hidden">Copy</span>
+      </button>
+      <%= link_to organization_apple_certificates_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        Back
+      <% end %>
+             <% end) %>
+
+  <%# Certificate Details %>
+  <div class="card border border-base-200 shadow-sm overflow-hidden">
+    <div class="card-body p-3 sm:p-6">
+      <h2 class="card-title text-base sm:text-lg mb-3 sm:mb-4">
+        <i class="fa-solid fa-circle-info text-pink-500"></i>
+        Certificate Details
+      </h2>
+      <div class="grid gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4 min-w-0">
+          <div class="text-xs text-base-content/60 mb-1">Name</div>
+          <div class="font-medium text-sm truncate"><%= @certificate.name %></div>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Type</div>
+          <span class="badge badge-ghost badge-sm"><%= @certificate.certificate_type %></span>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Platform</div>
+          <% if @certificate.platform.present? %>
+            <span class="badge badge-outline badge-sm gap-1.5">
+              <% if @certificate.platform == "IOS" %>
+                <i class="fa-brands fa-apple text-[10px]"></i>
+              <% elsif @certificate.platform == "MAC_OS" %>
+                <i class="fa-solid fa-laptop text-[10px]"></i>
+              <% end %>
+              <%= @certificate.platform %>
+            </span>
+          <% else %>
+            <span class="text-base-content/50 text-sm">Not specified</span>
+          <% end %>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4 min-w-0">
+          <div class="text-xs text-base-content/60 mb-1">Serial Number</div>
+          <div class="font-mono text-xs sm:text-sm flex items-center gap-2 min-w-0">
+            <span class="truncate"><%= @certificate.serial_number %></span>
+            <button type="button" class="btn btn-ghost btn-xs btn-square shrink-0"
+                    data-controller="copy"
+                    data-action="click->copy#copy"
+                    data-copy-text-value="<%= @certificate.serial_number %>">
+              <i class="fa-solid fa-copy text-base-content/50"></i>
+            </button>
+          </div>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Status</div>
+          <% if @certificate.status == "VALID" %>
+            <span class="badge badge-success badge-sm gap-1.5">
+              <i class="fa-solid fa-check text-[10px]"></i>
+              Valid
+            </span>
+          <% else %>
+            <span class="badge badge-warning badge-sm gap-1.5">
+              <i class="fa-solid fa-exclamation text-[10px]"></i>
+              <%= @certificate.status %>
+            </span>
+          <% end %>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Expiration</div>
+          <% if expires_at.present? %>
+            <span class="badge <%= expiry_info[:badge] %> badge-sm gap-1.5">
+              <% if expiry_info[:icon] %>
+                <i class="fa-solid <%= expiry_info[:icon] %> text-[10px]"></i>
+              <% end %>
+              <%= expires_at.strftime("%B %d, %Y") %>
+            </span>
+          <% else %>
+            <span class="text-base-content/50 text-sm">Unknown</span>
+          <% end %>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4 min-w-0">
+          <div class="text-xs text-base-content/60 mb-1">Team ID</div>
+          <% if @certificate.team_id.present? %>
+            <div class="flex items-center gap-2 flex-wrap">
+              <code class="text-xs sm:text-sm"><%= @certificate.team_id %></code>
+              <% if @team_name.present? %>
+                <span class="text-xs text-base-content/50">(<%= @team_name %>)</span>
+              <% end %>
+            </div>
+          <% else %>
+            <span class="text-base-content/50 text-sm">Not set</span>
+          <% end %>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4 min-w-0">
+          <div class="text-xs text-base-content/60 mb-1">Remote ID</div>
+          <code class="text-xs text-base-content/70 break-all"><%= @certificate.remote_id %></code>
+        </div>
+        <div class="bg-base-200/50 rounded-xl p-3 sm:p-4">
+          <div class="text-xs text-base-content/60 mb-1">Synced</div>
+          <div class="text-xs sm:text-sm"><%= @certificate.updated_at.strftime("%B %d, %Y at %I:%M %p") %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Profiles Using This Certificate %>
+  <div class="card border border-base-200 shadow-sm overflow-hidden">
+    <div class="card-body p-3 sm:p-6">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-3 sm:mb-4">
+        <h2 class="card-title text-base sm:text-lg">
+          <i class="fa-solid fa-id-card text-blue-500"></i>
+          <span class="hidden sm:inline">Provisioning Profiles Using This Certificate</span>
+          <span class="sm:hidden">Provisioning Profiles</span>
+        </h2>
+        <span class="badge badge-ghost badge-sm"><%= @profiles.size %></span>
+      </div>
+      <% if @profiles.any? %>
+        <%# Desktop Table %>
+        <div class="hidden md:block">
+          <div class="overflow-x-auto rounded-2xl border border-base-200">
+            <table class="table table-sm">
+              <thead>
+                <tr class="text-xs uppercase text-base-content/60">
+                  <th>Profile</th>
+                  <th>Type</th>
+                  <th>Bundle ID</th>
+                  <th>State</th>
+                  <th>Expires</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @profiles.each do |profile| %>
+                  <tr class="hover:bg-base-200/30">
+                    <td class="font-medium"><%= profile.name %></td>
+                    <td><span class="badge badge-ghost badge-sm"><%= profile.profile_type %></span></td>
+                    <td><code class="text-xs"><%= profile.bundle_id_identifier %></code></td>
+                    <td>
+                      <% if profile.state == "ACTIVE" %>
+                        <span class="badge badge-success badge-sm">Active</span>
+                      <% else %>
+                        <span class="badge badge-warning badge-sm"><%= profile.state %></span>
+                      <% end %>
+                    </td>
+                    <td class="text-sm text-base-content/60">
+                      <% if profile.expires_at.present? %>
+                        <%= profile.expires_at.strftime("%b %d, %Y") %>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td>
+                      <%= link_to organization_apple_provisioning_profile_path(@organization, profile), class: "btn btn-ghost btn-xs" do %>
+                        <i class="fa-solid fa-arrow-right"></i>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <%# Mobile Cards %>
+        <div class="md:hidden space-y-2">
+          <% @profiles.each do |profile| %>
+            <div class="card border border-base-200 shadow-sm overflow-hidden">
+              <div class="card-body p-3 space-y-2 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="font-semibold text-sm truncate"><%= profile.name %></div>
+                    <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span class="badge badge-ghost badge-xs"><%= profile.profile_type %></span>
+                      <code class="text-[10px] text-base-content/60 truncate max-w-[120px]"><%= profile.bundle_id_identifier %></code>
+                    </div>
+                  </div>
+                  <% if profile.state == "ACTIVE" %>
+                    <span class="badge badge-success badge-sm shrink-0">Active</span>
+                  <% else %>
+                    <span class="badge badge-warning badge-sm shrink-0"><%= profile.state %></span>
+                  <% end %>
+                </div>
+                <div class="flex items-center justify-between">
+                  <% if profile.expires_at.present? %>
+                    <span class="text-xs text-base-content/60">Expires: <%= profile.expires_at.strftime("%b %d, %Y") %></span>
+                  <% else %>
+                    <span></span>
+                  <% end %>
+                  <%= link_to organization_apple_provisioning_profile_path(@organization, profile), class: "btn btn-ghost btn-xs gap-1" do %>
+                    <i class="fa-solid fa-arrow-right"></i>
+                    View
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-6 sm:py-8 text-base-content/60 px-2">
+          <i class="fa-solid fa-id-card text-xl sm:text-2xl mb-2 opacity-30"></i>
+          <p class="text-sm">No profiles are currently using this certificate.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Raw JSON %>
+  <div class="flex justify-end">
+    <button type="button" class="btn btn-ghost btn-xs sm:btn-sm gap-1.5"
+            data-controller="raw-json"
+            data-action="click->raw-json#show"
+            data-raw-json-content-value="<%= @certificate.raw_json %>"
+            data-raw-json-title-value="Certificate: <%= @certificate.name %>">
+      <i class="fa-solid fa-code"></i>
+      View Raw JSON
+    </button>
+  </div>
+</section>

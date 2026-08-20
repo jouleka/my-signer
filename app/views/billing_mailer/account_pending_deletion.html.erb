@@ -1,0 +1,23 @@
+<% @preheader = "Your account is scheduled for deletion. You can restore it any time within the next 90 days." %>
+
+<%= ms_eyebrow(10, "Account · Pending deletion") %>
+<%= ms_headline("Scheduled for <em style=\"font-style:italic; color:#f57c97;\" class=\"ms-callout-danger-text\">deletion.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name.presence || @user.email)},") %>
+
+<%= ms_callout(
+  "Your account is now deactivated and will be <strong style=\"color:inherit;\">permanently deleted on #{@deletes_at.strftime('%B %-d, %Y')}</strong>. After that date, every account, organization, signing key, screenshot and release-note record is removed from production &mdash; the action cannot be reversed.",
+  variant: :danger,
+  accent_label: "Final notice"
+) %>
+
+<%= ms_body("Changed your mind? You have <strong style=\"color:#f4ede0;\">90 days</strong> to bring everything back exactly the way you left it &mdash; settings, organizations, history, the lot. Use your personal restoration link below.") %>
+
+<%= ms_cta("Restore my account", account_restoration_url(token: @restore_token), variant: :primary, margin_top: 12, margin_bottom: 16) %>
+
+<%= ms_body("Or paste this URL into a browser:", margin_bottom: 8) %>
+<%= ms_token_block(account_restoration_url(token: @restore_token)) %>
+
+<%= ms_rule(margin_top: 12, margin_bottom: 22) %>
+
+<%= ms_fine_print("Need help exporting data first? Reply to this email &mdash; we read every reply. Didn't request the deletion? Use the link above to restore the account immediately, then change your password.") %>

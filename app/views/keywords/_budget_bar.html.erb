@@ -1,0 +1,32 @@
+<%# Three-segment keyword budget bar. Rendered at the top of the Suggestions
+    tab. The current and staged segment widths are set via data-targets in
+    keyword_editor_controller so they animate on basket mutation. %>
+<% kw_str = @store_listing&.keywords.to_s %>
+<% current_count = kw_str.length %>
+<% current_pct = (current_count.to_f / 100 * 100).round(2) %>
+
+<div id="keyword-budget-bar" class="mb-2">
+  <div class="flex items-baseline justify-between mb-2">
+    <div class="<%= label_uppercase_classes %>">Keyword Budget &mdash; <%= @current_locale %></div>
+    <div class="text-xs text-base-content/70">
+      <strong class="text-base-content/95"><%= current_count %></strong>/100 chars used
+      &middot;
+      <span class="text-success/85" data-keyword-editor-target="budgetFree"><%= [100 - current_count, 0].max %> free</span>
+    </div>
+  </div>
+
+  <div class="<%= progress_track_classes %> h-1.5 flex overflow-hidden">
+    <div class="<%= budget_segment_current_classes %>"
+         style="width: <%= current_pct %>%"
+         data-keyword-editor-target="budgetCurrent"></div>
+    <div class="<%= budget_segment_staged_classes %>"
+         style="width: 0%"
+         data-keyword-editor-target="budgetStaged"></div>
+  </div>
+
+  <div class="mt-1.5 flex items-center gap-3 text-[0.65rem] text-base-content/40">
+    <span><span class="inline-block w-2 h-2 rounded-sm bg-primary/70 mr-1 align-middle"></span>current</span>
+    <span><span class="inline-block w-2 h-2 rounded-sm bg-success/70 mr-1 align-middle"></span>staged (basket)</span>
+    <span><span class="inline-block w-2 h-2 rounded-sm border border-base-content/30 mr-1 align-middle"></span>free</span>
+  </div>
+</div>

@@ -1,0 +1,294 @@
+<%= render "shared/android_breadcrumbs", organization: @organization, active_tab: :tracks %>
+
+<section class="space-y-6">
+  <%= render "shared/page_header",
+             title: "Android Tracks",
+             description: "Monitor release tracks across all your Android apps. View track status, active releases, and rollout configurations.",
+             gradient: "from-violet-500/10 via-base-100 to-purple-500/10",
+             badge_icon: "fa-solid fa-code-branch",
+             badge_text: "Release Tracks",
+             stats: (capture do %>
+        <div class="stat py-3 px-5">
+          <div class="stat-title text-xs">Total</div>
+          <div class="stat-value text-2xl"><%= @total_tracks %></div>
+          <div class="stat-desc">tracks</div>
+        </div>
+        <div class="stat py-3 px-5">
+          <div class="stat-title text-xs">Apps</div>
+          <div class="stat-value text-2xl text-success"><%= @apps_with_tracks %></div>
+          <div class="stat-desc">with tracks</div>
+        </div>
+        <% if @q_track.present? || @q_app.present? %>
+          <div class="stat py-3 px-5">
+            <div class="stat-title text-xs">Filtered</div>
+            <div class="stat-value text-2xl text-accent"><%= @tracks.size %></div>
+            <div class="stat-desc">showing</div>
+          </div>
+        <% end %>
+             <% end),
+             actions: (capture do %>
+      <%= link_to organization_android_apps_path(@organization), class: "btn btn-ghost gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        Back to Apps
+      <% end %>
+             <% end) %>
+
+  <%# Tracks Card %>
+  <%= render "shared/content_card",
+             filter: (capture do %>
+    <%= form_with url: organization_android_tracks_path(@organization), method: :get, local: true, class: "flex flex-col sm:flex-row gap-4 flex-1" do %>
+      <div class="form-control flex-1 max-w-xs">
+        <label class="label py-1">
+          <span class="label-text text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-code-branch text-[10px] text-base-content/50"></i>
+            Track
+          </span>
+        </label>
+        <%= render "shared/custom_select", name: "track", options: [["All tracks", ""]] + @track_names.map { |t| [t.capitalize, t] }, selected: @q_track.to_s %>
+      </div>
+      <div class="form-control flex-1 max-w-xs">
+        <label class="label py-1">
+          <span class="label-text text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-brands fa-android text-[10px] text-base-content/50"></i>
+            App
+          </span>
+        </label>
+        <%= render "shared/custom_select", name: "app", options: [["All apps", ""]] + @apps.map { |app| [app.name.presence || app.package_name, app.id.to_s] }, selected: @q_app.to_s %>
+      </div>
+      <div class="flex items-end gap-2">
+        <button class="btn btn-primary btn-sm gap-2" type="submit">
+          <i class="fa-solid fa-filter"></i>
+          Apply
+        </button>
+        <% if @q_track.present? || @q_app.present? %>
+          <%= link_to organization_android_tracks_path(@organization), class: "btn btn-ghost btn-sm gap-2" do %>
+            <i class="fa-solid fa-xmark"></i>
+            Clear
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+             <% end) do %>
+
+    <% if @tracks.any? %>
+        <%# Desktop Table %>
+        <div class="hidden lg:block">
+          <div class="overflow-x-auto rounded-2xl border border-base-200">
+            <table class="table">
+              <thead>
+                <tr class="bg-base-200/50 text-xs uppercase text-base-content/60 font-bold tracking-wider">
+                  <th>App</th>
+                  <th>Track</th>
+                  <th>Status</th>
+                  <th>Active Release</th>
+                  <th>Rollout</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @tracks.each do |track| %>
+                  <% 
+                    track_info = case track.track_name
+                      when "production" then { badge: "badge-success", icon: "fa-rocket", bg: "from-emerald-500/20 to-green-500/20", icon_color: "text-emerald-600" }
+                      when "beta" then { badge: "badge-warning", icon: "fa-flask", bg: "from-amber-500/20 to-yellow-500/20", icon_color: "text-amber-600" }
+                      when "alpha" then { badge: "badge-info", icon: "fa-vial", bg: "from-blue-500/20 to-cyan-500/20", icon_color: "text-blue-600" }
+                      when "internal" then { badge: "badge-ghost", icon: "fa-lock", bg: "from-gray-500/20 to-slate-500/20", icon_color: "text-gray-600" }
+                      else { badge: "badge-ghost", icon: "fa-code-branch", bg: "from-gray-500/20 to-slate-500/20", icon_color: "text-gray-600" }
+                    end
+                    releases = track.releases.is_a?(Hash) ? track.releases["releases"] || [] : []
+                    latest = releases.first
+                    release_status = latest&.dig("status")
+                    user_fraction = latest&.dig("userFraction")
+                  %>
+                  <tr class="hover:bg-base-200/30 transition-colors">
+                    <td>
+                      <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                          <i class="fa-brands fa-android text-emerald-600 text-sm"></i>
+                        </div>
+                        <%= link_to organization_android_app_path(@organization, track.android_app), class: "font-medium hover:text-primary transition-colors" do %>
+                          <%= track.android_app.name.presence || track.android_app.package_name %>
+                        <% end %>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge <%= track_info[:badge] %> gap-1.5 capitalize">
+                        <i class="fa-solid <%= track_info[:icon] %> text-[10px]"></i>
+                        <%= track.track_name %>
+                      </span>
+                    </td>
+                    <td>
+                      <% if track.status.present? %>
+                        <span class="badge badge-outline badge-sm"><%= track.status %></span>
+                      <% else %>
+                        <span class="text-base-content/30">—</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if latest %>
+                        <div class="flex flex-col gap-0.5">
+                          <% version_codes = latest["versionCodes"] || [] %>
+                          <% if version_codes.any? || latest["name"].present? %>
+                            <span class="font-mono text-sm font-medium"><%= latest["name"].presence || "v#{version_codes.first}" %></span>
+                          <% end %>
+                          <% if release_status.present? %>
+                            <% 
+                              status_badge = case release_status
+                                when "completed" then "badge-success"
+                                when "inProgress" then "badge-warning"
+                                when "halted" then "badge-error"
+                                when "draft" then "badge-ghost"
+                                else "badge-ghost"
+                              end
+                            %>
+                            <span class="badge <%= status_badge %> badge-xs"><%= release_status.titleize %></span>
+                          <% end %>
+                        </div>
+                      <% else %>
+                        <span class="text-base-content/30 text-sm">No releases</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if user_fraction.present? && user_fraction < 1.0 %>
+                        <div class="flex items-center gap-2">
+                          <div class="w-16 bg-base-200 rounded-full h-1.5">
+                            <div class="bg-primary h-1.5 rounded-full" style="width: <%= (user_fraction * 100).round %>%"></div>
+                          </div>
+                          <span class="text-xs font-medium"><%= (user_fraction * 100).round(1) %>%</span>
+                        </div>
+                      <% elsif latest && release_status == "completed" %>
+                        <span class="badge badge-success badge-sm gap-1">
+                          <i class="fa-solid fa-check text-[8px]"></i>
+                          100%
+                        </span>
+                      <% else %>
+                        <span class="text-base-content/30">—</span>
+                      <% end %>
+                    </td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-ghost btn-xs gap-1.5"
+                              data-controller="raw-json"
+                              data-action="click->raw-json#show"
+                              data-raw-json-content-value="<%= track.raw_json %>"
+                              data-raw-json-title-value="Track: <%= track.track_name %> (<%= track.android_app.package_name %>)">
+                        <i class="fa-solid fa-code"></i>
+                        JSON
+                      </button>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <%# Mobile Cards %>
+        <div class="lg:hidden space-y-3">
+          <% @tracks.each do |track| %>
+            <% 
+              track_info = case track.track_name
+                when "production" then { border: "border-success/50 bg-success/5", icon: "fa-rocket", badge: "badge-success" }
+                when "beta" then { border: "border-warning/50 bg-warning/5", icon: "fa-flask", badge: "badge-warning" }
+                when "alpha" then { border: "border-info/50 bg-info/5", icon: "fa-vial", badge: "badge-info" }
+                when "internal" then { border: "border-base-300 bg-base-200/50", icon: "fa-lock", badge: "badge-ghost" }
+                else { border: "border-base-300", icon: "fa-code-branch", badge: "badge-ghost" }
+              end
+              releases = track.releases.is_a?(Hash) ? track.releases["releases"] || [] : []
+              latest = releases.first
+              release_status = latest&.dig("status")
+              user_fraction = latest&.dig("userFraction")
+            %>
+            <div class="card border <%= track_info[:border] %> shadow-sm">
+              <div class="card-body p-4 space-y-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                      <i class="fa-brands fa-android text-emerald-600"></i>
+                    </div>
+                    <div>
+                      <%= link_to organization_android_app_path(@organization, track.android_app), class: "font-semibold hover:text-primary transition-colors" do %>
+                        <%= track.android_app.name.presence || track.android_app.package_name %>
+                      <% end %>
+                      <div class="flex items-center gap-2 mt-1">
+                        <span class="badge <%= track_info[:badge] %> badge-sm gap-1 capitalize">
+                          <i class="fa-solid <%= track_info[:icon] %> text-[8px]"></i>
+                          <%= track.track_name %>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <% if latest %>
+                  <div class="grid gap-2 text-sm bg-base-200/50 rounded-xl p-3">
+                    <% version_codes = latest["versionCodes"] || [] %>
+                    <% if version_codes.any? || latest["name"].present? %>
+                      <div class="flex justify-between items-center">
+                        <span class="text-base-content/60 text-xs">Version</span>
+                        <span class="font-mono font-medium"><%= latest["name"].presence || "v#{version_codes.first}" %></span>
+                      </div>
+                    <% end %>
+                    <% if release_status.present? %>
+                      <div class="flex justify-between items-center">
+                        <span class="text-base-content/60 text-xs">Status</span>
+                        <span class="badge badge-xs badge-outline"><%= release_status.titleize %></span>
+                      </div>
+                    <% end %>
+                    <% if user_fraction.present? && user_fraction < 1.0 %>
+                      <div class="flex justify-between items-center">
+                        <span class="text-base-content/60 text-xs">Rollout</span>
+                        <div class="flex items-center gap-2">
+                          <div class="w-12 bg-base-300 rounded-full h-1.5">
+                            <div class="bg-primary h-1.5 rounded-full" style="width: <%= (user_fraction * 100).round %>%"></div>
+                          </div>
+                          <span class="text-xs font-medium"><%= (user_fraction * 100).round(1) %>%</span>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <p class="text-sm text-base-content/50 italic">No releases yet</p>
+                <% end %>
+
+                <button type="button" class="btn btn-ghost btn-xs w-fit gap-1.5"
+                        data-controller="raw-json"
+                        data-action="click->raw-json#show"
+                        data-raw-json-content-value="<%= track.raw_json %>"
+                        data-raw-json-title-value="Track: <%= track.track_name %>">
+                  <i class="fa-solid fa-code"></i>
+                  View JSON
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <%# Empty State %>
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+          <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center mb-4">
+            <i class="fa-solid fa-code-branch text-3xl text-violet-500/50"></i>
+          </div>
+          <h3 class="text-xl font-bold">No Tracks Found</h3>
+          <p class="text-base-content/60 max-w-sm mt-2 mb-6">
+            <% if @q_track.present? || @q_app.present? %>
+              No tracks match the current filters. Try adjusting your search criteria.
+            <% else %>
+              Sync your Google Play data to import release track configurations.
+            <% end %>
+          </p>
+          <div class="flex gap-3">
+            <% if @q_track.present? || @q_app.present? %>
+              <%= link_to organization_android_tracks_path(@organization), class: "btn btn-primary gap-2" do %>
+                <i class="fa-solid fa-xmark"></i>
+                Clear Filters
+              <% end %>
+            <% end %>
+            <%= link_to organization_android_apps_path(@organization), class: "btn btn-ghost gap-2" do %>
+              <i class="fa-brands fa-android"></i>
+              View Apps
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+  <% end %>
+</section>

@@ -1,0 +1,1074 @@
+<div class="max-w-7xl mx-auto py-6 sm:py-10" data-controller="settings" data-settings-open-modal-value="<%= @open_settings_modal %>">
+  <% provider_source = @user.provider.presence || @user.provider_was %>
+  <% provider_label = case provider_source
+                      when "google_oauth2" then "Google"
+                      when "github" then "GitHub"
+                      when "apple" then "Apple"
+                      else provider_source&.titleize
+                      end %>
+  <% provider_icon = case provider_source
+                    when "google_oauth2" then "fa-brands fa-google"
+                    when "github" then "fa-brands fa-github"
+                    when "apple" then "fa-brands fa-apple"
+                    else nil
+                    end %>
+  <% provider_connected = provider_source.present? %>
+
+  <% billing_subscription = @billing_subscription if @billing_subscription.present? && @billing_subscription.effective_tier != "free" %>
+  <% scheduled_change_impact = scheduled_plan_change_impact(billing_subscription, organization: current_organization) if billing_subscription.present? %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+      <!-- Profile Header -->
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+          <% if @user.avatar_url.present? %>
+            <div class="avatar flex-shrink-0">
+              <div class="w-12 sm:w-16 rounded-full">
+                <%= image_tag @user.avatar_url, alt: "#{@user.name} avatar", class: "object-cover" %>
+              </div>
+            </div>
+          <% else %>
+            <div class="avatar avatar-placeholder flex-shrink-0">
+              <div class="bg-neutral text-neutral-content w-12 sm:w-16 rounded-full">
+                <span class="text-xl sm:text-2xl"><%= @user.name&.first || @user.email.first.upcase %></span>
+              </div>
+            </div>
+          <% end %>
+          <div class="min-w-0">
+            <h1 class="text-xl sm:text-2xl font-semibold truncate"><%= @user.name.presence || @user.email.split('@').first %></h1>
+            <p class="text-sm text-base-content/60 truncate"><%= @user.email %></p>
+          </div>
+        </div>
+        <%# Mobile: dropdown menu. Desktop: inline buttons. %>
+        <div class="dropdown dropdown-end sm:hidden flex-shrink-0">
+          <div tabindex="0" role="button" class="btn btn-sm btn-ghost btn-circle">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </div>
+          <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-100 rounded-box z-[1] mt-2 w-48 p-2 shadow border border-base-300">
+            <li>
+              <button data-controller="modal" data-action="click->modal#open" data-modal-target-value="edit_profile_modal">
+                <i class="fa-solid fa-pen text-xs"></i>
+                Edit profile
+              </button>
+            </li>
+            <li>
+              <button data-controller="modal" data-action="click->modal#open" data-modal-target-value="change_password_modal">
+                <i class="fa-solid fa-key text-xs"></i>
+                Change password
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="hidden sm:flex gap-2 flex-shrink-0">
+          <button data-controller="modal" data-action="click->modal#open" data-modal-target-value="edit_profile_modal" class="btn btn-sm btn-ghost">
+            <i class="fa-solid fa-pen text-xs"></i>
+            Edit profile
+          </button>
+          <button data-controller="modal" data-action="click->modal#open" data-modal-target-value="change_password_modal" class="btn btn-sm btn-ghost">
+            <i class="fa-solid fa-key text-xs"></i>
+            Change password
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div role="tablist" class="tabs tabs-bordered tabs-sm sm:tabs-md overflow-x-auto">
+        <input type="radio" name="settings_tabs" role="tab" class="tab" aria-label="General" <%= 'checked' if params[:tab].blank? || params[:tab] == 'general' %> />
+        <div role="tabpanel" class="tab-content py-4 sm:py-6 space-y-4 sm:space-y-6">
+
+            <div class="rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-6 space-y-4">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h3 class="font-medium">Billing</h3>
+                <div class="flex flex-wrap gap-2">
+                  <%= link_to pricing_path, class: "btn btn-sm btn-outline gap-2" do %>
+                    <i class="fa-solid fa-crown text-xs"></i>
+                    View plans
+                  <% end %>
+                  <% if billing_subscription.present? && billing_subscription.provider_customer_id.present? %>
+                    <%= button_to billing_paddle_portal_session_path, method: :post, class: "btn btn-sm btn-primary gap-2", form: { data: { turbo: false } } do %>
+                      <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                      Invoices & billing
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+
+              <%# Current plan bar %>
+              <div class="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/8 via-base-100 to-base-100 px-4 py-3.5">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <i class="fa-solid fa-crown text-sm text-primary"></i>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-sm font-semibold"><%= @user.plan_tier.titleize %></span>
+                        <% if billing_subscription.present? %>
+                          <span class="badge badge-primary badge-xs"><%= billing_subscription.status.titleize %></span>
+                          <span class="badge badge-outline badge-xs"><%= billing_subscription.billing_interval.titleize %></span>
+                          <% if billing_subscription.cancel_at_period_end? %>
+                            <span class="badge badge-warning badge-xs">Cancels at renewal</span>
+                          <% end %>
+                        <% end %>
+                      </div>
+                      <p class="mt-0.5 text-xs text-base-content/50 truncate">
+                        <% if billing_subscription.present? %>
+                          <%= billing_current_plan_summary(billing_subscription) %>
+                        <% else %>
+                          No active subscription.
+                        <% end %>
+                      </p>
+                    </div>
+                  </div>
+                  <% if billing_subscription.present? %>
+                    <%= button_to billing_paddle_portal_session_path, method: :post, params: { purpose: "cancel" }, class: "btn btn-xs btn-ghost text-base-content/40 hover:text-warning shrink-0 gap-1.5", form: { data: { turbo: false } } do %>
+                      <i class="fa-regular fa-heart text-[10px]"></i>
+                      <%= billing_subscription.cancel_at_period_end? ? "Review cancellation" : "Cancel" %>
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+
+              <%# Renewal info %>
+              <% if billing_subscription.present? && billing_subscription.current_period_ends_at.present? %>
+                <div class="flex items-center gap-2.5 rounded-lg bg-base-200/40 px-3.5 py-2.5 text-sm">
+                  <i class="fa-solid fa-calendar-day text-xs text-base-content/35"></i>
+                  <span class="text-base-content/60">
+                    <% if billing_subscription.cancel_at_period_end? %>
+                      Access until <strong class="text-base-content/80"><%= l(billing_subscription.current_period_ends_at, format: :long) %></strong>
+                    <% else %>
+                      Renews <strong class="text-base-content/80"><%= l(billing_subscription.current_period_ends_at, format: :long) %></strong>
+                    <% end %>
+                  </span>
+                </div>
+              <% end %>
+
+              <% if current_organization.present? %>
+                <%= render "shared/plan_overage_banner", status: pricing_overage_status(current_organization), compact: true %>
+              <% end %>
+
+              <% if (pending_change_notice = billing_subscription_change_notice(billing_subscription)).present? %>
+                <div class="flex items-center gap-2 rounded-lg bg-warning/10 px-3.5 py-2.5 text-sm">
+                  <i class="fa-solid fa-clock text-warning text-xs"></i>
+                  <span class="text-base-content/70"><%= pending_change_notice %></span>
+                </div>
+              <% end %>
+
+              <% if scheduled_change_impact.present? %>
+                <%= render "shared/scheduled_plan_change_banner", impact: scheduled_change_impact, compact: true %>
+              <% end %>
+            </div>
+
+          <!-- Account Status -->
+          <div class="rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-6 space-y-4">
+            <h3 class="font-medium">Account status</h3>
+            
+            <div class="flex items-center justify-between py-2">
+              <span class="text-sm text-base-content/70">Email verification</span>
+              <% if @user.confirmed? %>
+                <span class="badge badge-success badge-sm">Verified</span>
+              <% elsif @user.pending_reconfirmation? %>
+                <div class="text-right">
+                  <span class="badge badge-warning badge-sm">Pending</span>
+                  <p class="text-xs text-base-content/60 mt-1"><%= @user.unconfirmed_email %></p>
+                </div>
+              <% else %>
+                <%= button_to "Verify email", user_confirmation_path, method: :post, params: { user: { email: @user.email } }, class: "btn btn-xs btn-ghost" %>
+              <% end %>
+            </div>
+
+            <% if @user.failed_attempts > 0 || @user.locked_at.present? %>
+              <div class="collapse collapse-arrow bg-base-200/50">
+                <input type="checkbox" />
+                <div class="collapse-title text-sm font-medium">
+                  Security alerts
+                  <span class="badge badge-warning badge-xs ml-2">!</span>
+                </div>
+                <div class="collapse-content space-y-3">
+                  <% if @user.locked_at.present? %>
+                    <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-base-200/50 border border-error/30">
+                      <i class="fa-solid fa-lock text-error"></i>
+                      <div class="flex-1">
+                        <div class="text-sm font-medium">Account locked</div>
+                        <div class="text-xs text-base-content/60">Since <%= @user.locked_at.strftime("%b %e, %Y") %></div>
+                      </div>
+                      <%= button_to "Unlock", user_unlock_path, method: :post, params: { user: { email: @user.email } }, class: "btn btn-xs" %>
+                    </div>
+                  <% elsif @user.failed_attempts > 0 %>
+                    <p class="text-sm text-base-content/60">
+                      <%= @user.failed_attempts %> failed sign-in attempts (max <%= Devise.maximum_attempts %>)
+                    </p>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Sign-in Methods -->
+          <div class="rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-6 space-y-4">
+            <h3 class="font-medium">Sign-in methods</h3>
+            
+            <div class="flex items-center justify-between py-2">
+              <div>
+                <div class="text-sm font-medium">Password</div>
+                <p class="text-xs text-base-content/60">Email and password authentication</p>
+              </div>
+              <span class="badge badge-success badge-sm">Active</span>
+            </div>
+
+            <% if provider_connected %>
+              <div class="flex items-center justify-between gap-2 py-2">
+                <div class="flex items-center gap-3 min-w-0">
+                  <% icon_class = provider_icon || "fa-solid fa-right-to-bracket" %>
+                  <i class="<%= icon_class %> text-lg flex-shrink-0"></i>
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium truncate"><%= provider_label %> SSO</div>
+                    <p class="text-xs text-base-content/60">Connected</p>
+                  </div>
+                </div>
+                <button data-controller="modal" data-action="click->modal#open" data-modal-target-value="disconnect_sso_modal" class="btn btn-xs btn-ghost text-warning flex-shrink-0">Disconnect</button>
+              </div>
+            <% else %>
+              <div class="pt-2 space-y-2">
+                <p class="text-sm text-base-content/60">Connect with SSO for faster sign-in</p>
+                <div class="flex flex-wrap gap-2">
+                  <%= button_to user_apple_omniauth_authorize_path, method: :post, data: { turbo: false }, class: "btn btn-xs btn-outline gap-1" do %>
+                    <i class="fa-brands fa-apple"></i>
+                    Apple
+                  <% end %>
+                  <%= button_to user_google_oauth2_omniauth_authorize_path, method: :post, data: { turbo: false }, class: "btn btn-xs btn-outline gap-1" do %>
+                    <i class="fa-brands fa-google"></i>
+                    Google
+                  <% end %>
+                  <%= button_to user_github_omniauth_authorize_path, method: :post, data: { turbo: false }, class: "btn btn-xs btn-outline gap-1" do %>
+                    <i class="fa-brands fa-github"></i>
+                    GitHub
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="collapse collapse-arrow border border-error/30 bg-error/5 rounded-2xl">
+            <input type="checkbox" />
+            <div class="collapse-title text-error font-medium">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Danger zone</span>
+              </div>
+            </div>
+            <div class="collapse-content">
+              <div class="pt-2 space-y-4">
+                <p class="text-sm text-base-content/70">
+                  Once you delete your account, there is no going back. Please be certain.
+                </p>
+                <button data-controller="modal" data-action="click->modal#open" data-modal-target-value="delete_account_modal" class="btn btn-sm btn-error btn-outline">
+                  <i class="fa-solid fa-trash text-xs"></i>
+                  Delete my account
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <input type="radio" name="settings_tabs" role="tab" class="tab" aria-label="Notifications" <%= 'checked' if params[:tab] == 'notifications' %> />
+        <div role="tabpanel" class="tab-content py-4 sm:py-6 space-y-4 sm:space-y-6">
+          <div class="rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-6 space-y-6">
+            <h3 class="font-medium">Notification Preferences</h3>
+            
+            <%= form_with(model: @user, url: notification_preferences_path, method: :patch, class: "space-y-6") do |f| %>
+              
+              <!-- Global Email Setting -->
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-4">
+                  <%= f.check_box :email_notifications_enabled, class: "toggle toggle-primary" %>
+                  <div>
+                    <span class="label-text font-medium">Enable Email Notifications</span>
+                    <p class="text-xs text-base-content/60">Receive email notifications for important updates and alerts.</p>
+                  </div>
+                </label>
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- Expiry Alerts -->
+              <div>
+                <h4 class="text-sm font-medium mb-4">Expiry Alerts</h4>
+                <div class="space-y-3">
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_certificate_expiry, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">Apple Certificates</span>
+                        <p class="text-xs text-base-content/60">Get notified when your iOS distribution or development certificates are expiring.</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_profile_expiry, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">Provisioning Profiles</span>
+                        <p class="text-xs text-base-content/60">Get notified when your provisioning profiles are expiring.</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_keystore_expiry, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">Android Keystores</span>
+                        <p class="text-xs text-base-content/60">Get notified when your Android keystore certificates are expiring.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- Sync & Security Alerts -->
+              <div>
+                <h4 class="text-sm font-medium mb-4">Sync & Security</h4>
+                <div class="space-y-3">
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_sync_failures, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">Sync Failures</span>
+                        <p class="text-xs text-base-content/60">Get notified when App Store Connect or Google Play sync fails (admin only).</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_revocations, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">Revocations</span>
+                        <p class="text-xs text-base-content/60">Get notified when certificates are revoked or profiles become invalid.</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_sync_changes, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">Sync Changes</span>
+                        <p class="text-xs text-base-content/60">Get notified when syncs detect new or changed resources (off by default).</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- Team & API Activity -->
+              <div>
+                <h4 class="text-sm font-medium mb-4">Team & API Activity</h4>
+                <div class="space-y-3">
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_member_activity, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">Member activity</span>
+                        <p class="text-xs text-base-content/60">Get notified when team members join, leave, or have their role changed.</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_api_token_activity, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">API tokens</span>
+                        <p class="text-xs text-base-content/60">Get notified when API tokens are created or revoked in your organizations.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- Billing & Plan -->
+              <div>
+                <h4 class="text-sm font-medium mb-4">Billing & Plan</h4>
+                <div class="space-y-3">
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_billing_changes, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">Billing changes</span>
+                        <p class="text-xs text-base-content/60">Plan upgrades, downgrades, trial expiration, and payment issues.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- Release Activity -->
+              <div>
+                <h4 class="text-sm font-medium mb-4">Release Activity</h4>
+                <div class="space-y-3">
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box :notify_release_activity, class: "checkbox checkbox-sm checkbox-primary" %>
+                      <div>
+                        <span class="label-text">Release & review events</span>
+                        <p class="text-xs text-base-content/60">App Store / Play Store state changes, release note reviews, negative app reviews, and Android Vitals anomalies.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <% if current_user.owned_organizations.any? { |org| org.entitlements.sso_enabled? } %>
+                <div class="divider"></div>
+
+                <!-- Security & Identity (Team-tier) -->
+                <div>
+                  <h4 class="text-sm font-medium mb-4">Security & Identity <span class="badge badge-sm ml-2">Team</span></h4>
+                  <div class="space-y-3">
+                    <div class="form-control">
+                      <label class="label cursor-pointer justify-start gap-4">
+                        <%= f.check_box :notify_sso_activity, class: "checkbox checkbox-sm checkbox-primary" %>
+                        <div>
+                          <span class="label-text">SSO activity</span>
+                          <p class="text-xs text-base-content/60">SSO configuration changes and auto-provisioned users.</p>
+                        </div>
+                      </label>
+                    </div>
+
+                    <div class="form-control">
+                      <label class="label cursor-pointer justify-start gap-4">
+                        <%= f.check_box :notify_security_alerts, class: "checkbox checkbox-sm checkbox-primary" %>
+                        <div>
+                          <span class="label-text">Security alerts</span>
+                          <p class="text-xs text-base-content/60">Failed-login spikes, API token revocations, and other security events.</p>
+                        </div>
+                      </label>
+                    </div>
+
+                    <div class="form-control">
+                      <label class="label cursor-pointer justify-start gap-4">
+                        <%= f.check_box :notify_audit_digest, class: "checkbox checkbox-sm checkbox-primary" %>
+                        <div>
+                          <span class="label-text">Weekly audit digest</span>
+                          <p class="text-xs text-base-content/60">Weekly email summarising audit events across your organizations. (Delivery wiring coming soon.)</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+
+              <div class="divider"></div>
+
+              <!-- Threshold -->
+              <div>
+                <h4 class="text-sm font-medium mb-4">Notification Timing</h4>
+                <div class="max-w-xs form-control">
+                  <label class="label">
+                    <span class="label-text">Days Before Expiry</span>
+                  </label>
+                  <div class="flex items-center gap-3">
+                    <%= f.number_field :notification_days_before, min: 1, max: 90, class: "input input-bordered w-24" %>
+                    <span class="text-sm text-base-content/60">days</span>
+                  </div>
+                  <div class="label">
+                    <span class="label-text-alt text-base-content/60">How many days before expiry should we start notifying you?</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-4">
+                <%= f.submit "Save Preferences", class: "btn btn-primary" %>
+              </div>
+
+            <% end %>
+          </div>
+        </div>
+
+        <input type="radio" name="settings_tabs" role="tab" class="tab" aria-label="API" <%= 'checked' if params[:tab] == 'api' %> />
+        <div role="tabpanel" class="tab-content py-4 sm:py-6 space-y-4 sm:space-y-6">
+
+          <!-- API Tokens -->
+          <div class="rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-6 space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <h3 class="font-medium">API tokens</h3>
+                <% if @api_tokens.any? %>
+                  <p class="text-xs text-base-content/60 mt-1">
+                    <%= @api_tokens.active.count %> active · <%= @api_tokens.count %> total
+                  </p>
+                <% end %>
+              </div>
+              <% if current_organization.present? %>
+                <%= link_to new_organization_api_token_path(current_organization), data: { turbo_frame: "api_token_modal" }, class: "btn btn-xs sm:btn-sm btn-primary flex-shrink-0" do %>
+                  <i class="fa-solid fa-plus text-xs"></i>
+                  <span class="hidden sm:inline">New token</span>
+                  <span class="sm:hidden">New</span>
+                <% end %>
+              <% end %>
+            </div>
+
+            <% if @api_tokens.any? %>
+              <div class="overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Last used</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @api_tokens.each do |token| %>
+                      <tr>
+                        <td>
+                          <div class="font-medium"><%= token.name %></div>
+                          <div class="text-xs text-base-content/60">
+                            <%= token.scopes_array.join(', ') %>
+                          </div>
+                        </td>
+                        <td class="text-sm">
+                          <% if token.last_used_at.present? %>
+                            <%= time_ago_in_words(token.last_used_at) %> ago
+                          <% else %>
+                            <span class="text-base-content/40">Never</span>
+                          <% end %>
+                        </td>
+                        <td>
+                          <% if token.revoked? %>
+                            <span class="badge badge-error badge-xs">Revoked</span>
+                          <% elsif token.expired? %>
+                            <span class="badge badge-warning badge-xs">Expired</span>
+                          <% else %>
+                            <span class="badge badge-success badge-xs">Active</span>
+                          <% end %>
+                        </td>
+                        <td>
+                          <% unless token.revoked? %>
+                            <button type="button" class="btn btn-xs btn-ghost text-error"
+                                    data-action="click->settings#showRevokeTokenModal"
+                                    data-token-id="<%= token.id %>"
+                                    data-token-name="<%= token.name %>"
+                                    data-org-id="<%= token.organization_id %>">
+                              Revoke
+                            </button>
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% else %>
+              <div class="text-center py-6 text-base-content/50">
+                <i class="fa-solid fa-key text-2xl opacity-30 mb-2"></i>
+                <p class="text-sm">No API tokens yet</p>
+                <% if current_organization.blank? %>
+                  <p class="text-xs mt-1">Select an organization first</p>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <input type="radio" name="settings_tabs" role="tab" class="tab" aria-label="Organizations" <%= 'checked' if params[:tab] == 'organizations' %> />
+        <div role="tabpanel" class="tab-content py-4 sm:py-6 space-y-4 sm:space-y-6">
+          <!-- Organizations -->
+          <div class="rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-6 space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="font-medium">Your organizations</h3>
+              <%= link_to organizations_path, class: "btn btn-xs sm:btn-sm btn-ghost" do %>
+                Manage
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+              <% end %>
+            </div>
+
+            <% if @memberships.any? %>
+              <div class="space-y-2">
+                <% @memberships.each do |membership| %>
+                  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-xl bg-base-200/40 hover:bg-base-200/60 transition-colors">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <i class="fa-solid fa-building text-base-content/50 flex-shrink-0"></i>
+                      <div class="min-w-0">
+                        <div class="font-medium text-sm truncate">
+                          <%= membership.organization.name %>
+                          <% if @user.last_organization_id == membership.organization_id %>
+                            <span class="badge badge-primary badge-xs ml-1">Active</span>
+                          <% end %>
+                          <% unless membership.organization.accessible? %>
+                            <span class="badge badge-warning badge-xs ml-1">Blocked by plan</span>
+                          <% end %>
+                        </div>
+                        <div class="text-xs text-base-content/60">
+                          <%= membership.role.titleize %> · Since <%= membership.created_at.strftime("%b %Y") %>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="flex gap-1 flex-shrink-0 sm:ml-2">
+                      <% if membership.organization.accessible? && @user.last_organization_id != membership.organization_id %>
+                        <%= button_to switch_organization_path(membership.organization), method: :post, class: "btn btn-xs btn-ghost" do %>
+                          Switch
+                        <% end %>
+                      <% end %>
+                      <% if membership.organization.accessible? %>
+                        <%= link_to organization_path(membership.organization), class: "btn btn-xs btn-ghost" do %>
+                          <i class="fa-solid fa-arrow-right text-xs"></i>
+                        <% end %>
+                      <% else %>
+                        <%= link_to pricing_path, class: "btn btn-xs btn-ghost gap-1" do %>
+                          <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                          Pricing
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-center py-6 text-base-content/50">
+                <i class="fa-solid fa-building text-2xl opacity-30 mb-2"></i>
+                <p class="text-sm">No organizations yet</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar / Quick Actions -->
+    <div class="lg:sticky lg:top-8 lg:self-start">
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-5 space-y-3">
+        <h3 class="font-medium">Quick actions</h3>
+        <div class="flex flex-wrap gap-2 lg:flex-col lg:gap-1">
+          <% if current_organization.present? %>
+            <%= link_to new_organization_api_token_path(current_organization), data: { turbo_frame: "api_token_modal" }, class: "btn btn-ghost btn-sm lg:btn-block lg:justify-start gap-2" do %>
+              <i class="fa-solid fa-key text-xs"></i>
+              <span class="hidden sm:inline">Create API token</span>
+              <span class="sm:hidden">API token</span>
+            <% end %>
+            <%= link_to organizations_path, class: "btn btn-ghost btn-sm lg:btn-block lg:justify-start gap-2" do %>
+              <i class="fa-solid fa-building text-xs"></i>
+              <span class="hidden sm:inline">Switch organization</span>
+              <span class="sm:hidden">Switch org</span>
+            <% end %>
+          <% end %>
+          <button data-action="click->settings#toggleTheme" class="btn btn-ghost btn-sm lg:btn-block lg:justify-start gap-2">
+            <i class="fa-solid fa-palette text-xs"></i>
+            Toggle theme
+          </button>
+          <input id="theme-toggle-settings" type="checkbox" class="hidden toggle" data-controller="theme-toggle" data-action="change->theme-toggle#toggle" data-settings-target="themeToggle" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Turbo Frame for API Token Modal -->
+  <%= turbo_frame_tag "api_token_modal" %>
+
+  <!-- Revoke Token Modal -->
+  <dialog id="revoke_token_modal_settings" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box max-w-md">
+      <h3 class="font-semibold text-lg mb-2">Revoke token?</h3>
+      <p class="text-sm text-base-content/70 mb-6">
+        Token "<span data-settings-target="revokeTokenName" class="font-medium"></span>" will be permanently revoked and cannot be used again.
+      </p>
+
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn btn-ghost btn-sm" data-controller="modal" data-action="click->modal#close" data-modal-target-value="revoke_token_modal_settings">Cancel</button>
+        <%= button_to "Revoke", "#", data: { settings_target: "revokeTokenForm" }, method: :delete, class: "btn btn-error btn-sm" %>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <!-- Modals -->
+  <!-- Edit Profile Modal -->
+  <dialog id="edit_profile_modal" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box">
+      <h3 class="font-semibold text-lg mb-4">Edit profile</h3>
+      <%= form_for(@user, as: :user, url: registration_path(:user), html: { method: :put, id: "edit_profile_form" }) do |f| %>
+        <% original_email = @user.email_was || @user.email %>
+        <% submitted_email = params.dig(:user, :email) %>
+        <% email_value = submitted_email.nil? ? @user.email : submitted_email %>
+        <% edit_profile_active = @open_settings_modal == "edit_profile_modal" %>
+        <% name_errors = edit_profile_active ? @user.errors.full_messages_for(:name) : [] %>
+        <% email_errors = edit_profile_active ? @user.errors.full_messages_for(:email) : [] %>
+        <% current_password_errors = edit_profile_active ? @user.errors.full_messages_for(:current_password) : [] %>
+        <% show_profile_password_field = current_password_errors.present? || (email_value.present? && original_email.present? && email_value != original_email) %>
+
+        <% if edit_profile_active && @user.errors.any? %>
+          <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-base-200/50 border border-error/30 text-sm mb-4">
+            <i class="fa-solid fa-circle-exclamation text-error"></i>
+            <span class="text-base-content/70">Please fix the highlighted fields.</span>
+          </div>
+        <% end %>
+
+        <div class="space-y-4">
+          <div class="form-control">
+            <%= f.label :name, "Name", class: "label label-text" %>
+            <%= f.text_field :name, autocomplete: "name", placeholder: "Your full name", class: "input input-bordered w-full#{' input-error' if name_errors.present?}" %>
+            <% if name_errors.present? %>
+              <ul class="label-text-alt text-error mt-1 space-y-1">
+                <% name_errors.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+          <div class="form-control">
+            <%= f.label :email, "Email", class: "label label-text" %>
+            <%= f.email_field :email,
+                autocomplete: "email",
+                required: true,
+                placeholder: "your@email.com",
+                value: email_value,
+                class: "input input-bordered w-full#{' input-error' if email_errors.present?}",
+                data: { original_email: original_email, settings_target: "emailInput", action: "change->settings#emailChanged" } %>
+            <% if email_errors.present? %>
+              <ul class="label-text-alt text-error mt-1 space-y-1">
+                <% email_errors.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            <% end %>
+            <% if @user.pending_reconfirmation? %>
+              <span class="label-text-alt text-warning mt-1">Pending confirmation for <%= @user.unconfirmed_email %></span>
+            <% end %>
+          </div>
+          <div id="password_field_container" class="form-control <%= 'hidden' unless show_profile_password_field %>" data-force-visible="<%= show_profile_password_field %>" data-settings-target="passwordContainer">
+            <%= f.label :current_password, "Current password (required for email change)", class: "label label-text" %>
+            <%= f.password_field :current_password, autocomplete: "current-password", placeholder: "••••••••", class: "input input-bordered w-full#{' input-error' if current_password_errors.present?}", id: "edit_profile_password", required: show_profile_password_field, data: { settings_target: "passwordInput" } %>
+            <% if current_password_errors.present? %>
+              <ul class="label-text-alt text-error mt-1 space-y-1">
+                <% current_password_errors.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+          <div class="modal-action">
+            <button type="button" data-controller="modal" data-action="click->modal#close" data-modal-target-value="edit_profile_modal" class="btn btn-ghost">Cancel</button>
+            <%= f.submit "Save changes", class: "btn btn-primary" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <!-- Change Password Modal -->
+  <dialog id="change_password_modal" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box">
+      <h3 class="font-semibold text-lg mb-4">Change password</h3>
+      <%= form_for(@user, as: :user, url: registration_path(:user), html: { method: :put, data: { controller: "form-validator", form_validator_min_password_length_value: Devise.password_length.min, form_validator_email_value: @user.email } }) do |f| %>
+        <% change_password_active = @open_settings_modal == "change_password_modal" %>
+        <% password_requirement_patterns = [
+             /too short/i,
+             /must include at least one .* character/i,
+             /must not contain your email or username/i
+           ] %>
+        <% password_errors_raw = change_password_active ? @user.errors.full_messages_for(:password) : [] %>
+        <% password_errors = password_errors_raw.reject { |message| password_requirement_patterns.any? { |pattern| message.match?(pattern) } } %>
+        <% password_confirmation_errors = change_password_active ? @user.errors.full_messages_for(:password_confirmation) : [] %>
+        <% current_password_errors = change_password_active ? @user.errors.full_messages_for(:current_password) : [] %>
+        <% residual_errors = change_password_active ? (@user.errors.full_messages - password_errors_raw - password_confirmation_errors - current_password_errors).uniq : [] %>
+        <% email_identifier = @user.email.to_s.split("@").first.presence %>
+        <% confirmation_default_message = "Must match new password" %>
+        <% server_match_message = password_confirmation_errors.find { |message| message.downcase.include?("match") } %>
+
+        <% if residual_errors.any? %>
+          <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-base-200/50 border border-error/30 text-sm mb-4">
+            <i class="fa-solid fa-circle-exclamation text-error mt-0.5"></i>
+            <div>
+              <div class="font-medium text-base-content/80">Please resolve these issues:</div>
+              <ul class="text-xs text-base-content/60 space-y-1 list-disc list-inside mt-1">
+                <% residual_errors.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="space-y-5">
+          <div class="rounded-xl border border-base-200 bg-base-200/40 p-4 space-y-2">
+            <div class="flex items-center justify-between text-xs font-medium">
+              <span>Password requirements</span>
+              <span class="badge badge-ghost badge-xs" data-form-validator-target="summary">Start typing</span>
+            </div>
+            <ul class="space-y-1 text-xs" aria-live="polite">
+              <li class="flex items-center gap-2 text-base-content/60" data-form-validator-target="requirement" data-rule="length">
+                <i class="fa-regular fa-circle text-[10px]" data-role="icon"></i>
+                <span>At least <%= Devise.password_length.min %> characters</span>
+              </li>
+              <li class="flex items-center gap-2 text-base-content/60" data-form-validator-target="requirement" data-rule="uppercase">
+                <i class="fa-regular fa-circle text-[10px]" data-role="icon"></i>
+                <span>Includes an uppercase letter</span>
+              </li>
+              <li class="flex items-center gap-2 text-base-content/60" data-form-validator-target="requirement" data-rule="lowercase">
+                <i class="fa-regular fa-circle text-[10px]" data-role="icon"></i>
+                <span>Includes a lowercase letter</span>
+              </li>
+              <li class="flex items-center gap-2 text-base-content/60" data-form-validator-target="requirement" data-rule="digit">
+                <i class="fa-regular fa-circle text-[10px]" data-role="icon"></i>
+                <span>Includes a number</span>
+              </li>
+              <li class="flex items-center gap-2 text-base-content/60" data-form-validator-target="requirement" data-rule="symbol">
+                <i class="fa-regular fa-circle text-[10px]" data-role="icon"></i>
+                <span>Includes a symbol</span>
+              </li>
+              <li class="flex items-center gap-2 text-base-content/60" data-form-validator-target="requirement" data-rule="email">
+                <i class="fa-regular fa-circle text-[10px]" data-role="icon"></i>
+                <span>Does not include your email username</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="form-control">
+            <%= f.label :password, "New password", class: "label label-text" %>
+            <%= f.password_field :password,
+                autocomplete: "new-password",
+                placeholder: "••••••••",
+                class: "input input-bordered w-full#{' input-error' if password_errors.present?}",
+                data: {
+                  form_validator_target: "input",
+                  field: "password",
+                  action: "input->form-validator#input blur->form-validator#blur",
+                  server_error: password_errors.present?
+                } %>
+            <% if password_errors.present? %>
+              <ul class="label-text-alt text-error mt-1 space-y-1">
+                <% password_errors.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            <% else %>
+              <span class="label-text-alt text-base-content/50">Meet every rule above to continue.</span>
+            <% end %>
+          </div>
+
+          <div class="form-control">
+            <%= f.label :password_confirmation, "Confirm new password", class: "label label-text" %>
+            <%= f.password_field :password_confirmation,
+                autocomplete: "new-password",
+                placeholder: "••••••••",
+                class: "input input-bordered w-full",
+                data: {
+                  form_validator_target: "input",
+                  field: "password_confirmation",
+                  action: "input->form-validator#input blur->form-validator#blur",
+                  server_error: password_confirmation_errors.present?
+                } %>
+            <div class="label-text-alt text-error mt-1 <%= 'hidden' unless server_match_message.present? %>" data-form-validator-target="matchMessage" data-default-message="<%= confirmation_default_message %>" data-server-message="<%= server_match_message.to_s %>"><%= server_match_message || confirmation_default_message %></div>
+          </div>
+
+          <div class="form-control">
+            <%= f.label :current_password, "Current password (required)", class: "label label-text" %>
+            <%= f.password_field :current_password,
+                autocomplete: "current-password",
+                placeholder: "••••••••",
+                required: true,
+                class: "input input-bordered w-full#{' input-error' if current_password_errors.present?}",
+                data: {
+                  form_validator_target: "input",
+                  field: "current_password",
+                  action: "input->form-validator#input blur->form-validator#blur",
+                  server_error: current_password_errors.present?
+                } %>
+            <% if current_password_errors.present? %>
+              <ul class="label-text-alt text-error mt-1 space-y-1">
+                <% current_password_errors.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            <% else %>
+              <span class="label-text-alt text-base-content/50">We’ll verify this before saving.</span>
+            <% end %>
+          </div>
+
+          <div class="modal-action">
+            <button type="button" data-controller="modal" data-action="click->modal#close" data-modal-target-value="change_password_modal" class="btn btn-ghost">Cancel</button>
+            <%= f.submit "Change password", class: "btn btn-primary", data: { form_validator_target: "submit" }, disabled: true %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <% if provider_connected %>
+    <!-- Disconnect SSO Modal -->
+    <dialog id="disconnect_sso_modal" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box">
+        <h3 class="font-semibold text-lg mb-4">Disconnect <%= provider_label %> SSO</h3>
+        <p class="text-sm text-base-content/70 mb-4">
+          You'll need to sign in with your password after disconnecting. Make sure you have a password set first.
+        </p>
+        <%= form_for(@user, as: :user, url: registration_path(:user), html: { method: :put }) do |f| %>
+          <%= f.hidden_field :provider, value: nil %>
+          <%= f.hidden_field :uid, value: nil %>
+          <%= f.hidden_field :avatar_url, value: nil %>
+          <% disconnect_active = @open_settings_modal == "disconnect_sso_modal" %>
+          <% disconnect_password_errors = disconnect_active ? @user.errors.full_messages_for(:current_password) : [] %>
+          <% disconnect_residual_errors = disconnect_active ? (@user.errors.full_messages - disconnect_password_errors).uniq : [] %>
+
+          <% if disconnect_residual_errors.any? %>
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-base-200/50 border border-error/30 text-sm mb-4">
+              <i class="fa-solid fa-circle-exclamation text-error mt-0.5"></i>
+              <div class="text-base-content/70">
+                <% disconnect_residual_errors.each do |message| %>
+                  <div><%= message %></div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <div class="space-y-4">
+            <div class="form-control">
+              <%= f.label :current_password, "Current password (required)", class: "label label-text" %>
+              <%= f.password_field :current_password, autocomplete: "current-password", placeholder: "••••••••", required: true, class: "input input-bordered w-full#{' input-error' if disconnect_password_errors.present?}" %>
+              <% if disconnect_password_errors.present? %>
+                <ul class="label-text-alt text-error mt-1 space-y-1">
+                  <% disconnect_password_errors.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              <% end %>
+            </div>
+            <div class="modal-action">
+              <button type="button" data-controller="modal" data-action="click->modal#close" data-modal-target-value="disconnect_sso_modal" class="btn btn-ghost">Cancel</button>
+              <%= f.submit "Disconnect #{provider_label}", class: "btn btn-warning" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+  <% end %>
+
+  <!-- Delete Account Modal -->
+  <dialog id="delete_account_modal" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box max-w-lg">
+      <h3 class="font-semibold text-lg mb-2">Delete your account?</h3>
+      <p class="text-sm text-base-content/70 mb-4">
+        Your account will be <strong>deactivated immediately</strong>. We'll email you a personal restoration link valid for <strong>90 days</strong> — use it any time before then to restore your account exactly as it was. After 90 days, all your data is <strong>permanently deleted</strong>.
+      </p>
+
+      <% if @delete_account_error.present? %>
+        <div class="rounded-xl border border-error bg-error/5 p-3 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-circle-exclamation text-error text-sm"></i>
+          <span class="text-sm text-error"><%= @delete_account_error %></span>
+        </div>
+      <% end %>
+
+      <!-- Warning box -->
+      <div class="rounded-xl border border-base-300 p-4 mb-4">
+        <div class="text-sm">
+          <div class="font-medium mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-info-circle text-base-content/50"></i>
+            <span>The following will be deactivated now and permanently deleted in 90 days:</span>
+          </div>
+          <ul class="space-y-2 text-xs">
+            <% if @user.owned_organizations.any? %>
+              <li class="flex items-start gap-2 pl-6">
+                <i class="fa-solid fa-circle text-[4px] text-base-content/30 mt-1.5"></i>
+                <div>
+                  <div><strong><%= pluralize(@user.owned_organizations.count, 'organization') %></strong> you own (all data, certificates, profiles, keystores, builds, credentials):</div>
+                  <ul class="mt-1 space-y-0.5 ml-2">
+                    <% @user.owned_organizations.each do |org| %>
+                      <li class="flex items-center gap-1.5 text-error">
+                        <i class="fa-solid fa-building text-[10px]"></i>
+                        <span class="font-medium"><%= org.name %></span>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              </li>
+            <% end %>
+            <% membership_count = @user.memberships.where.not(organization_id: @user.owned_organizations.pluck(:id)).count %>
+            <% if membership_count > 0 %>
+              <li class="flex items-start gap-2 pl-6">
+                <i class="fa-solid fa-circle text-[4px] text-base-content/30 mt-1.5"></i>
+                <span>Your membership in <strong><%= pluralize(membership_count, 'other organization', 'other organizations') %></strong> <span class="text-base-content/50">(orgs will remain)</span></span>
+              </li>
+            <% end %>
+            <% if @user.api_tokens.any? %>
+              <li class="flex items-start gap-2 pl-6">
+                <i class="fa-solid fa-circle text-[4px] text-base-content/30 mt-1.5"></i>
+                <span><strong><%= pluralize(@user.api_tokens.count, 'API token') %></strong></span>
+              </li>
+            <% end %>
+            <li class="flex items-start gap-2 pl-6">
+              <i class="fa-solid fa-circle text-[4px] text-base-content/30 mt-1.5"></i>
+              <span>Your profile and all personal settings</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <%= form_with url: user_registration_path, method: :delete, class: "space-y-4" do |f| %>
+        <% if provider_connected %>
+          <div class="rounded-xl border border-base-300 bg-base-200/40 p-3 mb-2 text-xs text-base-content/80">
+            <i class="fa-solid fa-circle-info text-base-content/50 mr-1"></i>
+            You signed in via <%= provider_label %>. If you don't have a password yet, use
+            <%= link_to "Forgot your password", new_user_password_path, class: "link link-primary" %>
+            to set one — we'll email you a link — then come back here to delete.
+          </div>
+        <% end %>
+        <div class="form-control">
+          <%= label_tag :current_password, "Enter your password to confirm", class: "label label-text font-medium" %>
+          <%= password_field_tag :current_password, nil,
+              autocomplete: "current-password",
+              placeholder: "••••••••",
+              required: true,
+              class: "input input-bordered w-full#{' input-error' if @delete_account_error.present?}" %>
+          <span class="label-text-alt text-base-content/50 mt-1">
+            We need to verify it's really you before deleting your account.
+          </span>
+        </div>
+
+        <% if @user.owned_organizations.any? %>
+          <div class="rounded-xl border border-warning bg-warning/5 p-3.5">
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-triangle-exclamation text-warning text-sm mt-0.5"></i>
+              <p class="text-xs text-base-content/80">
+                <strong>Heads up:</strong> You own <%= pluralize(@user.owned_organizations.count, 'organization') %>. After the 90-day grace period, <%= @user.owned_organizations.count == 1 ? 'this organization' : 'these organizations' %> and all associated data will be <strong>permanently deleted</strong>. Restore your account before then to keep everything.
+              </p>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" class="btn btn-ghost" data-controller="modal" data-action="click->modal#close" data-modal-target-value="delete_account_modal">Cancel</button>
+          <%= f.submit "Yes, delete my account", class: "btn btn-error" %>
+        </div>
+      <% end %>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+</div>

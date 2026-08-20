@@ -1,0 +1,218 @@
+<%# Editorial hero: numbered section header, two-column display headline +
+    body, terminal-with-live-typing + signing card stack underneath. %>
+<%
+  # Real `mysigner ship appstore` flow, sourced from
+  # my-signer-cli lib/mysigner/cli/build_commands.rb (#ship). Steps mirror
+  # the actual [N/5] markers and Thor `say` lines so the hero animation
+  # matches what users see in their terminal.
+  ship_lines = [
+    { prefix: "$", text: "mysigner ship appstore" },
+    { prefix: " ", text: "🚀 Ship to App Store", class: "text-primary" },
+    { prefix: " ", text: "" },
+    { prefix: " ", text: "[1/5] Building archive", class: "text-primary" },
+    { prefix: " ", text: "✓ Detected: finchly.xcodeproj — React Native", class: "text-success" },
+    { prefix: " ", text: "🎯 com.finchly.app  ·  build 224", class: "text-mute" },
+    { prefix: " ", text: "✓ Build complete in 2m 14s", class: "text-success" },
+    { prefix: " ", text: "" },
+    { prefix: " ", text: "[2/5] Exporting IPA", class: "text-primary" },
+    { prefix: " ", text: "✓ Exported finchly-1.4.2.ipa (84.2 MB) in 47s", class: "text-success" },
+    { prefix: " ", text: "" },
+    { prefix: " ", text: "[3/5] Uploading via ASC REST API…", class: "text-primary" },
+    { prefix: " ", text: "✓ Upload complete — Apple accepted the build", class: "text-success" },
+    { prefix: " ", text: "" },
+    { prefix: " ", text: "[4/5] Waiting for Apple to process build", class: "text-primary" },
+    { prefix: " ", text: "⏳ Polling every 3 min…  ✓ build #224 PROCESSED", class: "text-mute" },
+    { prefix: " ", text: "" },
+    { prefix: " ", text: "[5/5] Submit for App Store review", class: "text-primary" },
+    { prefix: " ", text: "🎉 Submitted for App Store review · build 224", class: "text-success" }
+  ]
+%>
+
+<section class="relative overflow-hidden">
+  <%# Subtle film-grain dot texture across the entire hero. %>
+  <div class="grain absolute inset-0" aria-hidden="true"></div>
+
+  <%# Hero glow — soft violet halo behind the headline. %>
+  <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-0">
+    <div class="absolute -top-40 left-1/2 -translate-x-1/2 h-[520px] w-[920px] rounded-full"
+         style="background: radial-gradient(closest-side, color-mix(in oklab, var(--color-primary) 22%, transparent), transparent 70%); filter: blur(20px);"></div>
+  </div>
+
+  <div class="relative mx-auto max-w-[1240px] px-6 pt-20 pb-10">
+    <%# Editorial top rail: №01 — rule — kicker. %>
+    <div class="flex items-center gap-4 text-[11px] uppercase tracking-[0.18em] text-mute font-mono">
+      <span class="secnum text-base normal-case tracking-normal">№ 01</span>
+      <span class="editorial-rule flex-1"></span>
+      <span>The all-in-one ship-stack for indie mobile teams</span>
+    </div>
+
+    <%# Headline + body two-column. %>
+    <div class="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-12 items-end">
+      <h1 class="col-span-1 lg:col-span-8 min-w-0">
+        <span class="block font-display leading-[0.95] tracking-tight"
+              style="font-size: clamp(56px, 9vw, 140px);">
+          Ship from your<br>
+          <span class="italic" style="color: var(--color-primary);">terminal,</span>
+          not a tab.
+        </span>
+      </h1>
+
+      <div class="col-span-1 lg:col-span-4 min-w-0 lg:pb-3">
+        <p class="text-[17px] leading-relaxed text-mute max-w-md">
+          One CLI builds, signs, uploads, polls Apple, and submits.
+          A web dashboard handles credentials, ASO, reviews, analytics
+          and screenshots — so you can finally close App Store Connect.
+        </p>
+        <div class="mt-6 flex items-center gap-3">
+          <%= link_to new_user_registration_path,
+                class: "btn gap-2",
+                style: "background: var(--color-primary); color: var(--color-primary-content); border-color: var(--color-primary);" do %>
+            Start free
+            <i class="fa-solid fa-arrow-right text-xs" aria-hidden="true"></i>
+          <% end %>
+          <%= link_to page_docs_path("quickstart", "getting-started"),
+                class: "btn btn-ghost gap-2 border border-soft" do %>
+            <i class="fa-solid fa-book text-xs" aria-hidden="true"></i>
+            Read quickstart
+          <% end %>
+        </div>
+        <p class="mt-3 text-xs text-faint">
+          No credit card · iOS + Android · Free forever for TestFlight
+        </p>
+      </div>
+    </div>
+
+    <%# Terminal + signing-card stack. %>
+    <div class="mt-12 sm:mt-16 grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <%# TERMINAL (8/12 cols) %>
+      <div class="col-span-1 lg:col-span-8 min-w-0">
+        <div class="rounded-[var(--radius-box)] overflow-hidden border border-soft"
+             style="background: color-mix(in oklab, var(--color-base-200) 80%, transparent);">
+          <%# Window chrome %>
+          <div class="flex items-center gap-2 px-4 py-2.5 border-b border-soft">
+            <span class="h-2.5 w-2.5 rounded-full bg-error/70"></span>
+            <span class="h-2.5 w-2.5 rounded-full bg-warning/70"></span>
+            <span class="h-2.5 w-2.5 rounded-full bg-success/70"></span>
+            <span class="ml-3 text-[11px] text-mute font-mono">~/apps/finchly — zsh</span>
+            <span class="ml-auto text-[10px] text-faint flex items-center gap-3">
+              <span class="flex items-center gap-1"><i class="fa-brands fa-apple" aria-hidden="true"></i> iOS 18.4</span>
+              <span class="flex items-center gap-1"><i class="fa-brands fa-android" aria-hidden="true"></i> 35</span>
+            </span>
+          </div>
+
+          <%# Live-typing terminal — driven by the existing Stimulus
+              `terminal` controller. The pre-rendered first line is shown
+              before JS boots; the controller clears and re-types from
+              `data-terminal-lines-value` on connect. %>
+          <div class="mockup-code rounded-b-[var(--radius-box)] p-6 pt-5 font-mono text-[13px] leading-[1.75] h-[420px] overflow-y-auto overscroll-contain"
+               data-controller="terminal"
+               data-terminal-typing-speed-value="6"
+               data-terminal-line-pause-value="110"
+               data-terminal-loop-value="true"
+               data-terminal-lines-value="<%= ship_lines.to_json %>">
+            <pre class="whitespace-pre-wrap" data-prefix="$">mysigner ship appstore</pre>
+          </div>
+        </div>
+
+        <%# Meta strip below terminal. %>
+        <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-mute">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved text-success" aria-hidden="true"></i>
+            Build runs on your Mac — signing credentials encrypted at rest (AES-256)
+          </span>
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt text-warning" aria-hidden="true"></i>
+            5-min onboard
+          </span>
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate text-info" aria-hidden="true"></i>
+            Auto profile re-gen on new devices
+          </span>
+        </div>
+      </div>
+
+      <%# SIGNING CARD STACK (4/12 cols) %>
+      <div class="col-span-1 lg:col-span-4 min-w-0 flex flex-col gap-3">
+        <%# Distribution Certificate — tilted left, valid pill %>
+        <div class="rounded-[var(--radius-box)] p-4 tilt-l border border-soft"
+             style="background: var(--color-base-200);">
+          <div class="flex items-center gap-2 mb-2 text-xs">
+            <i class="fa-brands fa-apple" aria-hidden="true"></i>
+            <span class="font-medium">Distribution Certificate</span>
+            <span class="ml-auto pill"
+                  style="background: color-mix(in oklab, var(--color-success) 18%, transparent); color: var(--color-success);">
+              Valid · 287d
+            </span>
+          </div>
+          <div class="font-mono text-[10.5px] text-faint break-all">
+            SHA1 9C:A4:8E:11:C2:0B:E1:F4:59:6A · MySigner Inc.
+          </div>
+        </div>
+
+        <%# Provisioning Profile — flat, expires-soon warning %>
+        <div class="rounded-[var(--radius-box)] p-4 border border-soft"
+             style="background: var(--color-base-200);">
+          <div class="flex items-center gap-2 mb-2 text-xs">
+            <i class="fa-brands fa-apple" aria-hidden="true"></i>
+            <span class="font-medium">Provisioning Profile</span>
+            <span class="ml-auto pill"
+                  style="background: color-mix(in oklab, var(--color-warning) 18%, transparent); color: var(--color-warning);">
+              Expires 22d
+            </span>
+          </div>
+          <div class="text-[11px] text-mute">
+            Auto-regenerated when new devices are added.
+          </div>
+        </div>
+
+        <%# Release Keystore — tilted right, sealed %>
+        <div class="rounded-[var(--radius-box)] p-4 tilt-r border border-soft"
+             style="background: var(--color-base-200);">
+          <div class="flex items-center gap-2 mb-2 text-xs">
+            <i class="fa-brands fa-android" aria-hidden="true"></i>
+            <span class="font-medium">Release Keystore · AES-256</span>
+            <span class="ml-auto pill"
+                  style="background: color-mix(in oklab, var(--color-success) 18%, transparent); color: var(--color-success);">
+              Sealed
+            </span>
+          </div>
+          <div class="font-mono text-[10.5px] text-faint">
+            finchly-release · alias upload · supports per-flavor
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Frameworks + CI marquee — what `mysigner ship` can build/run on.
+      Items mirror what Build::Detector actually recognises plus the
+      CI providers documented in the quickstart. The list is rendered
+      twice so the -50% animation cycle wraps seamlessly; the duped
+      half is aria-hidden to avoid screen-reader repetition. %>
+  <%
+    supports = [
+      { icon: "fa-brands fa-apple",        label: "Native iOS" },
+      { icon: "fa-brands fa-android",      label: "Native Android" },
+      { icon: "fa-brands fa-react",        label: "React Native" },
+      { icon: "fa-solid fa-mobile-screen", label: "Expo" },
+      { icon: "fa-solid fa-feather",       label: "Flutter" },
+      { icon: "fa-brands fa-ionic",        label: "Capacitor / Ionic" },
+      { icon: "fa-brands fa-github",       label: "GitHub Actions" },
+      { icon: "fa-brands fa-gitlab",       label: "GitLab CI" },
+      { icon: "fa-solid fa-bicycle",       label: "Bitrise" }
+    ]
+  %>
+  <div class="relative border-y border-soft mt-12 overflow-hidden marquee-mask py-4"
+       style="background: color-mix(in oklab, var(--color-base-200) 60%, transparent);"
+       aria-label="Frameworks and CI providers MySigner supports">
+    <div class="marquee gap-12 text-mute text-sm font-medium">
+      <% (supports * 2).each_with_index do |item, idx| %>
+        <span class="flex items-center gap-2 whitespace-nowrap shrink-0"
+              <%= raw('aria-hidden="true"') if idx >= supports.length %>>
+          <i class="<%= item[:icon] %>" aria-hidden="true"></i>
+          <%= item[:label] %>
+        </span>
+      <% end %>
+    </div>
+  </div>
+</section>

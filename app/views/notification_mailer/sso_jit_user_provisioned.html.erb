@@ -1,0 +1,24 @@
+<% @preheader = "A new SSO user was just provisioned in #{@organization.name}." %>
+
+<%= ms_eyebrow(37, "Security · SSO provisioning") %>
+<%= ms_headline("New <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">SSO user.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_body("A new user was automatically provisioned in <strong style=\"color:#f4ede0;\">#{ERB::Util.h(@organization.name)}</strong> via SAML SSO.") %>
+
+<%= ms_meta_row("Email", ms_meta_pill(@provisioned_user.email)) %>
+<% if @provisioned_user.name.present? %>
+  <%= ms_meta_row("Name", "<span class=\"ms-ink\" style=\"color:#f4ede0;\">#{ERB::Util.h(@provisioned_user.name)}</span>".html_safe) %>
+<% end %>
+<%= ms_meta_row("Provisioned", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{Time.current.strftime('%B %-d, %Y · %H:%M %Z')}</span>".html_safe) %>
+
+<%= ms_callout(
+  "If this wasn't expected, review your SSO configuration and the verified domains for the organization. JIT provisioning relies on your IdP &mdash; anyone with access to it can be auto-added.",
+  variant: :warning,
+  accent_label: "JIT provisioning"
+) %>
+
+<%= ms_cta("Review SSO settings", organization_sso_configuration_url(@organization), variant: :primary, margin_top: 4, margin_bottom: 22) %>
+
+<%= ms_fine_print("Provisioning events are written to the audit log along with the IdP-supplied attributes for forensic review.") %>

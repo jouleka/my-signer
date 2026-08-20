@@ -1,0 +1,164 @@
+<%# Device-frame listing preview %>
+<% listing = local_assigns[:store_listing] %>
+<% return unless listing %>
+
+<% device_base = "relative w-[300px] h-[620px] bg-base-100 border-[3px] border-base-content/[0.12] overflow-hidden shadow-[0_0_0_1px_oklch(var(--color-base-content)/0.04),0_20px_60px_-15px_oklch(0_0_0/0.2)]" %>
+<% device_radius = listing.ios? ? "rounded-[2.5rem]" : "rounded-3xl" %>
+<% device_section_title = "text-[0.625rem] font-bold uppercase tracking-[0.05em] text-base-content/40 mb-1.5" %>
+<% device_keyword_classes = "inline-flex px-[0.35rem] py-[0.1rem] text-[0.6rem] rounded border border-base-content/[0.08] text-base-content/50" %>
+<% device_screenshot_classes = "w-[5.5rem] h-40 rounded-lg bg-base-content/[0.04] border border-base-content/[0.06] shrink-0 flex items-center justify-center" %>
+
+<div id="listing-preview" data-controller="listing-preview" data-store-listing-editor-target="preview"
+     class="w-full">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-base-content/45">
+      <i class="fa-solid fa-mobile-screen"></i>
+      Listing Preview
+    </h2>
+    <button type="button" class="inline-flex items-center gap-1 text-[0.6875rem] font-semibold px-2 py-1 rounded-md border border-base-content/[0.1] bg-transparent text-base-content/60 hover:bg-base-content/5 hover:text-base-content/85 hover:border-base-content/15 transition-all duration-150"
+            data-action="click->listing-preview#toggleDevice"
+            data-listing-preview-target="toggleBtn">
+      <i class="<%= listing.ios? ? 'fa-brands fa-apple' : 'fa-brands fa-google-play' %>"></i>
+      <%= listing.ios? ? "iPhone" : "Pixel" %>
+    </button>
+  </div>
+
+  <%# Device frame %>
+  <div class="flex justify-center">
+    <div data-listing-preview-target="device"
+         class="<%= device_base %> <%= device_radius %>"
+         data-device="<%= listing.ios? ? 'ios' : 'android' %>">
+
+      <%# Notch / Dynamic Island (iOS) %>
+      <% if listing.ios? %>
+        <div class="absolute top-2 left-1/2 -translate-x-1/2 w-[5.5rem] h-[1.375rem] bg-base-content/[0.12] rounded-full z-10"></div>
+      <% else %>
+        <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-base-content/[0.12] rounded-full z-10"></div>
+      <% end %>
+
+      <%# Status bar %>
+      <div class="h-11 flex items-end justify-between px-6 pb-1 text-[0.6875rem] font-semibold text-base-content/45">
+        <span>9:41</span>
+        <div class="flex gap-1">
+          <i class="fa-solid fa-signal text-[0.55rem]"></i>
+          <i class="fa-solid fa-wifi text-[0.55rem]"></i>
+          <i class="fa-solid fa-battery-full text-[0.55rem]"></i>
+        </div>
+      </div>
+
+      <%# Store page content %>
+      <div class="overflow-y-auto px-4 pt-2 pb-6 h-[calc(100%-2.75rem)]">
+        <%# App header %>
+        <div class="flex items-start gap-3 mb-4">
+          <div class="w-14 h-14 rounded-[0.875rem] bg-gradient-to-br from-primary/15 to-success/10 border border-base-content/[0.06] flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-cube text-lg text-primary/50"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="font-bold text-sm truncate" data-preview-field="app-name">
+              <%= listing.app_name.presence || "App Name" %>
+            </p>
+            <% if listing.ios? %>
+              <p class="text-xs text-base-content/50 truncate" data-preview-field="subtitle">
+                <%= listing.subtitle.presence || "Subtitle" %>
+              </p>
+            <% end %>
+            <div class="flex items-center gap-1.5 mt-1">
+              <div class="rating rating-xs">
+                <% 5.times do |i| %>
+                  <input type="radio" class="mask mask-star-2 bg-warning" disabled <%= "checked" if i == 3 %> />
+                <% end %>
+              </div>
+              <span class="text-[0.6rem] text-base-content/35">4.2 (1.2K)</span>
+            </div>
+            <div class="mt-2">
+              <button class="btn btn-primary btn-xs rounded-full px-5 min-h-0 h-6 text-[0.65rem] font-semibold" disabled>GET</button>
+            </div>
+          </div>
+        </div>
+
+        <%# Screenshots from store (synced via import). Non-primary locales
+            often have no screenshots of their own; fall back to the primary
+            locale's screenshots — same behavior as Apple's App Store. %>
+        <% store_screenshots = listing.metadata&.dig("screenshots") || [] %>
+        <% fallback_listing = local_assigns[:fallback_listing] %>
+        <% if store_screenshots.empty? && fallback_listing && fallback_listing != listing %>
+          <% store_screenshots = fallback_listing.metadata&.dig("screenshots") || [] %>
+        <% end %>
+        <div class="flex gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none">
+          <% if store_screenshots.any? %>
+            <% store_screenshots.first(5).each do |ss| %>
+              <div class="<%= device_screenshot_classes %>">
+                <img src="<%= ss["url"] %>" alt="Screenshot" class="w-full h-full object-cover rounded-md" loading="lazy" referrerpolicy="no-referrer" />
+              </div>
+            <% end %>
+          <% else %>
+            <% 3.times do %>
+              <div class="<%= device_screenshot_classes %>">
+                <i class="fa-solid fa-image text-base-content/15 text-sm"></i>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+
+        <% if listing.ios? %>
+          <p class="text-[0.7rem] leading-relaxed mb-3 <%= 'opacity-25 italic' unless listing.promotional_text.present? %>"
+             data-preview-field="promotional-text"
+             data-preview-section="promotional-text">
+            <%= listing.promotional_text.presence || "Promotional text" %>
+          </p>
+        <% end %>
+
+        <% if listing.android? %>
+          <p class="text-[0.7rem] text-base-content/65 leading-relaxed mb-3 <%= 'opacity-25 italic' unless listing.short_description.present? %>"
+             data-preview-field="short-description"
+             data-preview-section="short-description">
+            <%= listing.short_description.presence || "Short description" %>
+          </p>
+        <% end %>
+
+        <%# Description %>
+        <div class="mb-4">
+          <p class="<%= device_section_title %>">Description</p>
+          <p class="text-[0.65rem] text-base-content/75 whitespace-pre-line line-clamp-6 leading-relaxed"
+             data-preview-field="description">
+            <%= listing.description.presence || "App description will appear here..." %>
+          </p>
+        </div>
+
+        <%# What's New %>
+        <div class="mb-4" data-preview-section="whats-new">
+          <p class="<%= device_section_title %>">What's New</p>
+          <p class="text-[0.65rem] text-base-content/75 whitespace-pre-line line-clamp-4 leading-relaxed <%= 'opacity-25 italic' unless listing.whats_new.present? %>"
+             data-preview-field="whats-new">
+            <%= listing.whats_new.presence || "Release notes will appear here..." %>
+          </p>
+        </div>
+
+        <%# Keywords (iOS only) %>
+        <% if listing.ios? %>
+          <div class="mb-4" data-preview-section="keywords">
+            <p class="<%= device_section_title %>">
+              Keywords <span class="text-[0.5rem] font-normal opacity-40 ml-1">hidden from users</span>
+            </p>
+            <div class="flex flex-wrap gap-1" data-preview-field="keywords">
+              <% if listing.keywords.present? %>
+                <% listing.keywords.split(",").each do |kw| %>
+                  <span class="<%= device_keyword_classes %>"><%= kw.strip %></span>
+                <% end %>
+              <% else %>
+                <span class="opacity-25 italic text-[0.6rem]">No keywords</span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Information section %>
+        <div class="text-[0.6rem] text-base-content/25 flex flex-col gap-1 pt-3 border-t border-base-content/[0.06]">
+          <p>Size: --</p>
+          <p>Category: --</p>
+          <p>Compatibility: --</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

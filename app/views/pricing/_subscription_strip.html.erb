@@ -1,0 +1,95 @@
+<%# app/views/pricing/_subscription_strip.html.erb
+    Locals:
+      viewer_context: Pricing::ViewerContext
+      subscription: BillingSubscription or nil
+    Renders only for signed-in users with a non-free subscription.
+%>
+
+<% return unless viewer_context.paid? && subscription.present? %>
+
+<div class="border-b border-base-content/[0.06] bg-base-content/[0.02]"
+     data-controller="subscription-strip">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+    <button type="button"
+            class="w-full flex items-center justify-between gap-3 sm:gap-4 text-sm group cursor-pointer"
+            data-subscription-strip-target="toggle"
+            data-action="click->subscription-strip#toggle"
+            aria-expanded="false"
+            aria-controls="subscription-strip-panel">
+      <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary/15 text-primary shrink-0">
+          <i class="fa-solid fa-check text-[0.65rem]" aria-hidden="true"></i>
+        </span>
+        <span class="font-semibold text-base-content/90 capitalize shrink-0"><%= subscription.plan_tier %></span>
+        <span class="text-base-content/40 shrink-0 hidden sm:inline">·</span>
+        <% if subscription.respond_to?(:current_period_ends_at) && subscription.current_period_ends_at.present? %>
+          <span class="text-base-content/60 truncate hidden sm:inline">Renews <%= l(subscription.current_period_ends_at.to_date, format: :long) %></span>
+          <span class="text-base-content/60 truncate sm:hidden text-xs">· Renews <%= l(subscription.current_period_ends_at.to_date, format: :short) %></span>
+        <% end %>
+      </div>
+      <div class="flex items-center gap-1.5 sm:gap-2 text-base-content/50 shrink-0">
+        <span class="text-xs font-semibold hidden sm:inline">Manage</span>
+        <i class="fa-solid fa-chevron-down text-[0.65rem] transition-transform" data-chevron aria-hidden="true"></i>
+      </div>
+    </button>
+
+    <%# Next-charge derivation: compute from the plan catalog (source of truth)
+        rather than a field on the BillingSubscription model, which doesn't
+        exist. If a scheduled downgrade is queued, the next charge reflects
+        the target tier at renewal, not the current one. %>
+    <%
+      catalog_tier = subscription.scheduled_plan_change? ? subscription.scheduled_change_target_tier : subscription.plan_tier
+      catalog_interval = subscription.scheduled_plan_change? ? (subscription.scheduled_change_target_interval || subscription.billing_interval) : subscription.billing_interval
+      next_charge_plan = Billing::PlanCatalog.fetch(tier: catalog_tier, interval: catalog_interval) rescue nil
+      next_charge_amount = if next_charge_plan && next_charge_plan[:price]
+                             price = next_charge_plan[:price]
+                             "$#{price == price.to_i ? price.to_i : format('%.2f', price)}"
+                           end
+    %>
+
+    <div id="subscription-strip-panel"
+         hidden
+         data-subscription-strip-target="panel"
+         class="pt-3 mt-3 border-t border-base-content/[0.06] grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+      <div>
+        <div class="text-base-content/40 uppercase tracking-wider text-[0.65rem] font-semibold mb-1">Next charge</div>
+        <div class="text-base-content/80">
+          <% if next_charge_amount.present? %>
+            <span class="font-semibold"><%= next_charge_amount %></span>
+            <% if subscription.current_period_ends_at.present? %>
+              <span class="text-base-content/45">on <%= l(subscription.current_period_ends_at.to_date, format: :short) %></span>
+            <% end %>
+            <% if subscription.scheduled_plan_change? %>
+              <div class="text-[0.65rem] text-warning/80 mt-0.5 capitalize">→ <%= catalog_tier %> <%= catalog_interval %></div>
+            <% end %>
+          <% else %>
+            <span class="text-base-content/40">&mdash;</span>
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <div class="text-base-content/40 uppercase tracking-wider text-[0.65rem] font-semibold mb-1">Billed by</div>
+        <div class="text-base-content/80">
+          <span class="font-semibold">Paddle</span>
+          <span class="text-base-content/45"> · <%= subscription.billing_interval == "yearly" ? "Annual" : "Monthly" %></span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 md:justify-end">
+        <%= button_to billing_paddle_portal_session_path,
+                      method: :post,
+                      class: "text-primary hover:underline font-semibold bg-transparent border-0 p-0 cursor-pointer",
+                      form: { data: { turbo: false }, class: "inline" } do %>
+          Invoices
+        <% end %>
+        <span class="text-base-content/20">·</span>
+        <button type="button"
+                class="text-error/80 hover:text-error hover:underline font-semibold"
+                data-controller="modal"
+                data-modal-target-value="billing-cancel-modal"
+                data-action="click->modal#open">
+          Cancel subscription
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

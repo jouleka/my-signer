@@ -1,0 +1,18 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /docs/
+Allow: /pricing
+Allow: /sitemap.xml
+
+# Disallow authenticated/private areas
+Disallow: /settings
+Disallow: /notifications
+Disallow: /organizations/*/
+Disallow: /api/
+Disallow: /users/password
+Disallow: /users/confirmation
+Disallow: /billing/
+
+# Sitemap
+Sitemap: https://mysigner.dev/sitemap.xml

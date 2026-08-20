@@ -1,0 +1,41 @@
+<% if turbo_frame_request? %>
+  <%# Turbo frame mode - render modal only %>
+  <%= turbo_frame_tag "api_token_modal" do %>
+    <dialog id="new_api_token_modal" class="modal modal-open">
+      <div class="modal-box max-w-md">
+        <h3 class="font-semibold text-lg mb-6">New API Token</h3>
+        <%= render "form" %>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button data-controller="utility" data-action="click->utility#clearElement" data-utility-target-value="api_token_modal">close</button>
+      </form>
+    </dialog>
+  <% end %>
+<% else %>
+  <%# Direct access - render full page %>
+  <div class="max-w-lg mx-auto py-10 px-4">
+    <div class="flex items-center gap-2 text-sm text-base-content/50 mb-6">
+      <%= link_to @organization.name, organization_path(@organization), class: "hover:text-base-content transition-colors" %>
+      <i class="fa-solid fa-chevron-right text-[10px]"></i>
+      <%= link_to "API Tokens", organization_api_tokens_path(@organization), class: "hover:text-base-content transition-colors" %>
+      <i class="fa-solid fa-chevron-right text-[10px]"></i>
+      <span>New Token</span>
+    </div>
+
+    <div class="card bg-base-100 border border-base-200 shadow-xl">
+      <div class="card-body">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <i class="fa-solid fa-key text-primary"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold">New API Token</h1>
+            <p class="text-sm text-base-content/60">Generate a token for CLI authentication</p>
+          </div>
+        </div>
+
+        <%= render "form" %>
+      </div>
+    </div>
+  </div>
+<% end %>

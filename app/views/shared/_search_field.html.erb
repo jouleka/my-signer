@@ -1,0 +1,106 @@
+<%# 
+  Shared search field component with auto-submit and clear button
+  
+  Options:
+  - url: (optional) If provided, wraps in a form. If not, just renders the input field
+  - value: Current search value (default: @q or @q_query)
+  - placeholder: Placeholder text
+  - name: Input name (default: "q")
+  - width: CSS width class (default: "w-64" for standalone, "w-full" for inline)
+  - wrapper_class: Additional classes for the wrapper div
+  - form_class: Additional classes for the form (if url provided)
+  - turbo_frame: Turbo frame target (default: "_top")
+  - delay: Auto-submit delay in ms (default: 500)
+  - auto_submit: Enable auto-submit (default: true for standalone forms, false for inline)
+-%>
+<%
+  url = local_assigns[:url] if local_assigns.key?(:url)
+  value = local_assigns[:value] || @q || @q_query || ""
+  name = local_assigns[:name] || "q"
+  width = local_assigns[:width] || (url.present? ? "w-64" : "w-full")
+  wrapper_class = local_assigns[:wrapper_class] || ""
+  form_class = local_assigns[:form_class] || ""
+  turbo_frame = local_assigns[:turbo_frame] || "_top"
+  delay = local_assigns[:delay] || 500
+  placeholder = local_assigns[:placeholder] || "Search..."
+  aria_label = local_assigns[:aria_label] || "Search"
+  # Default: auto-submit for standalone forms (with url), manual submit for inline forms
+  auto_submit = local_assigns.key?(:auto_submit) ? local_assigns[:auto_submit] : url.present?
+-%>
+
+<% if url.present? %>
+  <%= form_with url: url, 
+                method: :get, 
+                class: "relative #{form_class}", 
+                data: { 
+                  turbo_frame: turbo_frame,
+                  controller: "auto-submit",
+                  auto_submit_delay_value: delay,
+                  auto_submit_min_length_value: 0
+                } do %>
+    <div class="relative <%= wrapper_class %>">
+      <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+        <i class="fa-solid fa-magnifying-glass text-base-content/40 text-sm" aria-hidden="true"></i>
+      </div>
+      <input type="search"
+             name="<%= name %>"
+             value="<%= value %>"
+             placeholder="<%= placeholder %>"
+             class="input input-bordered input-sm pl-9 pr-9 <%= width %> focus:outline-none focus:ring-2 focus:ring-primary/20 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+             style="-webkit-appearance: none; appearance: none;"
+             title="<%= placeholder %>"
+             aria-label="<%= aria_label %>"
+             data-auto-submit-target="input"
+             data-action="input->auto-submit#search keydown->auto-submit#submit" />
+      <button type="button"
+              class="absolute inset-y-0 right-0 flex items-center pr-3 hover:text-base-content/80 transition-colors <%= 'hidden' unless value.present? %>"
+              aria-label="Clear search"
+              data-auto-submit-target="clearButton"
+              data-action="click->auto-submit#clear">
+        <i class="fa-solid fa-xmark text-base-content/40 text-xs cursor-pointer" aria-hidden="true"></i>
+      </button>
+    </div>
+  <% end %>
+<% else %>
+  <%# Inline search field for use within existing forms %>
+  <div class="relative <%= wrapper_class %>"
+       <% if auto_submit %>
+       data-controller="auto-submit"
+       data-auto-submit-delay-value="<%= delay %>"
+       data-auto-submit-min-length-value="0"
+       <% end %>>
+    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+      <i class="fa-solid fa-magnifying-glass text-base-content/40 text-sm" aria-hidden="true"></i>
+    </div>
+    <input type="search"
+           name="<%= name %>"
+           value="<%= value %>"
+           placeholder="<%= placeholder %>"
+           class="input input-bordered input-sm pl-9 pr-9 <%= width %> focus:outline-none focus:ring-2 focus:ring-primary/20 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+           style="-webkit-appearance: none; appearance: none;"
+           title="<%= placeholder %>"
+           aria-label="<%= aria_label %>"
+           <% if auto_submit %>
+           data-auto-submit-target="input"
+           data-action="input->auto-submit#search keydown->auto-submit#submit"
+           <% end %> />
+    <% if auto_submit %>
+      <button type="button"
+              class="absolute inset-y-0 right-0 flex items-center pr-3 hover:text-base-content/80 transition-colors <%= 'hidden' unless value.present? %>"
+              aria-label="Clear search"
+              data-auto-submit-target="clearButton"
+              data-action="click->auto-submit#clear">
+        <i class="fa-solid fa-xmark text-base-content/40 text-xs cursor-pointer" aria-hidden="true"></i>
+      </button>
+    <% elsif value.present? %>
+      <button type="button"
+              class="absolute inset-y-0 right-0 flex items-center pr-3 hover:text-base-content/80 transition-colors"
+              aria-label="Clear search"
+              data-controller="utility"
+              data-action="click->utility#clearInput">
+        <i class="fa-solid fa-xmark text-base-content/40 text-xs cursor-pointer" aria-hidden="true"></i>
+      </button>
+    <% end %>
+  </div>
+<% end %>
+

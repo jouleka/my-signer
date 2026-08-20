@@ -1,0 +1,24 @@
+Heads up about <%= @organization.name %>
+
+Hi <%= @co_member.name.presence || @co_member.email %>,
+
+The owner of <%= @organization.name %> has requested that their MySigner
+account be deleted. Because they own this organization, it and everything
+inside it (builds, store credentials, signing keys, screenshots, release
+notes, audit log) will be deleted along with their account on
+<%= @deletes_at.strftime("%B %-d, %Y") %>.
+
+You have 90 days from today to export anything you need. After
+<%= @deletes_at.strftime("%B %-d, %Y") %> the data is unrecoverable.
+
+Things you can do right now:
+
+  * Sign in and pull builds, screenshots, and listings via `mysigner sync`.
+  * Reach out to the owner if you think this was a mistake -- they can
+    restore the account at any time in the next 90 days using the link
+    in their own email.
+  * Reply to this email if you'd like our help exporting data or
+    transferring ownership of this organization to a different account.
+
+This message is sent once at the start of the grace window so you have
+the full 90 days. We won't email you again unless you write back.

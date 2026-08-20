@@ -1,0 +1,274 @@
+<%= render "shared/ios_breadcrumbs", organization: @organization, active_tab: :profiles %>
+
+<section class="space-y-4 sm:space-y-6 min-w-0 w-full overflow-hidden">
+  <%= render "shared/page_header",
+             title: "Create Provisioning Profile",
+             description: "Select a bundle ID, certificates, and devices to create a new provisioning profile.",
+             gradient: "from-purple-500/10 via-base-100 to-fuchsia-500/10",
+             badge_icon: "fa-solid fa-plus",
+             badge_text: "New Profile",
+             actions: (capture do %>
+      <%= link_to organization_apple_provisioning_profiles_path(@organization), class: "btn btn-ghost btn-sm sm:btn-md gap-2" do %>
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">Back to Profiles</span>
+        <span class="sm:hidden">Back</span>
+      <% end %>
+             <% end) %>
+
+  <div class="grid lg:grid-cols-3 gap-4 sm:gap-6">
+    <%# Main Form %>
+    <div class="lg:col-span-2">
+      <div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+        <div class="card-body p-3 sm:p-6 md:p-8">
+          <%= form_with url: organization_apple_provisioning_profiles_path(@organization), method: :post, scope: :profile, class: "space-y-8" do |f| %>
+
+            <%# Step 1: Basic Info %>
+            <div class="space-y-4">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-content font-bold text-sm shrink-0">1</div>
+                <h2 class="text-base sm:text-lg font-bold">Basic Information</h2>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-4 sm:gap-6">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium flex items-center gap-2">
+                      <i class="fa-solid fa-tag text-xs text-base-content/50"></i>
+                      Profile Name
+                    </span>
+                    <span class="label-text-alt badge badge-ghost badge-xs">Required</span>
+                  </label>
+                  <%= f.text_field :name, class: "input input-bordered w-full focus:input-primary", required: true, placeholder: "MyApp Development (Team)" %>
+                </div>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium flex items-center gap-2">
+                      <i class="fa-solid fa-cube text-xs text-base-content/50"></i>
+                      Profile Type
+                    </span>
+                  </label>
+                  <%= render "shared/custom_select",
+                             name: "profile[profile_type]",
+                             options: [["iOS Development", "IOS_APP_DEVELOPMENT"], ["iOS App Store", "IOS_APP_STORE"], ["iOS Ad Hoc", "IOS_APP_ADHOC"], ["iOS In-House (Enterprise)", "IOS_APP_INHOUSE"]],
+                             size: "md" %>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <%# Step 2: Bundle ID %>
+            <div class="space-y-4">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-content font-bold text-sm shrink-0">2</div>
+                <h2 class="text-base sm:text-lg font-bold">Bundle ID</h2>
+              </div>
+
+              <div class="form-control">
+                <% if @bundle_ids.any? %>
+                  <label class="label">
+                    <span class="label-text font-medium flex items-center gap-2">
+                      <i class="fa-solid fa-fingerprint text-xs text-base-content/50"></i>
+                      Select Bundle ID
+                    </span>
+                    <span class="label-text-alt badge badge-ghost badge-xs">Required</span>
+                  </label>
+                  <%= render "shared/custom_select",
+                             name: "profile[bundle_id_id]",
+                             options: @bundle_ids.map { |b| ["#{b.identifier} — #{b.name}", b.remote_id] },
+                             placeholder: "Choose a bundle ID…",
+                             selected: "",
+                             size: "md" %>
+                  <label class="label">
+                    <span class="label-text-alt text-base-content/50">Don't see your app? Run an organization sync.</span>
+                  </label>
+                <% else %>
+                  <div class="alert alert-warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div>
+                      <p class="font-medium">No bundle IDs available</p>
+                      <p class="text-sm">Run an organization sync to import your apps first.</p>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <%# Step 3: Certificates %>
+            <div class="space-y-4">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-content font-bold text-sm shrink-0">3</div>
+                <h2 class="text-base sm:text-lg font-bold">Certificates</h2>
+              </div>
+
+              <div class="form-control">
+                <% if @certificates.any? %>
+                  <label class="label">
+                    <span class="label-text font-medium flex items-center gap-2">
+                      <i class="fa-solid fa-certificate text-xs text-base-content/50"></i>
+                      Select Certificates
+                    </span>
+                    <span class="label-text-alt badge badge-ghost badge-xs">Required</span>
+                  </label>
+                  <div class="bg-base-200/30 rounded-xl p-2 sm:p-4 border border-base-200 space-y-2 max-h-64 overflow-y-auto">
+                    <% @certificates.each do |c| %>
+                      <label class="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-base-200 bg-base-100 cursor-pointer hover:border-primary/50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                        <input type="checkbox" name="profile[certificate_ids][]" value="<%= c.remote_id %>" class="checkbox checkbox-primary checkbox-sm" />
+                        <div class="flex-1 min-w-0">
+                          <div class="font-medium text-sm truncate"><%= c.name %></div>
+                          <div class="text-xs text-base-content/50 truncate"><%= c.certificate_type %> · <%= c.platform %></div>
+                        </div>
+                      </label>
+                    <% end %>
+                  </div>
+                  <label class="label">
+                    <span class="label-text-alt text-base-content/50">Select one or more signing certificates</span>
+                  </label>
+                <% else %>
+                  <div class="alert alert-warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div>
+                      <p class="font-medium">No certificates available</p>
+                      <p class="text-sm">Run an organization sync to import your certificates first.</p>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <%# Step 4: Devices %>
+            <div class="space-y-4">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-content font-bold text-sm shrink-0">4</div>
+                <h2 class="text-base sm:text-lg font-bold">Devices</h2>
+                <span class="badge badge-outline badge-sm">Optional</span>
+              </div>
+
+              <div class="form-control">
+                <% if @devices.any? %>
+                  <label class="label">
+                    <span class="label-text font-medium flex items-center gap-2">
+                      <i class="fa-solid fa-mobile-screen text-xs text-base-content/50"></i>
+                      Select Devices
+                    </span>
+                    <span class="label-text-alt text-base-content/50">For Dev/Ad Hoc profiles</span>
+                  </label>
+                  <div class="bg-base-200/30 rounded-xl p-2 sm:p-4 border border-base-200 space-y-2 max-h-64 overflow-y-auto">
+                    <% @devices.each do |d| %>
+                      <label class="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-base-200 bg-base-100 cursor-pointer hover:border-primary/50 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                        <input type="checkbox" name="profile[device_ids][]" value="<%= d.remote_id %>" class="checkbox checkbox-primary checkbox-sm" />
+                        <div class="flex-1 min-w-0">
+                          <div class="font-medium text-sm truncate"><%= d.name %></div>
+                          <code class="text-xs text-base-content/50 truncate block"><%= d.udid.truncate(24) %></code>
+                        </div>
+                      </label>
+                    <% end %>
+                  </div>
+                  <label class="label">
+                    <span class="label-text-alt text-base-content/50">Not needed for App Store profiles</span>
+                  </label>
+                <% else %>
+                  <div class="alert alert-info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div>
+                      <p class="font-medium">No devices registered</p>
+                      <p class="text-sm">Devices are optional. You can skip this for App Store profiles.</p>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <%# Submit Section %>
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-base-200">
+              <div class="text-sm text-base-content/50 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-info"></i>
+                Profile will be created in App Store Connect
+              </div>
+              <div class="flex items-center gap-3">
+                <%= link_to "Cancel", organization_apple_provisioning_profiles_path(@organization), class: "btn btn-ghost" %>
+                <% if @bundle_ids.any? && @certificates.any? %>
+                  <%= f.submit "Create Profile", class: "btn btn-primary gap-2 px-6" %>
+                <% else %>
+                  <button type="button" class="btn btn-disabled" disabled>Create Profile</button>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Sidebar %>
+    <div class="space-y-4 sm:space-y-6">
+      <%# Profile Types Card %>
+      <div class="card bg-gradient-to-br from-purple-500/10 to-fuchsia-500/10 border border-primary/20 shadow-lg overflow-hidden">
+        <div class="card-body p-3 sm:p-5">
+          <h3 class="font-bold flex items-center gap-2 text-primary">
+            <i class="fa-solid fa-circle-info"></i>
+            Profile Types
+          </h3>
+          <div class="space-y-3 mt-3 text-sm">
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-code text-base-content/50 mt-0.5"></i>
+              <div>
+                <p class="font-medium">Development</p>
+                <p class="text-xs text-base-content/50">For testing on devices during development</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-store text-base-content/50 mt-0.5"></i>
+              <div>
+                <p class="font-medium">App Store</p>
+                <p class="text-xs text-base-content/50">For distribution via the App Store</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-share-nodes text-base-content/50 mt-0.5"></i>
+              <div>
+                <p class="font-medium">Ad Hoc</p>
+                <p class="text-xs text-base-content/50">For testing on specific registered devices</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-building text-base-content/50 mt-0.5"></i>
+              <div>
+                <p class="font-medium">In-House</p>
+                <p class="text-xs text-base-content/50">For enterprise internal distribution</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Tips Card %>
+      <div class="card bg-base-100 border border-base-200 shadow-lg overflow-hidden">
+        <div class="card-body p-3 sm:p-5">
+          <h3 class="font-bold flex items-center gap-2">
+            <i class="fa-solid fa-lightbulb text-warning"></i>
+            Tips
+          </h3>
+          <ul class="text-sm space-y-2 mt-2 text-base-content/70">
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-check text-success text-xs mt-1"></i>
+              <span>Use descriptive names like "MyApp Dev (Team)"</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-check text-success text-xs mt-1"></i>
+              <span>App Store profiles don't need devices</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-check text-success text-xs mt-1"></i>
+              <span>Match certificate type to profile type</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

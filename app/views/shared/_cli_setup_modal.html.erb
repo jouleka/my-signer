@@ -1,0 +1,53 @@
+<dialog id="cli_setup_modal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg mb-4">Install & Configure the CLI</h3>
+
+    <div class="space-y-6">
+      <div>
+        <h4 class="font-semibold mb-2">1. Install the CLI</h4>
+        <div class="mockup-code">
+          <pre><code>gem install mysigner</code></pre>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="font-semibold mb-2">2. Set up your account</h4>
+        <div class="mockup-code">
+          <pre><code>mysigner onboard</code></pre>
+        </div>
+        <p class="text-sm opacity-70 mt-2">Follow the prompts to authenticate with your API token</p>
+      </div>
+
+      <div>
+        <h4 class="font-semibold mb-2">3. Ship your app</h4>
+        <div class="mockup-code">
+          <pre data-prefix="#"><code># iOS to TestFlight</code></pre>
+          <pre><code>mysigner ship testflight</code></pre>
+          <pre data-prefix="#" class="mt-2"><code># iOS to App Store (with review submission)</code></pre>
+          <pre><code>mysigner ship appstore</code></pre>
+          <pre data-prefix="#" class="mt-2"><code># Android to Play Store tracks</code></pre>
+          <pre><code>mysigner ship internal --platform android</code></pre>
+          <pre><code>mysigner ship beta --platform android</code></pre>
+          <pre><code>mysigner ship production --platform android</code></pre>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+          <p>Run <code class="font-mono bg-base-200 px-1 rounded">mysigner doctor</code> to verify your setup</p>
+          <p class="text-xs opacity-70 mt-1">Run <code class="font-mono bg-base-200 px-1 rounded">mysigner --help</code> for all available commands</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">Close</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

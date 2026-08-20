@@ -1,0 +1,93 @@
+<%# app/views/pricing/_compare_tabs.html.erb
+    Locals:
+      viewer_context: Pricing::ViewerContext
+%>
+
+<% free_ent = Pricing::Entitlements.new("free") %>
+<% pro_ent  = Pricing::Entitlements.new("pro") %>
+<% team_ent = Pricing::Entitlements.new("team") %>
+<% current = viewer_context.current_tier %>
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16" data-controller="compare-tabs" id="compare">
+  <header class="mb-6 sm:mb-8">
+    <h2 class="text-xl sm:text-2xl font-bold text-base-content/90 mb-2">Compare all features</h2>
+    <p class="text-sm text-base-content/55">Pick a category to see how each plan compares.</p>
+  </header>
+
+  <%# Category tabs — scroll horizontally on mobile so labels stay readable %>
+  <div class="flex gap-1 mb-6 border-b border-base-content/[0.08] overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap" role="tablist" aria-label="Feature categories">
+    <% [["overview","Overview"],["screenshots","Screenshots"],["listings","Store listings"],["ai","AI & Content"],["keywords","Keywords & Reviews"],["analytics","Analytics"],["team-security","Team & Security"]].each do |key, label| %>
+      <button type="button"
+              role="tab"
+              class="inline-flex items-center px-3 sm:px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap data-[active=true]:text-primary data-[active=true]:border-primary data-[active=false]:text-base-content/50 data-[active=false]:border-transparent data-[active=false]:hover:text-base-content/80 data-[active=false]:hover:border-base-content/15"
+              data-compare-tabs-target="tab"
+              data-compare-category="<%= key %>"
+              data-action="click->compare-tabs#select">
+        <%= label %>
+      </button>
+    <% end %>
+  </div>
+
+  <%# Compare table %>
+  <div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+    <table class="w-full">
+      <thead class="border-b border-base-content/[0.08]">
+        <tr>
+          <th scope="col" class="text-left text-xs uppercase tracking-wider font-semibold text-base-content/50 py-3 pr-4"></th>
+          <% %w[free pro team].each do |tier| %>
+            <% active = current == tier %>
+            <th scope="col" class="text-center text-xs uppercase tracking-wider font-semibold py-3 px-3 <%= active ? 'text-primary' : 'text-base-content/60' %> <%= active ? 'border-l border-base-content/[0.08]' : '' %>">
+              <%= tier.capitalize %>
+              <% if active %><span class="block text-[0.65rem] normal-case tracking-normal text-base-content/40 mt-0.5">Your plan</span><% end %>
+            </th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <%# Overview %>
+        <%= render "pricing/compare_row", category: "overview", label: "Organizations", free: free_ent.max_owned_organizations, pro: pro_ent.max_owned_organizations, team: team_ent.max_owned_organizations, current_tier: current %>
+        <%= render "pricing/compare_row", category: "overview", label: "Seats per organization", free: free_ent.max_seats_per_organization, pro: pro_ent.max_seats_per_organization, team: team_ent.max_seats_per_organization, current_tier: current %>
+        <%= render "pricing/compare_row", category: "overview", label: "Store uploads per day", free: free_ent.max_store_uploads_per_day_per_organization, pro: pro_ent.max_store_uploads_per_day_per_organization, team: team_ent.max_store_uploads_per_day_per_organization, current_tier: current %>
+        <%= render "pricing/compare_row", category: "overview", label: "Store sync (App Store / Play)", free: "Daily", pro: "Every 6h", team: "Every 3h", current_tier: current %>
+        <%= render "pricing/compare_row", category: "overview", label: "Review sync", free: "Daily", pro: "Every 2h", team: "Every 30 min", current_tier: current %>
+        <%= render "pricing/compare_row", category: "overview", label: "Analytics sync", free: "Weekly", pro: "Daily", team: "Daily", current_tier: current %>
+
+        <%# Screenshots %>
+        <%= render "pricing/compare_row", category: "screenshots", label: "Screenshot projects / org", free: free_ent.max_screenshot_projects_per_organization, pro: pro_ent.max_screenshot_projects_per_organization, team: team_ent.max_screenshot_projects_per_organization, current_tier: current %>
+        <%= render "pricing/compare_row", category: "screenshots", label: "Scenes per project", free: free_ent.max_screenshot_scenes_per_project, pro: pro_ent.max_screenshot_scenes_per_project, team: team_ent.max_screenshot_scenes_per_project, current_tier: current %>
+        <%= render "pricing/compare_row", category: "screenshots", label: "Media storage", free: number_to_human_size(free_ent.max_media_storage_bytes_per_organization), pro: number_to_human_size(pro_ent.max_media_storage_bytes_per_organization), team: number_to_human_size(team_ent.max_media_storage_bytes_per_organization), current_tier: current %>
+        <%= render "pricing/compare_row", category: "screenshots", label: "Export storage", free: number_to_human_size(free_ent.max_export_storage_bytes_per_organization), pro: number_to_human_size(pro_ent.max_export_storage_bytes_per_organization), team: number_to_human_size(team_ent.max_export_storage_bytes_per_organization), current_tier: current %>
+
+        <%# Listings %>
+        <%= render "pricing/compare_row", category: "listings", label: "Store-listing apps", free: free_ent.max_store_listing_apps, pro: pro_ent.max_store_listing_apps == 999 ? "Unlimited" : pro_ent.max_store_listing_apps, team: team_ent.max_store_listing_apps == 999 ? "Unlimited" : team_ent.max_store_listing_apps, current_tier: current %>
+        <%= render "pricing/compare_row", category: "listings", label: "Store-listing locales", free: free_ent.max_store_listing_locales, pro: pro_ent.max_store_listing_locales, team: team_ent.max_store_listing_locales == 999 ? "Unlimited" : team_ent.max_store_listing_locales, current_tier: current %>
+        <%= render "pricing/compare_row", category: "listings", label: "Custom product pages", free: free_ent.custom_product_pages_enabled?, pro: pro_ent.custom_product_pages_enabled?, team: team_ent.custom_product_pages_enabled?, current_tier: current %>
+        <%= render "pricing/compare_row", category: "listings", label: "Reply templates", free: free_ent.response_templates_enabled?, pro: pro_ent.response_templates_enabled?, team: team_ent.response_templates_enabled?, current_tier: current %>
+
+        <%# AI %>
+        <%= render "pricing/compare_row", category: "ai", label: "AI translations / month", free: free_ent.max_ai_translations_per_month, pro: pro_ent.max_ai_translations_per_month, team: team_ent.max_ai_translations_per_month, current_tier: current %>
+        <%= render "pricing/compare_row", category: "ai", label: "AI rewrites / month", free: free_ent.max_ai_rewrites_per_month, pro: pro_ent.max_ai_rewrites_per_month, team: team_ent.max_ai_rewrites_per_month, current_tier: current %>
+
+        <%# Keywords %>
+        <%= render "pricing/compare_row", category: "keywords", label: "Tracked keywords per app", free: free_ent.max_tracked_keywords_per_app, pro: pro_ent.max_tracked_keywords_per_app, team: team_ent.max_tracked_keywords_per_app, current_tier: current %>
+        <%= render "pricing/compare_row", category: "keywords", label: "Countries per keyword", free: free_ent.max_countries_per_tracked_keyword, pro: pro_ent.max_countries_per_tracked_keyword, team: team_ent.max_countries_per_tracked_keyword == 999 ? "Unlimited" : team_ent.max_countries_per_tracked_keyword, current_tier: current %>
+        <%= render "pricing/compare_row", category: "keywords", label: "Rank refresh", free: free_ent.keyword_tracking_refresh_days == 1 ? "Daily" : "Every #{free_ent.keyword_tracking_refresh_days} days", pro: pro_ent.keyword_tracking_refresh_days == 1 ? "Daily" : "Every #{pro_ent.keyword_tracking_refresh_days} days", team: team_ent.keyword_tracking_refresh_days == 1 ? "Daily" : "Every #{team_ent.keyword_tracking_refresh_days} days", current_tier: current %>
+        <%= render "pricing/compare_row", category: "keywords", label: "Rank history retention", free: "#{free_ent.max_keyword_history_days} days", pro: "#{pro_ent.max_keyword_history_days} days", team: "#{team_ent.max_keyword_history_days} days", current_tier: current %>
+        <%= render "pricing/compare_row", category: "keywords", label: "Apple Ads popularity", free: free_ent.apple_ads_integration_enabled?, pro: pro_ent.apple_ads_integration_enabled?, team: team_ent.apple_ads_integration_enabled?, current_tier: current %>
+        <%= render "pricing/compare_row", category: "keywords", label: "Rank change alerts", free: free_ent.keyword_rank_alerts_enabled?, pro: pro_ent.keyword_rank_alerts_enabled?, team: team_ent.keyword_rank_alerts_enabled?, current_tier: current %>
+        <%= render "pricing/compare_row", category: "keywords", label: "Priority refresh queue", free: free_ent.keyword_tracking_priority_queue?, pro: pro_ent.keyword_tracking_priority_queue?, team: team_ent.keyword_tracking_priority_queue?, current_tier: current %>
+        <%= render "pricing/compare_row", category: "keywords", label: "Review-monitoring apps", free: free_ent.max_review_monitoring_apps, pro: pro_ent.max_review_monitoring_apps, team: team_ent.max_review_monitoring_apps == 999 ? "Unlimited" : team_ent.max_review_monitoring_apps, current_tier: current %>
+        <%= render "pricing/compare_row", category: "keywords", label: "Keyword editor", free: free_ent.keyword_editor_enabled?, pro: pro_ent.keyword_editor_enabled?, team: team_ent.keyword_editor_enabled?, current_tier: current %>
+
+        <%# Analytics %>
+        <%= render "pricing/compare_row", category: "analytics", label: "Analytics dashboard", free: free_ent.analytics_dashboard_enabled?, pro: pro_ent.analytics_dashboard_enabled?, team: team_ent.analytics_dashboard_enabled?, current_tier: current %>
+        <%= render "pricing/compare_row", category: "analytics", label: "Analytics history", free: "#{free_ent.max_analytics_history_days} days", pro: "#{pro_ent.max_analytics_history_days} days", team: "#{team_ent.max_analytics_history_days} days", current_tier: current %>
+
+        <%# Team & Security %>
+        <%= render "pricing/compare_row", category: "team-security", label: "SAML SSO", free: free_ent.sso_enabled?, pro: pro_ent.sso_enabled?, team: team_ent.sso_enabled?, current_tier: current %>
+        <%= render "pricing/compare_row", category: "team-security", label: "Audit log", free: free_ent.audit_log_enabled?, pro: pro_ent.audit_log_enabled?, team: team_ent.audit_log_enabled?, current_tier: current %>
+        <%= render "pricing/compare_row", category: "team-security", label: "Role-based access control", free: free_ent.rbac_enabled?, pro: pro_ent.rbac_enabled?, team: team_ent.rbac_enabled?, current_tier: current %>
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -1,0 +1,82 @@
+<% content_for(:title) { "Documentation" } %>
+<% content_for(:description) { "MySigner documentation — quickstart guides, CLI command reference, CI/CD integration, and dashboard tutorials for iOS and Android app signing." } %>
+<% content_for(:json_ld) do %>
+  <%= breadcrumb_json_ld([{ name: "Home", url: "/" }, { name: "Documentation" }]) %>
+<% end %>
+
+<%= breadcrumbs([{ label: "Documentation" }]) %>
+
+<div class="space-y-8">
+  <!-- Header -->
+  <div class="text-center max-w-3xl mx-auto">
+    <h1 class="text-3xl sm:text-4xl font-bold mb-4">MySigner Documentation</h1>
+    <p class="text-lg text-base-content/70 mb-6">
+      Everything you need to set up, configure, and automate your app signing workflow.
+    </p>
+    
+    <!-- Search -->
+    <div class="flex justify-center">
+      <%= render "docs/search_modal" %>
+    </div>
+  </div>
+
+  <!-- Category Cards -->
+  <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <% @categories.each do |slug, category| %>
+      <%= link_to category_docs_path(slug), class: "card bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-lg transition-all group" do %>
+        <div class="card-body">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-3 <%= category_icon_bg(slug) %>">
+            <i class="<%= category[:icon] %> text-xl"></i>
+          </div>
+          <h2 class="card-title text-lg group-hover:text-primary transition-colors">
+            <%= category[:title] %>
+            <i class="fa-solid fa-arrow-right text-sm opacity-0 group-hover:opacity-100 transition-opacity"></i>
+          </h2>
+          <p class="text-sm text-base-content/70"><%= category[:description] %></p>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="bg-base-200/50 rounded-2xl p-6 mt-8">
+    <h3 class="font-semibold mb-4 flex items-center gap-2">
+      <i class="fa-solid fa-bolt text-primary"></i>
+      Quick Links
+    </h3>
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <%= link_to page_docs_path("quickstart", "getting-started"), class: "flex items-center gap-3 p-3 rounded-lg bg-base-100 hover:bg-primary/5 border border-base-200 hover:border-primary/30 transition-all" do %>
+        <i class="fa-solid fa-rocket text-primary"></i>
+        <div>
+          <div class="font-medium">Getting Started</div>
+          <div class="text-xs text-base-content/60">Set up MySigner in 5 minutes</div>
+        </div>
+      <% end %>
+      
+      <%= link_to page_docs_path("commands", "ship"), class: "flex items-center gap-3 p-3 rounded-lg bg-base-100 hover:bg-primary/5 border border-base-200 hover:border-primary/30 transition-all" do %>
+        <i class="fa-solid fa-paper-plane text-secondary"></i>
+        <div>
+          <div class="font-medium">Ship Command</div>
+          <div class="text-xs text-base-content/60">Deploy to TestFlight or App Store</div>
+        </div>
+      <% end %>
+      
+      <%= link_to page_docs_path("guides", "ci-cd-github"), class: "flex items-center gap-3 p-3 rounded-lg bg-base-100 hover:bg-primary/5 border border-base-200 hover:border-primary/30 transition-all" do %>
+        <i class="fa-brands fa-github text-accent"></i>
+        <div>
+          <div class="font-medium">GitHub Actions</div>
+          <div class="text-xs text-base-content/60">Automate with CI/CD</div>
+        </div>
+      <% end %>
+      
+      <%= link_to page_docs_path("dashboard", "credentials"), class: "flex items-center gap-3 p-3 rounded-lg bg-base-100 hover:bg-primary/5 border border-base-200 hover:border-primary/30 transition-all" do %>
+        <i class="fa-solid fa-key text-info"></i>
+        <div>
+          <div class="font-medium">Credentials Setup</div>
+          <div class="text-xs text-base-content/60">Configure ASC & Google Play</div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,49 @@
+<%= turbo_frame_tag "api_token_modal" do %>
+  <dialog id="token_created_modal" class="modal modal-open" data-controller="copy">
+    <div class="modal-box max-w-lg">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
+          <i class="fa-solid fa-check text-success text-sm"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-base">Token created</h3>
+          <p class="text-xs text-base-content/50">Copy it now — you won't see it again</p>
+        </div>
+      </div>
+
+      <div class="bg-base-200/50 rounded-lg p-4 mb-5">
+        <div class="flex items-center justify-between gap-3">
+          <code class="flex-1 font-mono text-sm break-all select-all" data-copy-target="source"><%= @plain_token %></code>
+          <button type="button"
+                  class="btn btn-sm btn-ghost btn-square shrink-0 copy-btn"
+                  data-action="click->copy#copy"
+                  title="Copy to clipboard">
+            <i class="fa-solid fa-copy text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-warning/5 border border-warning/20 rounded-lg px-4 py-3 mb-5">
+        <p class="text-xs text-base-content/70">
+          <i class="fa-solid fa-triangle-exclamation text-warning mr-1.5"></i>
+          <strong>Store this securely.</strong> You cannot view it again after closing this dialog.
+        </p>
+      </div>
+
+      <div class="text-xs text-base-content/50 mb-5 space-y-1.5">
+        <p class="font-medium text-base-content/60">Quick start:</p>
+        <div class="bg-base-200/30 rounded px-3 py-2 font-mono">
+          mysigner login --token
+        </div>
+        <p>Then paste your token when prompted.</p>
+      </div>
+
+      <div class="flex justify-end border-t border-base-200 pt-4">
+        <button data-controller="utility" data-action="click->utility#reload" class="btn btn-primary btn-sm">Done</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button data-controller="utility" data-action="click->utility#reload">close</button>
+    </form>
+  </dialog>
+<% end %>

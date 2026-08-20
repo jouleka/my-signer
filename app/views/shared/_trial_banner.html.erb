@@ -1,0 +1,40 @@
+<%# Thin persistent banner for users on an active 14-day Pro trial.
+    Hidden automatically for: signed-out users, non-trial users, and anyone
+    whose trial has already expired (the post-trial UX is handled by
+    upgrade prompts, not a banner).
+
+    The dismiss button keys the localStorage flag by days-remaining so a
+    dismissal at "13 days" only suppresses the 13-day state — the banner
+    reappears the next day with the new countdown. This balances "let me
+    close this" against "don't let me forget my trial is ending." %>
+<% if user_signed_in? && current_user.on_active_trial? %>
+  <% days_left = current_user.trial_days_remaining %>
+  <% urgent = days_left <= 3 %>
+  <div data-controller="dismissable"
+       data-dismissable-key-value="trial-banner-d<%= days_left %>"
+       class="<%= urgent ? 'bg-error/10 border-error/20 text-error' : 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400' %>
+              border-b px-4 py-2 text-xs sm:text-sm relative">
+    <div class="text-center">
+      <span class="font-semibold">
+        <i class="fa-solid fa-clock mr-1" aria-hidden="true"></i>
+        <% if days_left == 0 %>
+          Pro trial ends today.
+        <% elsif days_left == 1 %>
+          Pro trial: 1 day left.
+        <% else %>
+          Pro trial: <%= days_left %> days left.
+        <% end %>
+      </span>
+      <%= link_to pricing_path,
+          class: "ml-2 underline font-semibold hover:no-underline" do %>
+        Upgrade to keep access
+      <% end %>
+    </div>
+    <button type="button"
+            data-action="click->dismissable#dismiss"
+            aria-label="Dismiss trial banner"
+            class="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 cursor-pointer text-current p-1">
+      <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
+    </button>
+  </div>
+<% end %>

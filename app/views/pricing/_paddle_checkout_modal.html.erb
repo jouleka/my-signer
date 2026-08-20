@@ -1,0 +1,56 @@
+<%#
+  Partial: pricing/paddle_checkout_modal
+  Hosts Paddle's inline checkout inside a MySigner-styled dialog so the
+  rest of the page stays visible instead of being washed out by the
+  overlay-mode backdrop. The paddle-checkout Stimulus controller mounts
+  the Paddle iframe into the `.mysigner-paddle-frame` container.
+
+  Paddle reads `frameTarget` as a class name (not an id), so the class
+  on the mount point must stay in sync with the controller's constant.
+%>
+<dialog id="paddle-inline-checkout-modal"
+        class="modal modal-bottom sm:modal-middle"
+        data-paddle-checkout-target="dialog">
+  <div class="modal-box w-full max-w-2xl border border-base-200 bg-base-100 p-0 overflow-hidden">
+    <%# Header %>
+    <div class="flex items-center justify-between border-b border-base-200 px-6 py-4">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <i class="fa-solid fa-lock text-sm text-primary"></i>
+        </div>
+        <div class="min-w-0">
+          <h3 class="text-base font-semibold truncate" data-paddle-checkout-target="title">Secure checkout</h3>
+          <p class="text-xs text-base-content/55">Payments handled by Paddle · your card never touches our servers</p>
+        </div>
+      </div>
+      <button type="button"
+              class="btn btn-sm btn-circle btn-ghost -mr-2"
+              aria-label="Close"
+              data-action="paddle-checkout#close">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+
+    <%# Checkout body %>
+    <div class="px-6 py-5">
+      <%# Spinner: visible until Paddle dispatches checkout.loaded %>
+      <div class="flex items-center justify-center py-16 text-sm text-base-content/55"
+           data-paddle-checkout-target="spinner">
+        <div class="flex items-center gap-2">
+          <span class="loading loading-spinner loading-sm"></span>
+          Loading secure checkout...
+        </div>
+      </div>
+
+      <%# Paddle mounts its iframe inside this container.
+          Class name MUST match FRAME_CLASS in paddle_checkout_controller.js. %>
+      <div class="mysigner-paddle-frame" data-paddle-checkout-target="frame"></div>
+    </div>
+  </div>
+
+  <%# Clicking outside the modal-box closes the dialog. Stimulus close
+      action also fires Paddle.Checkout.close() so the iframe tears down. %>
+  <form method="dialog" class="modal-backdrop">
+    <button data-action="paddle-checkout#close">close</button>
+  </form>
+</dialog>

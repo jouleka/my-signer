@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 428 896" fill="none">
+  <defs>
+    <linearGradient id="steelEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8E8E93"/>
+      <stop offset="15%" stop-color="#7C7C80"/>
+      <stop offset="50%" stop-color="#636366"/>
+      <stop offset="85%" stop-color="#7C7C80"/>
+      <stop offset="100%" stop-color="#8E8E93"/>
+    </linearGradient>
+    <linearGradient id="steelSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7C7C80"/>
+      <stop offset="15%" stop-color="#636366"/>
+      <stop offset="50%" stop-color="#545458"/>
+      <stop offset="85%" stop-color="#636366"/>
+      <stop offset="100%" stop-color="#7C7C80"/>
+    </linearGradient>
+    <linearGradient id="btnL" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%" stop-color="#7C7C80"/>
+      <stop offset="40%" stop-color="#636366"/>
+      <stop offset="100%" stop-color="#545458"/>
+    </linearGradient>
+    <linearGradient id="btnR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7C7C80"/>
+      <stop offset="40%" stop-color="#636366"/>
+      <stop offset="100%" stop-color="#545458"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Stainless steel frame -->
+  <rect x="0" y="0" width="428" height="896" rx="52" ry="52" fill="url(#steelSide)"/>
+  <rect x="0" y="0" width="428" height="896" rx="52" ry="52" fill="url(#steelEdge)" opacity="0.4"/>
+  <rect x="2" y="2" width="424" height="892" rx="50" ry="50" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="0.5"/>
+
+  <!-- Front glass -->
+  <rect x="5" y="5" width="418" height="886" rx="48" ry="48" fill="#0A0A0C"/>
+
+  <!-- Screen -->
+  <rect x="18" y="50" width="392" height="800" rx="26" ry="26" fill="#000"/>
+
+  <!-- Notch -->
+  <path d="M156,5 L156,18 C156,36 163,50 182,50 L246,50 C265,50 272,36 272,18 L272,5" fill="#0A0A0C"/>
+  <!-- Speaker grille -->
+  <rect x="198" y="22" width="32" height="4" rx="2" ry="2" fill="#1A1A1C"/>
+  <!-- Front camera -->
+  <circle cx="186" cy="26" r="4.5" fill="#1A1A1C"/>
+  <circle cx="186" cy="26" r="2.5" fill="#0A0A0C" stroke="#1C1C1E" stroke-width="0.5"/>
+
+  <!-- Left buttons: silent switch -->
+  <rect x="-1.5" y="153" width="5" height="18" rx="2" ry="2" fill="url(#btnL)"/>
+  <!-- Volume up -->
+  <rect x="-1.5" y="238" width="5" height="40" rx="2" ry="2" fill="url(#btnL)"/>
+  <!-- Volume down -->
+  <rect x="-1.5" y="288" width="5" height="40" rx="2" ry="2" fill="url(#btnL)"/>
+
+  <!-- Right button: power -->
+  <rect x="424.5" y="263" width="5" height="60" rx="2" ry="2" fill="url(#btnR)"/>
+</svg>

@@ -1,0 +1,20 @@
+<% @preheader = "#{@target_name} was removed from #{@organization.name}." %>
+
+<%= ms_eyebrow(34, "Team · Member removed") %>
+<%= ms_headline("Member <em style=\"font-style:italic; color:#f57c97;\" class=\"ms-callout-danger-text\">removed.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_meta_row("Removed", "<span class=\"ms-ink\" style=\"color:#f4ede0;\">#{ERB::Util.h(@target_name)}</span>".html_safe) %>
+<%= ms_meta_row("Organization", ms_meta_pill(@organization.name)) %>
+<%= ms_meta_row("Removed by", "<span class=\"ms-ink\" style=\"color:#f4ede0; font-style:italic;\">#{ERB::Util.h(@actor_name)}</span>".html_safe) %>
+
+<%= ms_callout(
+  "Their access to this organization &mdash; including any active sessions &mdash; has been revoked. They've been notified separately.",
+  variant: :danger,
+  accent_label: "Effective immediately"
+) %>
+
+<%= ms_cta("View organization", organization_url(@organization), variant: :primary, margin_top: 4, margin_bottom: 22) %>
+
+<%= ms_fine_print("Membership changes are recorded in the audit log. If this looks wrong, you can re-invite the member from the organization's member list.") %>

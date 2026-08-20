@@ -1,0 +1,32 @@
+<%#
+  Shared content card component for filter/list/table views.
+  
+  Optional locals:
+    - filter: Captured HTML content for filter section (use capture block)
+    - filter_class: Additional classes for the filter container (default: "sm:flex-row sm:items-end")
+    - body_class: Additional classes for card-body (default: "space-y-6")
+    - card_class: Additional classes for card (default: "")
+    - content: Captured HTML content for main content (use capture block, alternative to yield)
+
+  Usage: render "shared/content_card", filter: (capture do ... end) do ... end
+%>
+
+<%
+  filter ||= nil
+  filter_class ||= "sm:flex-row sm:items-end"
+  body_class ||= "space-y-6"
+  card_class ||= ""
+  content ||= nil
+%>
+
+<div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden <%= card_class %>">
+  <div class="card-body p-3 sm:p-6 md:p-8 <%= body_class %>">
+    <% if filter.present? %>
+      <div class="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 bg-base-200/50 rounded-xl sm:rounded-2xl border border-base-200 <%= filter_class %>">
+        <%= filter %>
+      </div>
+    <% end %>
+
+    <%= content.presence || yield %>
+  </div>
+</div>

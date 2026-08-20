@@ -1,0 +1,13 @@
+<%# Inline error partial for the Add-Tracked-Keyword modal. Controller
+    renders it via a turbo_stream.replace of the #add-tracked-keyword-modal-errors
+    div so validation/limit failures stay inside the modal rather than
+    reloading the page. Uses the shared sn_error banner so it matches the
+    Apple Ads credential form and other authenticated-app error states. %>
+<div id="add-tracked-keyword-modal-errors" class="<%= sn_error_classes %> mb-4" role="alert">
+  <div class="flex items-start gap-2.5 p-1">
+    <div class="<%= sn_icon_error_classes %>">
+      <i class="fa-solid fa-circle-exclamation text-[0.6rem]"></i>
+    </div>
+    <span class="text-xs text-error/90 flex-1 min-w-0"><%= error %></span>
+  </div>
+</div>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 640" fill="none">
+  <defs>
+    <linearGradient id="frameEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C7C80"/>
+      <stop offset="25%" stop-color="#636366"/>
+      <stop offset="50%" stop-color="#545458"/>
+      <stop offset="75%" stop-color="#636366"/>
+      <stop offset="100%" stop-color="#7C7C80"/>
+    </linearGradient>
+    <linearGradient id="frameSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6E6E73"/>
+      <stop offset="15%" stop-color="#58585C"/>
+      <stop offset="50%" stop-color="#48484C"/>
+      <stop offset="85%" stop-color="#58585C"/>
+      <stop offset="100%" stop-color="#6E6E73"/>
+    </linearGradient>
+    <linearGradient id="btnR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6E6E73"/>
+      <stop offset="40%" stop-color="#58585C"/>
+      <stop offset="100%" stop-color="#48484C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Frame -->
+  <rect x="0" y="0" width="360" height="640" rx="32" ry="32" fill="url(#frameSide)"/>
+  <rect x="0" y="0" width="360" height="640" rx="32" ry="32" fill="url(#frameEdge)" opacity="0.4"/>
+  <rect x="2" y="2" width="356" height="636" rx="30" ry="30" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="0.5"/>
+
+  <!-- Front glass -->
+  <rect x="4" y="4" width="352" height="632" rx="28" ry="28" fill="#0A0A0C"/>
+
+  <!-- Screen -->
+  <rect x="14" y="30" width="332" height="580" rx="16" ry="16" fill="#000"/>
+
+  <!-- Right buttons: power -->
+  <rect x="356.5" y="180" width="5" height="46" rx="2" ry="2" fill="url(#btnR)"/>
+  <!-- Volume -->
+  <rect x="356.5" y="245" width="5" height="60" rx="2" ry="2" fill="url(#btnR)"/>
+</svg>

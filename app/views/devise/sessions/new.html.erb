@@ -1,0 +1,238 @@
+<%# Editorial sign-in — two-column auth shell. Mirrors the visual
+    system from app/views/landing/_hero.html.erb (Instrument Serif
+    headline + italic primary accent, numbered editorial markers,
+    JetBrains Mono terminal, warm-stone tokens) and the sign-up
+    page. The right rail previews "what's waiting": pending releases
+    and credential expiry — the kind of state a returning user is
+    coming back to. Hidden under lg so the form has room. %>
+
+<div class="auth-shell grid lg:grid-cols-2 h-screen w-full overflow-hidden">
+
+  <%# ── Left: editorial form ─────────────────────────────────────── %>
+  <div class="relative flex flex-col h-full overflow-y-auto bg-base-100">
+    <%# Top chrome — Back to Home %>
+    <div class="absolute top-5 left-5 sm:top-6 sm:left-8 z-20">
+      <%= link_to unauthenticated_root_path,
+            class: "inline-flex items-center gap-2 text-xs text-base-content/60 hover:text-base-content transition-colors" do %>
+        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+        <span>Back to Home</span>
+      <% end %>
+    </div>
+
+    <%# Both columns center vertically — content blocks are roughly
+        the same height so the wordmark and the right rail's section
+        marker land on similar y-positions while leaving balanced
+        breathing room top + bottom. %>
+    <div class="flex flex-col min-h-full px-6 sm:px-12 lg:px-14 xl:px-20 pt-20 lg:pt-12 pb-12">
+      <div class="w-full max-w-[440px] mx-auto my-auto">
+
+        <%# Wordmark — official MySigner logo + Instrument Serif wordmark %>
+        <div class="mb-8">
+          <div class="flex items-center gap-2.5 mb-6">
+            <img src="/icon.svg" alt="" class="h-7 w-7" aria-hidden="true">
+            <span class="font-display text-[26px] tracking-tight">MySigner</span>
+          </div>
+          <%# Editorial section marker %>
+          <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em]" style="color: color-mix(in oklab, var(--color-base-content) 55%, transparent);">
+            <span class="secnum text-[14px] normal-case tracking-normal">№ 01</span>
+            <span class="editorial-rule w-10"></span>
+            <span>Sign in</span>
+          </div>
+        </div>
+
+        <%# Headline + lede %>
+        <h1 class="font-display leading-[0.96] tracking-tight" style="font-size: clamp(48px, 5.5vw, 64px);">
+          Welcome <span class="italic" style="color: var(--color-primary);">back.</span>
+        </h1>
+        <p class="mt-4 text-[14.5px] leading-relaxed text-mute max-w-[420px]">
+          Sign in to continue managing certificates, releases, and screenshots &mdash; all from one tab.
+        </p>
+
+        <%= render "devise/shared/error_messages", resource: resource %>
+
+        <%= form_for(resource, as: resource_name, url: session_path(resource_name),
+              html: { class: "mt-8 space-y-0",
+                      data: { controller: "form-validator" } }) do |f| %>
+
+          <%# Email %>
+          <div class="form-control mb-4">
+            <div class="label-row">
+              <span class="lbl"><%= t('.email_label') %></span>
+              <span class="alt">we never share this</span>
+            </div>
+            <%= f.label :email, class: "input input-bordered field" do %>
+              <i class="fa-solid fa-envelope lead"></i>
+              <%= f.email_field :email, autofocus: true, autocomplete: "email", required: true,
+                    placeholder: "you@studio.com",
+                    data: { action: "input->form-validator#validate blur->form-validator#validate", field: "email" } %>
+            <% end %>
+            <div class="validator-error text-error text-[11px] mt-1.5 hidden items-center gap-1.5">
+              <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+              <span></span>
+            </div>
+            <div class="validator-hint hint">The address you used to sign up.</div>
+          </div>
+
+          <%# Password — alt slot is a "Forgot?" link %>
+          <div class="form-control mb-4">
+            <div class="label-row">
+              <span class="lbl"><%= t('.password_label') %></span>
+              <%= link_to t('.forgot_short'), new_user_password_path, class: "alt alink" %>
+            </div>
+            <%= f.label :password, class: "input input-bordered field" do %>
+              <i class="fa-solid fa-key lead"></i>
+              <%= f.password_field :password, autocomplete: "current-password", required: true,
+                    placeholder: "••••••••••••",
+                    data: { action: "input->form-validator#validate blur->form-validator#validate", field: "password" } %>
+            <% end %>
+            <div class="validator-error text-error text-[11px] mt-1.5 hidden items-center gap-1.5">
+              <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+              <span></span>
+            </div>
+          </div>
+
+          <%# Remember me — opt-in only. Pre-checking on shared devices is a
+              known security smell (Devise.remember_for typically extends the
+              session by 2 weeks). The user must explicitly opt in. %>
+          <% if devise_mapping.rememberable? %>
+            <label class="flex items-center gap-2.5 my-3 text-[12.5px] cursor-pointer">
+              <%= f.check_box :remember_me, class: "checkbox checkbox-sm", checked: false %>
+              <span class="text-mute"><%= t('.remember_me_label') %></span>
+            </label>
+          <% end %>
+
+          <button type="submit" class="btn-primary-ms mt-2">
+            <i class="fa-solid fa-right-to-bracket text-[11px]"></i>
+            <%= t('.submit') %>
+          </button>
+        <% end %>
+
+        <%# Editorial divider %>
+        <div class="flex items-center gap-3 my-6">
+          <span class="editorial-rule flex-1"></span>
+          <span class="text-[10.5px] uppercase tracking-[0.18em] text-faint"><%= t('.divider_short') %></span>
+          <span class="editorial-rule flex-1"></span>
+        </div>
+
+        <%# OAuth row — 3 equal columns %>
+        <div class="grid grid-cols-3 gap-2">
+          <%= button_to user_apple_omniauth_authorize_path, data: { turbo: false }, class: "btn-oauth" do %>
+            <i class="fa-brands fa-apple text-[15px]"></i>
+            <span>Apple</span>
+          <% end %>
+          <%= button_to user_google_oauth2_omniauth_authorize_path, data: { turbo: false }, class: "btn-oauth" do %>
+            <svg width="14" height="14" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">
+              <g>
+                <path fill="#34a853" d="M153 292c30 82 118 95 171 60h62v48A192 192 0 0190 341"/>
+                <path fill="#4285f4" d="m386 400a140 175 0 0053-179H260v74h102q-7 37-38 57"/>
+                <path fill="#fbbc02" d="m90 341a208 200 0 010-171l63 49q-12 37 0 73"/>
+                <path fill="#ea4335" d="m153 219c22-69 116-109 179-50l55-54c-78-75-230-72-297 55"/>
+              </g>
+            </svg>
+            <span>Google</span>
+          <% end %>
+          <%= button_to user_github_omniauth_authorize_path, data: { turbo: false }, class: "btn-oauth" do %>
+            <i class="fa-brands fa-github text-[15px]"></i>
+            <span>GitHub</span>
+          <% end %>
+        </div>
+
+        <%# Foot links %>
+        <div class="mt-6 text-[12.5px] text-mute space-y-1.5">
+          <div>
+            Don't have an account?
+            <%= link_to "Start free", new_user_registration_path, class: "alink" %>
+          </div>
+          <% if devise_mapping.confirmable? %>
+            <div>
+              Didn't get the confirmation email?
+              <%= link_to "Resend", new_user_confirmation_path, class: "alink" %>
+            </div>
+          <% end %>
+          <% if devise_mapping.lockable? && resource_class.unlock_strategy_enabled?(:email) %>
+            <div>
+              Locked out?
+              <%= link_to "Unlock instructions", new_user_unlock_path, class: "alink" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── Right: editorial right rail (hidden under lg) ────────────── %>
+  <div class="editorial-right hidden lg:block h-full overflow-hidden relative">
+    <div class="absolute inset-0 grain p-12 flex flex-col justify-center">
+      <%# Editorial header %>
+      <div class="flex items-center gap-3 text-[10.5px] uppercase tracking-[0.18em] text-mute">
+        <span class="secnum text-[14px] normal-case tracking-normal">№ 02</span>
+        <span class="editorial-rule w-10"></span>
+        <span>What's waiting for you</span>
+      </div>
+
+      <h2 class="mt-6 font-display leading-[0.96] tracking-tight" style="font-size: 56px;">
+        Pick up<br>
+        <span class="italic" style="color: var(--color-primary);">where you left off.</span>
+      </h2>
+
+      <%# Pending releases card %>
+      <div class="mt-10 rounded-[var(--radius-box)] border border-soft p-5"
+           style="background: var(--color-base-100);">
+        <div class="flex items-center gap-2 text-xs">
+          <i class="fa-solid fa-rocket"></i>
+          <span class="font-medium">3 releases waiting</span>
+          <span class="ml-auto text-[10px] text-faint">since you last signed in</span>
+        </div>
+        <div class="mt-4 space-y-2.5 font-mono-jb text-[12px]">
+          <div class="flex items-center gap-3">
+            <span class="pill" style="background: color-mix(in oklab, var(--color-info) 18%, transparent); color: var(--color-info);">PROCESSING</span>
+            <span>finchly &middot; 1.4.2</span>
+            <span class="ml-auto text-faint tnum">02:17 left</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="pill" style="background: color-mix(in oklab, var(--color-warning) 18%, transparent); color: var(--color-warning);">NEEDS REPLY</span>
+            <span>roastr &middot; 6 reviews</span>
+            <span class="ml-auto text-faint tnum">&starf; 4.6 &rarr; 4.4</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="pill" style="background: color-mix(in oklab, var(--color-success) 18%, transparent); color: var(--color-success);">LIVE</span>
+            <span>halftide &middot; 2.0 (511)</span>
+            <span class="ml-auto text-faint tnum">phased &middot; day 3</span>
+          </div>
+        </div>
+      </div>
+
+      <%# Credentials card — iOS cert, iOS profile, Android keystore %>
+      <div class="mt-3 rounded-[var(--radius-box)] border border-soft p-5"
+           style="background: var(--color-base-100);">
+        <div class="flex items-center gap-2 text-xs">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span class="font-medium">Credentials</span>
+          <span class="ml-auto text-[10px] text-faint">30d expiry alerts on</span>
+        </div>
+        <div class="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+          <div class="rounded-md border border-soft p-2.5">
+            <div class="text-faint uppercase tracking-wider text-[9.5px]">Cert</div>
+            <div class="mt-1 font-medium">287d</div>
+            <div class="text-faint">distribution</div>
+          </div>
+          <div class="rounded-md border border-soft p-2.5">
+            <div class="text-faint uppercase tracking-wider text-[9.5px]">Profile</div>
+            <div class="mt-1 font-medium" style="color: var(--color-warning);">22d</div>
+            <div class="text-faint">expires soon</div>
+          </div>
+          <div class="rounded-md border border-soft p-2.5">
+            <div class="text-faint uppercase tracking-wider text-[9.5px]">Keystore</div>
+            <div class="mt-1 font-medium" style="color: var(--color-success);">sealed</div>
+            <div class="text-faint">AES-256</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 text-[11px] text-faint flex items-center gap-2 flex-wrap">
+        <i class="fa-solid fa-circle-check" style="color: var(--color-success);"></i>
+        <span>Last successful ship &mdash; finchly 1.4.1 &mdash; 4 days ago from <span class="kbd-mono">~/apps/finchly</span></span>
+      </div>
+    </div>
+  </div>
+</div>

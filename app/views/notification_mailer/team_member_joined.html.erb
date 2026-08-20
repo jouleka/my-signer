@@ -1,0 +1,18 @@
+<% @preheader = "#{@new_member.name || @new_member.email} just joined #{@organization.name} on MySigner." %>
+
+<%= ms_eyebrow(32, "Team · New member") %>
+<%= ms_headline("A new <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">teammate.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_callout(
+  "<strong style=\"color:inherit;\">#{ERB::Util.h(@new_member.name || @new_member.email)}</strong> just joined <strong style=\"color:inherit;\">#{ERB::Util.h(@organization.name)}</strong>.",
+  variant: :success,
+  accent_label: "Welcome aboard"
+) %>
+
+<%= ms_body("Their permissions are set by the role they were invited under &mdash; you can adjust this any time from the organization's member list.") %>
+
+<%= ms_cta("View organization", organization_url(@organization), variant: :primary, margin_top: 4, margin_bottom: 22) %>
+
+<%= ms_fine_print("Member updates go to every owner of the organization. Adjust who receives them in <em>Settings → Notifications</em>.") %>

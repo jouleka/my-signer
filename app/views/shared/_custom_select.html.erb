@@ -1,0 +1,48 @@
+<%#
+  Custom select dropdown component using <details> for consistent styling across all platforms.
+
+  Required locals:
+    - name: String - input name attribute (e.g. "platform" or "api_token[expires_in]")
+    - options: Array - array of [label, value] pairs, or plain strings (label == value)
+
+  Optional locals:
+    - selected: String - currently selected value (default: first option's value)
+    - placeholder: String - text when nothing is selected (default: first option's label)
+    - size: String - select size class suffix: "xs", "sm" (default: "sm")
+    - auto_submit: Boolean - auto-submit parent form on change (default: false)
+    - width: String - width class (default: "w-full")
+    - dropdown_class: String - additional classes for the details element
+%>
+<%
+  size ||= "sm"
+  auto_submit ||= false
+  width ||= "w-full"
+  dropdown_class ||= ""
+
+  # Normalize options to [label, value] pairs
+  normalized = options.map { |o| o.is_a?(Array) ? o : [o.to_s, o.to_s] }
+
+  selected_value = local_assigns.key?(:selected) ? selected.to_s : normalized.first&.last.to_s
+  selected_label = if local_assigns.key?(:placeholder) && selected_value.blank?
+    placeholder
+  else
+    normalized.find { |l, v| v.to_s == selected_value }&.first || local_assigns[:placeholder] || normalized.first&.first || ""
+  end
+%>
+<details class="dropdown <%= width %> <%= dropdown_class %>" data-controller="custom-select" data-custom-select-auto-submit-value="<%= auto_submit %>">
+  <input type="hidden" name="<%= name %>" value="<%= selected_value %>" data-custom-select-target="input">
+  <summary class="select select-bordered select-<%= size %> <%= width %> flex items-center cursor-pointer" data-custom-select-target="label"><%= selected_label %></summary>
+  <ul class="dropdown-content bg-base-200 rounded-box z-50 <%= width %> p-2 shadow-lg mt-1 max-h-60 overflow-y-auto flex flex-col gap-1">
+    <% normalized.each do |opt_label, opt_value| %>
+      <li>
+        <a href="#"
+           data-action="click->custom-select#select"
+           data-value="<%= opt_value %>"
+           data-label="<%= opt_label %>"
+           class="<%= 'active' if opt_value.to_s == selected_value %>">
+          <%= opt_label %>
+        </a>
+      </li>
+    <% end %>
+  </ul>
+</details>

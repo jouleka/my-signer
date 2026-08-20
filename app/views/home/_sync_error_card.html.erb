@@ -1,0 +1,62 @@
+<%#
+  Locals:
+    icon_class:    Font Awesome class for the leading icon (e.g. "fa-brands fa-apple").
+    label:         Heading text shown bold (e.g. "iOS sync failed").
+    error_message: Raw error message bubbled up from the sync job.
+    hint:          Optional one-line suggestion ("retry / wait / fix credentials").
+    dismiss_path:  Optional URL for a "Dismiss" button. Cards backed by
+                   OrgSyncRun rows pass the destroy path; iOS/Android
+                   cards backed by `credential.last_sync_error` pass nil
+                   since dismissing those would require clearing the
+                   credential's column too -- a separate concern.
+
+  The Retry button shares the navbar's unified-Sync wiring so clicking it
+  here behaves identically to clicking Sync in the navbar -- runs every
+  configured sync job. We reuse the existing `data-controller="sync"`
+  Stimulus instance rather than wiring a per-job retry endpoint, both
+  for simplicity and because partial-failure modes typically benefit
+  from a full re-pull (one job's failure can stale data the next one
+  depends on).
+%>
+<% dismiss_path ||= nil %>
+<div class="<%= sn_error_classes %>">
+  <div class="flex items-start gap-2.5 px-3 py-2.5">
+    <div class="<%= sn_icon_error_classes %> shrink-0 mt-0.5">
+      <i class="<%= icon_class %> text-[0.625rem]"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="text-xs font-semibold text-base-content/70"><%= label %></p>
+      <p class="<%= meta_text_classes %> truncate"><%= error_message %></p>
+      <% if hint.present? %>
+        <p class="text-[11px] leading-snug text-base-content/55 mt-1"><%= hint %></p>
+      <% end %>
+    </div>
+
+    <div class="flex items-center gap-1.5 self-center shrink-0">
+      <% if @organization.any_active_platform_credential? %>
+        <button type="button"
+                class="btn btn-ghost btn-xs gap-1"
+                data-controller="sync"
+                data-sync-url-value="<%= sync_all_organization_path(@organization) %>"
+                data-sync-status-url-value="<%= sync_status_all_organization_path(@organization) %>"
+                data-sync-target="button"
+                data-action="click->sync#start"
+                title="Retry sync — runs every configured sync job">
+          <i class="fa-solid fa-rotate text-[10px]"></i>
+          <span>Retry</span>
+        </button>
+      <% end %>
+
+      <% if dismiss_path.present? %>
+        <%= button_to dismiss_path,
+              method: :delete,
+              form: { data: { turbo_confirm: "Clear this sync error? The next sync will retry the job from scratch." } },
+              class: "btn btn-ghost btn-xs gap-1",
+              title: "Dismiss this error — clears the failed sync row" do %>
+          <i class="fa-solid fa-xmark text-[10px]"></i>
+          <span>Dismiss</span>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

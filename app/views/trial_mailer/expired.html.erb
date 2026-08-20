@@ -1,0 +1,20 @@
+<% @preheader = "Your Pro trial has ended. You're on Free now — all your data is safe." %>
+
+<%= ms_eyebrow(23, "Trial · Concluded") %>
+<%= ms_headline("Your trial has <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">ended.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name.presence || @user.email)},") %>
+
+<%= ms_callout(
+  "Your fourteen-day Pro trial ended on <strong style=\"color:inherit;\">#{@trial_ended_at.strftime('%B %-d, %Y')}</strong>. The account is now on the Free plan &mdash; we've downgraded automatically.",
+  variant: :neutral,
+  accent_label: "Concluded"
+) %>
+
+<%= ms_body("MySigner stays useful on Free, but Pro features &mdash; unlimited screenshots, the store-listing editor, ASO tracking, and the rest &mdash; are now locked.") %>
+
+<%= ms_cta("Upgrade to keep Pro", pricing_url, variant: :primary, margin_top: 12, margin_bottom: 28) %>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 18) %>
+
+<%= ms_fine_print("The CLI stays free for everyone &mdash; signing, builds, TestFlight and Play Store uploads keep working on Free. Manage notification preferences at #{ms_link(settings_url(tab: 'notifications'), settings_url(tab: 'notifications'))}.") %>

@@ -1,0 +1,73 @@
+<%# Visual timeline of past releases %>
+<% app = local_assigns[:app] %>
+<% release_notes = local_assigns[:release_notes] || [] %>
+<% is_ios = app.is_a?(AppleApp) %>
+
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_classes %>">
+    <div class="<%= card_icon_classes %>">
+      <i class="fa-solid fa-clock-rotate-left"></i>
+    </div>
+    <span class="<%= card_title_classes %>">Release History</span>
+  </div>
+  <div class="<%= card_body_classes %>">
+    <% if is_ios %>
+      <% versions = app.app_store_versions.includes(:apple_build).order(created_at: :desc).limit(10) %>
+    <% else %>
+      <% versions = app.play_store_releases.order(Arel.sql("COALESCE(released_at, created_at) DESC")).limit(10) %>
+    <% end %>
+
+    <% if versions.any? %>
+      <div data-controller="release-timeline" class="relative pl-8 before:absolute before:top-0 before:bottom-0 before:left-2 before:w-[2px] before:bg-base-content/[0.08] before:rounded-[1px]">
+        <% versions.each_with_index do |version, idx| %>
+          <div class="relative pb-6 last:pb-0" data-release-timeline-target="entry">
+            <div class="absolute left-[-1.625rem] top-1.5 w-2.5 h-2.5 rounded-full <%= idx == 0 ? 'bg-primary' : 'bg-base-content/30' %> border-2 border-base-100 z-[1]"></div>
+            <div class="flex items-center gap-2 cursor-pointer py-1 hover:opacity-80" data-action="click->release-timeline#toggle">
+              <i class="fa-solid fa-chevron-right text-[0.65rem] opacity-40 transition-transform duration-200" data-timeline-chevron></i>
+              <% if is_ios %>
+                <span class="<%= version_badge_classes %>">v<%= version.version_string %></span>
+                <span class="<%= status_badge_classes(version.app_store_state) %>">
+                  <%= version.app_store_state&.titleize&.truncate(20) || "Unknown" %>
+                </span>
+              <% else %>
+                <span class="<%= version_badge_classes %>"><%= version.version_code %></span>
+                <span class="badge badge-xs badge-outline"><%= version.track %></span>
+                <span class="<%= status_badge_classes(version.status) %>">
+                  <%= version.status.capitalize %>
+                </span>
+              <% end %>
+              <span class="<%= meta_text_classes %> ml-auto"><%= version.created_at.strftime("%b %d") %></span>
+            </div>
+            <div class="hidden mt-2 p-3 rounded-lg bg-base-content/[0.02] border border-base-content/[0.06] text-[0.8125rem] leading-relaxed text-base-content/60 whitespace-pre-wrap" data-timeline-detail>
+              <% if is_ios %>
+                <p class="<%= meta_text_classes %> mb-1">Build: <%= version.apple_build&.build_number.presence || "N/A" %></p>
+                <p class="<%= meta_text_classes %>">State: <%= version.app_store_state&.titleize %></p>
+                <p class="<%= meta_text_classes %>">Platform: <%= version.platform&.titleize || "iOS" %></p>
+              <% else %>
+                <p class="<%= meta_text_classes %> mb-1">Version code: <%= version.version_code %></p>
+                <p class="<%= meta_text_classes %>">Track: <%= version.track&.capitalize || "N/A" %></p>
+                <% if version.user_fraction.present? %>
+                  <p class="<%= meta_text_classes %>">Rollout: <%= (version.user_fraction * 100).round %>%</p>
+                <% end %>
+                <% if version.released_at.present? %>
+                  <p class="<%= meta_text_classes %>">Released: <%= version.released_at.strftime("%b %d, %Y") %></p>
+                <% end %>
+              <% end %>
+
+              <%# Matching release note %>
+              <% matching_note = release_notes.find { |n| is_ios ? n.version_string == version.version_string : n.version_string == version.version_code } %>
+              <% if matching_note %>
+                <div class="mt-2 pt-2 border-t border-base-content/5">
+                  <p class="text-xs font-semibold text-base-content/50 mb-1">Release Notes:</p>
+                  <p class="text-xs text-base-content/40 line-clamp-3"><%= matching_note.rendered_text %></p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="<%= empty_inline_classes %>"><i class="fa-solid fa-clock-rotate-left"></i> No release history available</p>
+    <% end %>
+  </div>
+</div>

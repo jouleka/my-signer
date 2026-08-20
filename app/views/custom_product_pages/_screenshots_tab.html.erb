@@ -1,0 +1,228 @@
+<%# Screenshots tab: comparison view between default and CPP screenshots %>
+<% versions = @cpp.custom_product_page_versions.order(created_at: :desc) %>
+<% latest_version = versions.first %>
+<% locs = latest_version&.custom_product_page_localizations&.order(:locale) || [] %>
+<% screenshot_projects = @organization.screenshot_projects.where(platform: ["ios", "both"]).order(:name) %>
+<% has_asc_credentials = @organization.app_store_connect_credentials.where(active: true).exists? %>
+
+<div class="flex flex-col gap-5"
+     data-controller="cpp-screenshots"
+     data-cpp-screenshots-fetch-url-value="<%= has_asc_credentials ? fetch_screenshots_organization_custom_product_page_path(@organization, @cpp) : '' %>"
+     data-cpp-screenshots-upload-url-value="<%= has_asc_credentials ? upload_screenshots_organization_custom_product_page_path(@organization, @cpp) : '' %>"
+     data-cpp-screenshots-upload-status-url-value="<%= has_asc_credentials ? upload_status_organization_custom_product_page_path(@organization, @cpp) : '' %>"
+     data-cpp-screenshots-organization-id-value="<%= @organization.id %>"
+     data-cpp-screenshots-cpp-id-value="<%= @cpp.id %>">
+
+  <%# Main screenshots comparison card %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_header_split_classes %>">
+      <div class="flex items-center gap-2.5">
+        <div class="<%= card_icon_classes %>">
+          <i class="fa-solid fa-images"></i>
+        </div>
+        <span class="<%= card_title_classes %>">Screenshots Comparison</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <% if has_asc_credentials %>
+          <button type="button"
+                  class="<%= btn_ghost_sm_classes %>"
+                  data-action="click->cpp-screenshots#refreshScreenshots">
+            <i class="fa-solid fa-arrows-rotate"></i> Sync
+          </button>
+        <% end %>
+        <a href="https://appstoreconnect.apple.com" target="_blank" rel="noopener noreferrer"
+           class="<%= btn_ghost_sm_classes %>">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> Manage in ASC
+        </a>
+      </div>
+    </div>
+    <div class="<%= card_body_classes %>">
+      <% unless has_asc_credentials %>
+        <div class="<%= sn_info_classes %>">
+          <div class="flex items-start gap-2">
+            <div class="<%= sn_icon_info_classes %> mt-0.5">
+              <i class="fa-solid fa-circle-info text-[0.5rem]"></i>
+            </div>
+            <div>
+              <p class="text-xs text-base-content/60 leading-relaxed">
+                Connect your App Store Connect credentials to view and compare screenshots.
+                Go to Organization Settings to add your API key.
+              </p>
+            </div>
+          </div>
+        </div>
+      <% else %>
+        <%# Locale selector %>
+        <% if locs.any? %>
+          <div class="flex items-center gap-3 mb-4">
+            <span class="<%= label_form_classes %>">Locale:</span>
+            <select class="select select-bordered select-sm"
+                    data-cpp-screenshots-target="localeSelect"
+                    data-action="change->cpp-screenshots#changeLocale">
+              <% locs.each_with_index do |loc, idx| %>
+                <option value="<%= loc.locale %>"
+                        data-localization-id="<%= loc.id %>"
+                        data-remote-id="<%= loc.remote_id %>"
+                        <%= "selected" if idx == 0 %>>
+                  <%= loc.locale %>
+                </option>
+              <% end %>
+            </select>
+          </div>
+        <% end %>
+
+        <%# Loading skeleton %>
+        <div data-cpp-screenshots-target="loadingIndicator">
+          <div class="space-y-4">
+            <% 2.times do %>
+              <div class="border border-base-content/[0.06] rounded-lg overflow-hidden animate-pulse">
+                <div class="flex items-center gap-2 px-4 py-3 border-b border-base-content/[0.04] bg-base-content/[0.02]">
+                  <div class="w-4 h-4 bg-base-content/[0.08] rounded"></div>
+                  <div class="h-3 w-32 bg-base-content/[0.08] rounded"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-px bg-base-content/[0.04]">
+                  <div class="bg-base-100 p-4">
+                    <div class="h-3 w-28 bg-base-content/[0.06] rounded mb-3"></div>
+                    <div class="flex gap-2">
+                      <div class="w-16 h-28 bg-base-content/[0.04] rounded-md"></div>
+                      <div class="w-16 h-28 bg-base-content/[0.04] rounded-md"></div>
+                      <div class="w-16 h-28 bg-base-content/[0.04] rounded-md"></div>
+                    </div>
+                  </div>
+                  <div class="bg-base-100 p-4">
+                    <div class="h-3 w-36 bg-base-content/[0.06] rounded mb-3"></div>
+                    <div class="flex gap-2">
+                      <div class="w-16 h-28 bg-base-content/[0.04] rounded-md"></div>
+                      <div class="w-16 h-28 bg-base-content/[0.04] rounded-md"></div>
+                      <div class="w-16 h-28 bg-base-content/[0.04] rounded-md"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <%# Screenshot comparison grid (populated by Stimulus) %>
+        <div data-cpp-screenshots-target="screenshotGrid" class="hidden">
+          <%# Content populated by JS %>
+        </div>
+
+        <%# Empty state %>
+        <div data-cpp-screenshots-target="emptyState" class="hidden">
+          <div class="flex flex-col items-center justify-center text-center py-12">
+            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary/[0.08] text-primary/50 mb-4">
+              <i class="fa-regular fa-image text-lg"></i>
+            </div>
+            <p class="<%= empty_state_title_classes %> text-base">No Screenshots</p>
+            <p class="<%= meta_text_classes %> max-w-xs mt-1">
+              No screenshots found for this locale. Upload screenshots from a Screenshot Studio project below, or manage directly in App Store Connect.
+            </p>
+          </div>
+        </div>
+
+        <%# Error state %>
+        <div data-cpp-screenshots-target="errorState" class="hidden">
+          <div class="<%= sn_error_classes %>">
+            <div class="flex items-start gap-2">
+              <div class="<%= sn_icon_error_classes %> mt-0.5">
+                <i class="fa-solid fa-circle-exclamation text-[0.5rem]"></i>
+              </div>
+              <div>
+                <p class="text-xs text-base-content/60 leading-relaxed" data-cpp-screenshots-target="errorMessage">
+                  Failed to load screenshots. Please try again.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Upload from Screenshot Project card %>
+  <% if has_asc_credentials && screenshot_projects.any? %>
+    <div class="<%= card_container_classes %>">
+      <div class="<%= card_header_classes %>">
+        <div class="<%= card_icon_classes %>">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+        </div>
+        <span class="<%= card_title_classes %>">Upload from Screenshot Studio</span>
+      </div>
+      <div class="<%= card_body_classes %>">
+        <div class="space-y-3">
+          <div>
+            <span class="<%= label_form_classes %>">Project</span>
+            <select class="<%= input_field_classes %> mt-1"
+                    data-cpp-screenshots-target="projectSelect">
+              <option value="">Select a project...</option>
+              <% screenshot_projects.each do |proj| %>
+                <option value="<%= proj.id %>"><%= proj.name %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <div>
+            <span class="<%= label_form_classes %>">Screenshot Sizes</span>
+            <div class="flex flex-wrap gap-3 mt-1.5">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                       data-cpp-screenshots-target="presetCheckbox" data-preset="ios_required" checked>
+                <span class="text-sm">iPhone Required</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                       data-cpp-screenshots-target="presetCheckbox" data-preset="ios_optional">
+                <span class="text-sm">iPhone 5.5"</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                       data-cpp-screenshots-target="presetCheckbox" data-preset="ios_ipad">
+                <span class="text-sm">iPad</span>
+              </label>
+            </div>
+          </div>
+
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" class="checkbox checkbox-primary checkbox-sm"
+                   data-cpp-screenshots-target="replaceExistingCheckbox" checked>
+            <span class="text-sm font-medium">Replace existing screenshots</span>
+          </label>
+
+          <%# Upload progress %>
+          <div data-cpp-screenshots-target="uploadProgress" class="hidden">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="loading loading-spinner loading-xs text-primary"
+                    data-cpp-screenshots-target="uploadSpinner"></span>
+              <span class="text-xs font-medium text-base-content/70"
+                    data-cpp-screenshots-target="uploadStatus">Preparing upload...</span>
+            </div>
+            <progress class="progress progress-primary w-full" value="0" max="100"
+                      data-cpp-screenshots-target="uploadProgressBar"></progress>
+          </div>
+
+          <button type="button"
+                  class="<%= btn_primary_sm_classes %>"
+                  data-action="click->cpp-screenshots#startUpload"
+                  data-cpp-screenshots-target="uploadButton">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            Upload Screenshots
+          </button>
+        </div>
+      </div>
+    </div>
+  <% elsif has_asc_credentials %>
+    <div class="<%= sn_info_classes %>">
+      <div class="flex items-start gap-2">
+        <div class="<%= sn_icon_info_classes %> mt-0.5">
+          <i class="fa-solid fa-circle-info text-[0.5rem]"></i>
+        </div>
+        <div>
+          <p class="text-xs text-base-content/60 leading-relaxed">
+            Create a Screenshot Studio project to upload screenshots directly to this Custom Product Page.
+          </p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

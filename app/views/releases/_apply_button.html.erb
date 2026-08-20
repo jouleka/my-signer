@@ -1,0 +1,17 @@
+<%#
+  "Apply to Listings" button. Single synchronous action — runs
+  ReleaseNote#apply_to_store_listings! which copies rendered_text (base locale)
+  and each translation onto the matching StoreListing#whats_new, and flips the
+  note's status to `applied`. No background job, no broadcast.
+%>
+<% note = local_assigns[:release_note] || @release_note %>
+<% return unless note %>
+<% can_apply = ReleaseNotePolicy.new(current_user, note).apply? %>
+<%= button_to apply_release_note_organization_release_path(@organization, params[:id], note_id: note.id),
+    method: :post, class: btn_primary_sm_classes,
+    form: { class: "inline" },
+    disabled: !can_apply,
+    data: { turbo_confirm: "Apply this release note to your store listings?\n\nThis copies the content (and all translations) onto each locale's listing. You can push to the store afterwards." } do %>
+  <i class="fa-solid fa-circle-up"></i>
+  Apply to Listings
+<% end %>

@@ -1,0 +1,11 @@
+# Sidekiq configuration
+# NOTE: Also update Kamal/Docker production configs when adding new queues.
+
+:concurrency: 5
+:queues:
+  - [default, 3]
+  - [mailers, 2]
+  - [apple_polling, 1]
+  - [screenshot_uploads, 1]
+
+:retry: 25

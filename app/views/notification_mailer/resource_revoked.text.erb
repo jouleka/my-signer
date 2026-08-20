@@ -1,0 +1,20 @@
+<%= @resource_type_label %> Revoked
+===============================================
+
+Hello <%= @user.name || @user.email %>,
+
+Your <%= @resource_type_label %> "<%= @resource_name %>" has been revoked or marked as invalid.
+
+This may break CI/CD pipelines and app signing. Please create a replacement resource as soon as possible.
+
+Review Now: <%= case @resource
+                when AppleCertificate
+                  organization_apple_certificates_url(@resource.organization)
+                when AppleProvisioningProfile
+                  organization_apple_provisioning_profiles_url(@resource.organization)
+                else
+                  polymorphic_url([@resource.organization, @resource])
+                end %>
+
+Thanks,
+My Signer Team

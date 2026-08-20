@@ -1,0 +1,18 @@
+<% @preheader = "SSO configuration for #{@organization.name} was just #{@event}." %>
+
+<%= ms_eyebrow(36, "Security · SSO configuration") %>
+<%= ms_headline("SSO configuration <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">#{ERB::Util.h(@event)}.</em>", size: 38) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name || @user.email)},") %>
+
+<%= ms_callout(
+  "<strong style=\"color:inherit;\">#{ERB::Util.h(@actor_name)}</strong> #{ERB::Util.h(@event)} the SSO configuration for <strong style=\"color:inherit;\">#{ERB::Util.h(@organization.name)}</strong>.",
+  variant: :warning,
+  accent_label: "Identity & access"
+) %>
+
+<%= ms_body("If this wasn't expected &mdash; or if the change loosened access controls &mdash; review the configuration and the audit log. SSO changes affect every member of the organization.") %>
+
+<%= ms_cta("Review SSO settings", organization_sso_configuration_url(@organization), variant: :primary, margin_top: 8, margin_bottom: 24) %>
+
+<%= ms_fine_print("SSO configuration changes go to all owners of the organization automatically &mdash; this is non-optional security telemetry.") %>

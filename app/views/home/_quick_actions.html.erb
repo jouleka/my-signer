@@ -1,0 +1,36 @@
+<%# Quick Actions — sleek inline action bar for primary workflows %>
+<div class="flex flex-wrap items-center gap-2">
+  <%= link_to organization_releases_path(@organization), class: btn_primary_sm_classes do %>
+    <i class="fa-solid fa-rocket"></i>
+    New Release
+  <% end %>
+
+  <%= link_to organization_screenshot_projects_path(@organization), class: btn_ghost_sm_classes do %>
+    <i class="fa-solid fa-images"></i>
+    Screenshots
+  <% end %>
+
+  <%= link_to organization_releases_path(@organization), class: btn_ghost_sm_classes do %>
+    <i class="fa-solid fa-language"></i>
+    Translate
+  <% end %>
+
+  <%= link_to organization_reviews_path(@organization), class: btn_ghost_sm_classes do %>
+    <i class="fa-solid fa-star"></i>
+    Reviews
+  <% end %>
+
+  <% if @has_creds %>
+    <%= link_to organization_apple_apps_path(@organization), class: btn_ghost_sm_classes do %>
+      <i class="fa-brands fa-apple"></i>
+      iOS Apps
+    <% end %>
+  <% end %>
+
+  <% if @android_has_creds %>
+    <%= link_to organization_android_apps_path(@organization), class: btn_ghost_sm_classes do %>
+      <i class="fa-brands fa-android"></i>
+      Android Apps
+    <% end %>
+  <% end %>
+</div>

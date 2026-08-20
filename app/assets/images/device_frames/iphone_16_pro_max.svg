@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 956" fill="none">
+  <defs>
+    <linearGradient id="titaniumEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#787880"/>
+      <stop offset="20%" stop-color="#636366"/>
+      <stop offset="50%" stop-color="#545456"/>
+      <stop offset="80%" stop-color="#636366"/>
+      <stop offset="100%" stop-color="#787880"/>
+    </linearGradient>
+    <linearGradient id="titaniumSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6E6E73"/>
+      <stop offset="15%" stop-color="#58585C"/>
+      <stop offset="50%" stop-color="#48484C"/>
+      <stop offset="85%" stop-color="#58585C"/>
+      <stop offset="100%" stop-color="#6E6E73"/>
+    </linearGradient>
+    <linearGradient id="btnL" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%" stop-color="#6E6E73"/>
+      <stop offset="40%" stop-color="#58585C"/>
+      <stop offset="100%" stop-color="#48484C"/>
+    </linearGradient>
+    <linearGradient id="btnR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6E6E73"/>
+      <stop offset="40%" stop-color="#58585C"/>
+      <stop offset="100%" stop-color="#48484C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Titanium frame -->
+  <rect x="0" y="0" width="440" height="956" rx="54" ry="54" fill="url(#titaniumSide)"/>
+  <rect x="0" y="0" width="440" height="956" rx="54" ry="54" fill="url(#titaniumEdge)" opacity="0.5"/>
+  <rect x="2" y="2" width="436" height="952" rx="52" ry="52" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.5"/>
+
+  <!-- Front glass -->
+  <rect x="6" y="6" width="428" height="944" rx="50" ry="50" fill="#0C0C0E"/>
+
+  <!-- Screen -->
+  <rect x="20" y="40" width="400" height="876" rx="30" ry="30" fill="#000"/>
+
+  <!-- Dynamic Island -->
+  <rect x="183" y="50" width="74" height="22" rx="11" ry="11" fill="#0C0C0E"/>
+
+  <!-- Left buttons: silent switch -->
+  <rect x="-1.5" y="168" width="5" height="22" rx="2" ry="2" fill="url(#btnL)"/>
+  <!-- Volume up -->
+  <rect x="-1.5" y="252" width="5" height="44" rx="2" ry="2" fill="url(#btnL)"/>
+  <!-- Volume down -->
+  <rect x="-1.5" y="306" width="5" height="44" rx="2" ry="2" fill="url(#btnL)"/>
+
+  <!-- Right button: power -->
+  <rect x="436.5" y="282" width="5" height="64" rx="2" ry="2" fill="url(#btnR)"/>
+</svg>

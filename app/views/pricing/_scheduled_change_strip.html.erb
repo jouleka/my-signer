@@ -1,0 +1,40 @@
+<%# app/views/pricing/_scheduled_change_strip.html.erb
+    Locals:
+      viewer_context: Pricing::ViewerContext
+
+    Renders when the viewer has a pending plan change (downgrade) OR a
+    scheduled cancellation. Offers a one-click undo that DELETEs
+    /billing/paddle/scheduled_change and redirects with a flash.
+%>
+
+<% sc = viewer_context.scheduled_change %>
+<% return unless sc.present? %>
+
+<% kind = sc[:kind] || :downgrade %>
+<% current_tier = (sc[:from] || "").to_s %>
+
+<div class="bg-primary/[0.05] border-b border-primary/15">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 text-sm">
+    <div class="flex items-start sm:items-center gap-3 min-w-0 flex-wrap">
+      <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary shrink-0 mt-0.5 sm:mt-0">
+        <i class="fa-solid fa-arrow-right-arrow-left text-[0.6rem]" aria-hidden="true"></i>
+      </span>
+      <% if kind == :cancel %>
+        <span class="font-semibold text-base-content/80 capitalize">Your <%= current_tier %> plan ends at renewal</span>
+      <% else %>
+        <span class="font-semibold text-base-content/80 capitalize">Downgrade to <%= sc[:to] %></span>
+      <% end %>
+      <% if sc[:effective_at].present? %>
+        <span class="text-base-content/40 break-words">· <%= kind == :cancel ? "on" : "scheduled for" %> <%= l(sc[:effective_at].to_date, format: :long) rescue sc[:effective_at] %></span>
+      <% end %>
+    </div>
+    <%= button_to billing_paddle_scheduled_change_path,
+                  method: :delete,
+                  class: "#{btn_primary_sm_classes} whitespace-nowrap self-start sm:self-auto shrink-0",
+                  form: { data: { turbo: false }, class: "inline" },
+                  data: { disable_with: "Cancelling..." } do %>
+      <i class="fa-solid fa-heart text-[0.6rem]" aria-hidden="true"></i>
+      Keep <%= current_tier.titleize %> plan
+    <% end %>
+  </div>
+</div>

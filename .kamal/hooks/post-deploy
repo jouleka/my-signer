@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Post-deploy hook: notify search engines about updated content via IndexNow
+# and log the deploy event.
+
+echo "$KAMAL_PERFORMER deployed $KAMAL_VERSION to $KAMAL_DESTINATION in $KAMAL_RUNTIME seconds"
+
+# Ping IndexNow (Bing/Yandex) with all public URLs so they re-crawl quickly
+ssh ${KAMAL_HOSTS%% *} "docker exec \$(docker ps -q -f name=my-signer-web) bin/rails seo:notify_index_now" 2>/dev/null || echo "IndexNow notification skipped (non-critical)"

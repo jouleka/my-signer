@@ -1,0 +1,20 @@
+<% @preheader = "Your MySigner subscription has been cancelled. You'll keep access until the end of the period." %>
+
+<%= ms_eyebrow(14, "Billing · Subscription cancelled") %>
+<%= ms_headline("Subscription <em style=\"font-style:italic; color:#c8a8f5;\" class=\"ms-primary\">cancelled.</em>", size: 42) %>
+
+<%= ms_lead("Hello #{ERB::Util.h(@user.name.presence || @user.email)},") %>
+
+<%= ms_callout(
+  "You'll keep full access until the end of the current billing period. After that, the account moves to <strong style=\"color:inherit;\">Free</strong> automatically &mdash; no further charges.",
+  variant: :neutral,
+  accent_label: "Confirmed"
+) %>
+
+<%= ms_body("If this was unintentional &mdash; or you change your mind &mdash; you can re-subscribe any time and pick up exactly where you left off. All your data and settings stay in place either way.") %>
+
+<%= ms_cta("Re-subscribe", pricing_url, variant: :primary, margin_top: 16, margin_bottom: 28) %>
+
+<%= ms_rule(margin_top: 4, margin_bottom: 18) %>
+
+<%= ms_fine_print("The CLI stays free for everyone &mdash; signing, builds, TestFlight and Play Store uploads keep working on Free. Manage notification preferences at #{ms_link(settings_url(tab: 'notifications'), settings_url(tab: 'notifications'))}.") %>

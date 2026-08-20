@@ -1,0 +1,167 @@
+<% content_for(:title, "Connect Your Platform") %>
+
+<%= render "onboarding/layout" do %>
+  <div class="step-body step-animate">
+    <div class="step-eyebrow">
+      <span class="secnum">V</span>
+      <span class="step-eyebrow-label">Connect a platform</span>
+      <span class="step-eyebrow-rule"></span>
+    </div>
+
+    <h1 class="step-title">Wire up <em>signing credentials</em>.</h1>
+    <p class="step-lead">
+      MySigner needs API credentials to manage certificates, profiles, and deploy builds on your behalf.
+      Add at least one &mdash; you can always wire up the other later.
+    </p>
+
+    <% show_ios = @platform == "ios" || @platform == "both" %>
+    <% show_android = @platform == "android" || @platform == "both" %>
+
+    <% if show_ios %>
+      <%# App Store Connect card. Existing modal in layouts/application
+          (asc-add-cred-modal) handles the actual form when the user
+          clicks "Add". %>
+      <div class="conn-card <%= 'is-connected' if @has_ios_creds %>" style="margin-bottom: 0.75rem;">
+        <div class="conn-head">
+          <div class="conn-title">
+            <span class="conn-num">i.</span>
+            <div>
+              <h3>App Store Connect</h3>
+              <p>Manage certificates, profiles &amp; deploy to TestFlight</p>
+            </div>
+          </div>
+          <span class="conn-status <%= @has_ios_creds ? 'connected' : 'pending' %>">
+            <% if @has_ios_creds %>
+              <i class="fa-solid fa-check text-[10px]"></i> Connected
+            <% else %>
+              Pending
+            <% end %>
+          </span>
+        </div>
+        <% unless @has_ios_creds %>
+          <div class="conn-body">
+            <div class="conn-body-pad">
+              <div style="font-size: 12.5px; margin-bottom: 0.25rem;
+                          color: color-mix(in oklab, var(--color-base-content) 60%, transparent);">
+                You'll need these from
+                <a class="alink" href="https://appstoreconnect.apple.com/access/integrations/api" target="_blank" rel="noopener">App Store Connect &rarr; Integrations</a>:
+              </div>
+              <div class="requirement-grid">
+                <div class="req"><div class="req-name">Key ID</div><div class="req-sub">10 characters</div></div>
+                <div class="req"><div class="req-name">Issuer ID</div><div class="req-sub">UUID format</div></div>
+                <div class="req"><div class="req-name">.p8 Key file</div><div class="req-sub">Private key</div></div>
+              </div>
+              <button type="button" class="btn-add"
+                      data-controller="dialog-open"
+                      data-dialog-open-target-id-value="asc-add-cred-modal"
+                      data-action="click->dialog-open#open">
+                <span style="font-family: 'Instrument Serif', serif; font-style: italic;">+</span>
+                Add App Store Connect key
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if show_android %>
+      <%# Google Play Console card. Modal id="gplay-add-cred-modal" in
+          layouts/application handles the form. %>
+      <div class="conn-card <%= 'is-connected' if @has_android_creds %>">
+        <div class="conn-head">
+          <div class="conn-title">
+            <span class="conn-num"><%= show_ios ? 'ii.' : 'i.' %></span>
+            <div>
+              <h3>Google Play Console</h3>
+              <p>Deploy to Play Store tracks &amp; manage releases</p>
+            </div>
+          </div>
+          <span class="conn-status <%= @has_android_creds ? 'connected' : 'pending' %>">
+            <% if @has_android_creds %>
+              <i class="fa-solid fa-check text-[10px]"></i> Connected
+            <% else %>
+              Pending
+            <% end %>
+          </span>
+        </div>
+        <% unless @has_android_creds %>
+          <div class="conn-body">
+            <div class="conn-body-pad">
+              <div style="font-size: 12.5px; margin-bottom: 0.25rem;
+                          color: color-mix(in oklab, var(--color-base-content) 60%, transparent);">
+                You'll need a service account JSON from
+                <a class="alink" href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener">Google Cloud Console</a>:
+              </div>
+              <div class="requirement-grid two-col">
+                <div class="req"><div class="req-name">Service account</div><div class="req-sub">JSON key file</div></div>
+                <div class="req"><div class="req-name">Developer Account ID</div><div class="req-sub">Optional</div></div>
+              </div>
+              <button type="button" class="btn-add"
+                      data-controller="dialog-open"
+                      data-dialog-open-target-id-value="gplay-add-cred-modal"
+                      data-action="click->dialog-open#open">
+                <span style="font-family: 'Instrument Serif', serif; font-style: italic;">+</span>
+                Add Google Play credential
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%
+      selected_count  = (show_ios ? 1 : 0) + (show_android ? 1 : 0)
+      connected_count = (@has_ios_creds ? 1 : 0) + (@has_android_creds ? 1 : 0)
+      all_connected   = connected_count == selected_count && selected_count.positive?
+      any_connected   = connected_count.positive?
+    %>
+    <div class="action-row">
+      <span style="font-size: 12px; color: color-mix(in oklab, var(--color-base-content) 50%, transparent);">
+        <% if all_connected %>
+          <i class="fa-solid fa-check" style="color: var(--color-success);"></i>
+          All selected platforms connected.
+        <% elsif any_connected %>
+          <i class="fa-solid fa-circle-half-stroke" style="color: var(--color-warning);"></i>
+          <%= connected_count %> of <%= selected_count %> platforms connected. Add the remaining one above, or skip and add it later.
+        <% else %>
+          You can add credentials later from the dashboard.
+        <% end %>
+      </span>
+      <span class="filler"></span>
+      <% if all_connected %>
+        <%# Every platform the user said they ship to has a credential. Promote
+            "Finish setup" to primary -- they're done. This is the only path
+            from this view that can mark onboarding complete without a confirm
+            prompt; everything below requires the user to acknowledge that
+            skipping ends the wizard, because previously a single misclicked
+            ghost link would silently set onboarding_completed_at and then
+            after_credential_path would route any further credential work to
+            the org dashboard instead of back to this step. %>
+        <%= link_to onboarding_path(step: "complete"), class: "btn-primary-ms",
+              style: "text-decoration: none;" do %>
+          Finish setup
+          <span style="font-size: 16px; margin-left: 2px;">&rarr;</span>
+        <% end %>
+      <% elsif any_connected %>
+        <%# At least one selected platform still pending -- skipping here ends
+            the wizard. Keep this as a link to step=complete (so the user still
+            sees the "ready" celebration screen) but attach turbo_confirm so a
+            misclick can't silently finalize onboarding the way it used to. %>
+        <%= link_to onboarding_path(step: "complete"), class: "btn-ghost",
+              style: "text-decoration: none;",
+              data: { turbo_confirm: "Skip the remaining platform and finish onboarding? You can add credentials later from settings, but you won't see this wizard again." } do %>
+          Skip remaining &amp; finish
+        <% end %>
+      <% else %>
+        <%# Nothing connected. Same shape as the partial-connected branch --
+            confirm before we burn the wizard, but still route through the
+            celebration view so the user gets the "you're ready" screen. %>
+        <%= link_to onboarding_path(step: "complete"), class: "btn-ghost",
+              style: "text-decoration: none;",
+              data: { turbo_confirm: "Skip credential setup and finish onboarding? You can add credentials later from settings, but you won't see this wizard again." } do %>
+          I'll add credentials later
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

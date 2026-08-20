@@ -1,0 +1,132 @@
+require "active_support/core_ext/integer/time"
+
+Rails.application.configure do
+  # Settings specified here will take precedence over those in config/application.rb.
+
+  # Redirect www.mysigner.dev -> mysigner.dev (SEO: single canonical domain)
+  require_relative "../../app/middleware/canonical_host"
+  config.middleware.insert_before ActionDispatch::SSL, CanonicalHost
+
+  # Code is not reloaded between requests.
+  config.enable_reloading = false
+
+  # Eager load code on boot for better performance and memory savings (ignored by Rake tasks).
+  config.eager_load = true
+
+  # Full error reports are disabled.
+  config.consider_all_requests_local = false
+
+  # Turn on fragment caching in view templates.
+  config.action_controller.perform_caching = true
+
+  # Cache assets for far-future expiry since they are all digest stamped.
+  config.public_file_server.headers = { "cache-control" => "public, max-age=#{1.year.to_i}, immutable" }
+
+  # Enable serving of images, stylesheets, and JavaScripts from an asset server.
+  # config.asset_host = "http://assets.example.com"
+
+  # Store uploaded files on local disk by default, or S3 when ACTIVE_STORAGE_SERVICE is set.
+  # Set ACTIVE_STORAGE_SERVICE=amazon in production to use S3 for cloud-compatible multi-server storage.
+  # Defaults to "local" so asset precompile (which boots the app without runtime ENV) does not crash.
+  config.active_storage.service = ENV.fetch("ACTIVE_STORAGE_SERVICE", "local").to_sym
+
+  # Assume all access to the app is happening through a SSL-terminating reverse proxy.
+  config.assume_ssl = true
+
+  # Trust only local + private-network proxies when resolving request.remote_ip.
+  # Rack::Attack and audit logging both key off req.ip, so X-Forwarded-For
+  # values from clients outside these ranges are NOT accepted as the origin IP.
+  # If a CDN (Cloudflare, Fastly, etc.) is placed in front of the Fly proxy,
+  # either extend this list with its IP ranges OR switch rate-limiting to a
+  # provider-specific header (CF-Connecting-IP / True-Client-IP).
+  config.action_dispatch.trusted_proxies = [
+    IPAddr.new("127.0.0.0/8"),
+    IPAddr.new("::1"),
+    IPAddr.new("fc00::/7"),
+    IPAddr.new("10.0.0.0/8"),
+    IPAddr.new("172.16.0.0/12"),
+    IPAddr.new("192.168.0.0/16")
+  ]
+
+  # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
+  config.force_ssl = true
+  config.ssl_options = {
+    hsts: {
+      expires: 2.years,
+      subdomains: true,
+      preload: true
+    }
+  }
+
+  # Isolate top-level browsing context to reduce cross-origin opener risks,
+  # limit cross-origin resource embedding, and disable powerful browser
+  # features the app doesn't use (camera/mic/geolocation/USB). Payment is
+  # allowed for Paddle's checkout iframe.
+  config.action_dispatch.default_headers = config.action_dispatch.default_headers.merge(
+    "Cross-Origin-Opener-Policy" => "same-origin",
+    "Cross-Origin-Resource-Policy" => "same-origin",
+    "Permissions-Policy" => "accelerometer=(), camera=(), geolocation=(), " \
+                            "gyroscope=(), magnetometer=(), microphone=(), " \
+                            "payment=(self \"https://*.paddle.com\"), usb=()"
+  )
+
+  # Skip http-to-https redirect for the default health check endpoint.
+  # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
+
+  # Log to STDOUT with the current request id as a default log tag.
+  config.log_tags = [ :request_id ]
+  config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
+
+  # Change to "debug" to log everything (including potentially personally-identifiable information!)
+  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+
+  # Prevent health checks from clogging up the logs.
+  config.silence_healthcheck_path = "/up"
+
+  # Don't log any deprecations.
+  config.active_support.report_deprecations = false
+
+  # Replace the default in-process memory cache store with a durable alternative.
+  config.cache_store = :solid_cache_store
+
+  # Replace the default in-process and non-durable queuing backend for Active Job.
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.connects_to = { database: { writing: :queue } }
+
+  # Ignore bad email addresses and do not raise email delivery errors.
+  # Set this to true and configure the email server for immediate delivery to raise delivery errors.
+  # config.action_mailer.raise_delivery_errors = false
+
+  # Set host to be used by links generated in mailer templates.
+  config.action_mailer.default_url_options = { host: "mysigner.dev" }
+
+  # Use Mailtrap for transactional email
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    address: "live.smtp.mailtrap.io",
+    port: 587,
+    user_name: Rails.application.credentials.dig(:mailtrap, :user_name),
+    password: Rails.application.credentials.dig(:mailtrap, :password),
+    authentication: :plain,
+    enable_starttls_auto: true
+  }
+
+  # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
+  # the I18n.default_locale when a translation cannot be found).
+  config.i18n.fallbacks = true
+
+  # Do not dump schema after migrations.
+  config.active_record.dump_schema_after_migration = false
+
+  # Only use :id for inspections in production.
+  config.active_record.attributes_for_inspect = [ :id ]
+
+  # Enable DNS rebinding protection and other `Host` header attacks.
+  config.hosts = [
+    "mysigner.dev",
+    "www.mysigner.dev"
+  ]
+
+  # Skip DNS rebinding protection for the default health check endpoint.
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+end

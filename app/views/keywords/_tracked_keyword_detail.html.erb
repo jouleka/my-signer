@@ -1,0 +1,67 @@
+<%# Rendered inside the #tk-detail-<id> Turbo Frame by
+    TrackedKeywordsController#show. Shows Apple Search Popularity (if
+    available) and a per-country rank history sparkline via the
+    keyword-rank-chart Stimulus controller. %>
+<% estimate = Aso::NextCheckEstimator.for(organization: @organization) %>
+<turbo-frame id="tk-detail-<%= tk.id %>">
+  <div class="px-4 py-3 border-t border-base-content/[0.05] space-y-3">
+    <%# Popularity (if available) %>
+    <% if tk.search_popularity %>
+      <div class="text-xs text-base-content/55">
+        Apple Search Popularity: <%= popularity_dots(tk.search_popularity) %>
+        <span class="ml-1"><%= tk.search_popularity %>/100</span>
+        <% if tk.search_popularity_updated_at %>
+          <span class="ml-2 text-base-content/30">(updated <%= time_ago_in_words(tk.search_popularity_updated_at) %> ago)</span>
+        <% end %>
+      </div>
+    <% elsif !@organization.apple_ads_credential&.last_successful? %>
+      <div class="text-xs text-base-content/40 italic">
+        <i class="fa-brands fa-apple text-base-content/30"></i>
+        Connect Apple Search Ads for popularity data.
+        <%= link_to "Connect →", new_organization_apple_ads_credential_path(@organization),
+                    data: { turbo_frame: "_top" },
+                    class: "text-primary/70 hover:text-primary underline ml-1" %>
+      </div>
+    <% else %>
+      <div class="text-xs text-base-content/40 italic">
+        <i class="fa-regular fa-clock text-base-content/30"></i>
+        Popularity data shows up when Apple recommends this keyword for your app — usually within a day or two of adding it.
+      </div>
+    <% end %>
+
+    <%# Per-country section %>
+    <% tk.tracked_keyword_countries.each do |tkc| %>
+      <% history = tkc.keyword_rankings.order(checked_on: :desc).limit(@history_limit || 30).reverse %>
+      <div class="<%= card_container_classes %>">
+        <div class="<%= card_header_classes %> text-xs flex items-center justify-between">
+          <span><%= country_flag(tkc.country) %> <%= tkc.country.upcase %></span>
+          <% if history.any? %>
+            <span class="text-base-content/40"><%= pluralize(history.size, "day") %> of history</span>
+          <% elsif tkc.last_checked_at.nil? %>
+            <span class="text-base-content/40">Queued — first check <%= estimate.human %></span>
+          <% else %>
+            <span class="text-base-content/40">Checked <%= time_ago_in_words(tkc.last_checked_at) %> ago</span>
+          <% end %>
+        </div>
+        <div class="<%= card_body_classes %>">
+          <% if history.any? %>
+            <canvas data-controller="keyword-rank-chart"
+                    data-keyword-rank-chart-labels-value="<%= history.map { |r| r.checked_on.strftime("%b %d") }.to_json %>"
+                    data-keyword-rank-chart-data-value="<%= history.map(&:rank).to_json %>"
+                    role="img"
+                    aria-label="<%= pluralize(history.size, 'day') %> rank history for <%= tk.keyword %> in <%= tkc.country.upcase %>, latest rank <%= history.last&.rank ? "##{history.last.rank}" : "not in top 250" %>"
+                    class="max-h-40"></canvas>
+          <% else %>
+            <p class="<%= rank_caption_classes %> py-2">
+              <% if estimate.within_24h? %>
+                No rank yet. First check <%= estimate.human %>.
+              <% else %>
+                No rank yet. First check runs on this org's <%= estimate.refresh_cadence %> schedule.
+              <% end %>
+            </p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</turbo-frame>

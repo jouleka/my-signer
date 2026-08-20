@@ -1,0 +1,120 @@
+<%# DaisyUI dialog modal for connecting Apple Search Ads credentials.
+    Opened via:
+      data-controller="modal" data-action="click->modal#open"
+      data-modal-target-value="connect-apple-ads-modal"
+    on any trigger button (see _apple_ads_connection_banner).
+
+    On success, the controller does a 303 redirect that Turbo navigates as the
+    whole page — the dialog unmounts naturally.
+
+    On failure, the controller renders a turbo_stream that replaces
+    #connect-apple-ads-modal-errors so the modal stays open with inline errors.
+
+    SECURITY: :private_key_pem is never pre-filled (value: ""). Autocomplete
+    and spellcheck are disabled so browsers don't cache or flag the PEM. %>
+
+<% credential = local_assigns[:credential] || @organization.apple_ads_credential || @organization.build_apple_ads_credential %>
+
+<dialog id="connect-apple-ads-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box w-full max-w-lg p-0 overflow-hidden">
+
+    <%# Header strip — matches card_header_classes aesthetic. %>
+    <div class="flex items-center gap-2.5 px-5 py-[0.875rem] border-b border-base-content/[0.06]">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-brands fa-apple"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Connect Apple Search Ads</span>
+      <div class="flex-1"></div>
+      <button type="button"
+              class="<%= icon_btn_sm_classes %>"
+              data-controller="modal"
+              data-action="click->modal#close"
+              data-modal-target-value="connect-apple-ads-modal"
+              aria-label="Close">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>
+    </div>
+
+    <%= form_with model: credential,
+                  url: organization_apple_ads_credential_path(@organization),
+                  method: :post do |f| %>
+
+      <div class="px-5 py-5 space-y-5">
+
+        <p class="text-sm text-base-content/65 leading-relaxed">
+          Unlock keyword popularity data and Apple's recommendations.
+          Create an API key in
+          <a target="_blank" rel="noopener"
+             href="https://app-ads.apple.com/cm/app/settings/api"
+             class="text-primary/85 hover:text-primary underline underline-offset-2">Apple Ads settings</a>,
+          then paste the four values below.
+          <a target="_blank" rel="noopener"
+             href="https://developer.apple.com/documentation/apple_ads/implementing-oauth-for-the-apple-search-ads-api"
+             class="text-base-content/45 hover:text-base-content/75 ml-1">Full guide &rarr;</a>
+        </p>
+
+        <%# Shared error/warning target (turbo_stream replaces this on failure). %>
+        <%= render "apple_ads_credentials/credential_errors", credential: credential %>
+
+        <div>
+          <%= f.label :client_id, "Client ID", class: label_form_classes %>
+          <%= f.text_field :client_id,
+                           class: "mt-1 #{input_field_classes} font-mono text-xs",
+                           placeholder: "SEARCHADS.00000000-0000-0000-0000-000000000000",
+                           autocomplete: "off",
+                           spellcheck: "false",
+                           required: true %>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <%= f.label :team_id, "Team ID (Org ID)", class: label_form_classes %>
+            <%= f.text_field :team_id,
+                             class: "mt-1 #{input_field_classes} font-mono text-xs",
+                             placeholder: "1234567890",
+                             autocomplete: "off",
+                             spellcheck: "false",
+                             required: true %>
+          </div>
+
+          <div>
+            <%= f.label :key_id, "Key ID", class: label_form_classes %>
+            <%= f.text_field :key_id,
+                             class: "mt-1 #{input_field_classes} font-mono text-xs",
+                             placeholder: "ABCDEF1234",
+                             autocomplete: "off",
+                             spellcheck: "false",
+                             required: true %>
+          </div>
+        </div>
+
+        <div>
+          <%= f.label :private_key_pem, "Private Key (PEM)", class: label_form_classes %>
+          <%# SECURITY: always re-render with value="" so the PEM never
+              round-trips through HTML on validation/verification failure. %>
+          <%= f.text_area :private_key_pem,
+                          value: "",
+                          rows: 7,
+                          class: "mt-1 #{input_field_classes} font-mono text-[0.7rem] resize-y",
+                          placeholder: "Paste the contents of your .pem key file",
+                          autocomplete: "off",
+                          spellcheck: "false",
+                          required: true %>
+          <p class="<%= hint_text_classes %> mt-1.5">ECC P-256 (ES256). Encrypted at rest.</p>
+        </div>
+      </div>
+
+      <div class="border-t border-base-content/[0.06] px-5 py-3 flex items-center justify-between">
+        <button type="button"
+                data-controller="modal"
+                data-action="click->modal#close"
+                data-modal-target-value="connect-apple-ads-modal"
+                class="text-sm text-base-content/50 hover:text-base-content/85 inline-flex items-center gap-1.5 transition-colors cursor-pointer">
+          Cancel
+        </button>
+        <%= f.submit "Connect & verify", class: btn_primary_classes %>
+      </div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

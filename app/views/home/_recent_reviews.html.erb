@@ -1,0 +1,98 @@
+<%# Reviews & Ratings — compact rating summary + last 5 reviews with sentiment %>
+<% ratings = [@rating_data[:apple_rating], @rating_data[:android_rating]].compact %>
+<% avg_rating = ratings.any? ? (ratings.sum / ratings.size).round(1) : nil %>
+
+<div class="<%= card_container_classes %>">
+  <div class="<%= card_header_split_classes %>">
+    <div class="flex items-center gap-2.5">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-solid fa-star"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Reviews & Ratings</span>
+      <% if @recent_reviews.present? %>
+        <span class="<%= count_badge_classes %>"><%= @recent_reviews.size %></span>
+      <% end %>
+    </div>
+    <%= link_to organization_reviews_path(@organization), class: btn_ghost_xs_classes do %>
+      All Reviews <i class="fa-solid fa-arrow-right text-[0.5rem]"></i>
+    <% end %>
+  </div>
+  <div class="<%= card_body_classes %>">
+    <%# Compact rating summary row %>
+    <% if avg_rating %>
+      <div class="flex items-center gap-4 mb-4 pb-3.5 border-b border-base-content/[0.05]">
+        <% if @rating_data[:apple_rating].present? %>
+          <div class="flex items-center gap-2">
+            <span class="<%= platform_badge_classes %>"><i class="fa-brands fa-apple"></i> iOS</span>
+            <span class="text-base font-extrabold text-base-content/90 tabular-nums"><%= number_with_precision(@rating_data[:apple_rating], precision: 1) %></span>
+            <%= star_rating_html(@rating_data[:apple_rating].round) %>
+            <%= trend_arrow_html(@rating_data[:apple_trend]) %>
+          </div>
+        <% end %>
+        <% if @rating_data[:android_rating].present? %>
+          <div class="flex items-center gap-2">
+            <span class="<%= platform_badge_classes %>"><i class="fa-brands fa-google-play"></i> Android</span>
+            <span class="text-base font-extrabold text-base-content/90 tabular-nums"><%= number_with_precision(@rating_data[:android_rating], precision: 1) %></span>
+            <%= star_rating_html(@rating_data[:android_rating].round) %>
+            <%= trend_arrow_html(@rating_data[:android_trend]) %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# Reviews list %>
+    <% if @recent_reviews.blank? %>
+      <div class="flex flex-col items-center py-8 text-center">
+        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary/[0.06] text-primary/40 mb-3">
+          <i class="fa-solid fa-message text-lg"></i>
+        </div>
+        <p class="text-sm font-semibold text-base-content/50 mb-1">No reviews yet</p>
+        <p class="<%= meta_text_classes %> max-w-[16rem]">Reviews will appear here once your apps receive store feedback.</p>
+      </div>
+    <% else %>
+      <div class="space-y-2">
+        <% @recent_reviews.each do |review| %>
+          <div class="group p-3 rounded-lg border border-base-content/[0.05] hover:border-base-content/[0.1] transition-all">
+            <%# Header row: platform + app name + rating + sentiment %>
+            <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span class="<%= platform_badge_classes %>">
+                <% if review.apple? %>
+                  <i class="fa-brands fa-apple"></i> iOS
+                <% else %>
+                  <i class="fa-brands fa-google-play"></i> Android
+                <% end %>
+              </span>
+              <span class="<%= meta_text_classes %> truncate max-w-[8rem]">
+                <%= review.reviewable&.respond_to?(:name) ? review.reviewable.name : "" %>
+              </span>
+              <div class="flex items-center gap-2 ml-auto shrink-0">
+                <%= star_rating_html(review.rating) %>
+                <span class="<%= sentiment_badge_classes(review.sentiment) %>">
+                  <% case review.sentiment %>
+                  <% when "positive" %>
+                    <i class="fa-solid fa-face-smile text-[0.5rem]"></i>
+                  <% when "negative" %>
+                    <i class="fa-solid fa-face-frown text-[0.5rem]"></i>
+                  <% else %>
+                    <i class="fa-solid fa-face-meh text-[0.5rem]"></i>
+                  <% end %>
+                  <%= review.sentiment&.capitalize || "Unknown" %>
+                </span>
+              </div>
+            </div>
+            <%# Review content %>
+            <% if review.title.present? %>
+              <p class="text-sm font-semibold text-base-content/75 mb-0.5 truncate"><%= review.title %></p>
+            <% end %>
+            <% if review.body.present? %>
+              <p class="<%= meta_text_classes %> leading-relaxed line-clamp-2"><%= review.body %></p>
+            <% end %>
+            <% if review.reviewed_at.present? %>
+              <p class="<%= hint_text_classes %> mt-1.5"><%= time_ago_in_words(review.reviewed_at) %> ago</p>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

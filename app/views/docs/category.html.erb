@@ -1,0 +1,97 @@
+<% content_for(:title) { "#{@category[:title]} — Documentation" } %>
+<% content_for(:description) { "#{@category[:title]} — #{@category[:description]}. MySigner documentation for iOS and Android app signing." } %>
+<% content_for(:json_ld) do %>
+  <%= breadcrumb_json_ld([
+    { name: "Home", url: "/" },
+    { name: "Documentation", url: "/docs" },
+    { name: @category[:title] }
+  ]) %>
+<% end %>
+
+<%= breadcrumbs(docs_breadcrumbs(@category)) %>
+
+<div data-controller="docs-mobile" class="relative">
+  <!-- Mobile Navigation Bar -->
+  <div class="lg:hidden flex items-center justify-between gap-2 mb-6 -mt-2">
+    <button type="button" 
+            class="btn btn-ghost btn-sm gap-2"
+            data-action="click->docs-mobile#toggleSidebar">
+      <i class="fa-solid fa-bars"></i>
+      <span>Menu</span>
+    </button>
+    
+    <%= render "docs/search_modal" %>
+  </div>
+
+  <!-- Desktop Search -->
+  <div class="hidden lg:flex justify-end -mt-4 mb-4">
+    <%= render "docs/search_modal" %>
+  </div>
+
+  <div class="flex flex-col lg:flex-row gap-8">
+    <!-- Mobile Sidebar Overlay -->
+    <div data-docs-mobile-target="sidebarOverlay" 
+         data-action="click->docs-mobile#closeSidebar"
+         class="hidden fixed inset-0 z-40 bg-base-300/80 backdrop-blur-sm lg:hidden"></div>
+    
+    <!-- Sidebar (Desktop: static, Mobile: drawer) -->
+    <aside data-docs-mobile-target="sidebar"
+           class="fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-64 bg-base-100 lg:bg-transparent 
+                  transform translate-x-[-100%] lg:translate-x-0 transition-transform duration-300 ease-in-out
+                  lg:shrink-0 overflow-y-auto lg:overflow-visible shadow-2xl lg:shadow-none">
+      <div class="p-6 lg:p-0">
+        <!-- Mobile close button -->
+        <div class="flex items-center justify-between mb-6 lg:hidden">
+          <span class="font-semibold">Documentation</span>
+          <button type="button" 
+                  class="btn btn-ghost btn-sm btn-square"
+                  data-action="click->docs-mobile#closeSidebar">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <%= render "docs/sidebar", categories: DocsController::CATEGORIES, current_category: @category_slug, pages: @pages, current_slug: nil %>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 min-w-0">
+      <div class="space-y-6">
+        <!-- Header -->
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-xl flex items-center justify-center <%= category_icon_bg(@category_slug) %>">
+            <i class="<%= @category[:icon] %> text-2xl"></i>
+          </div>
+          <div>
+            <h1 class="text-3xl font-bold"><%= @category[:title] %></h1>
+            <p class="text-base-content/70"><%= @category[:description] %></p>
+          </div>
+        </div>
+
+        <!-- Pages List -->
+        <% if @pages.any? %>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <% @pages.each do |page| %>
+              <%= link_to page_docs_path(@category_slug, page[:slug]), class: "card bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-md transition-all group" do %>
+                <div class="card-body p-5">
+                  <h3 class="font-semibold group-hover:text-primary transition-colors flex items-center gap-2">
+                    <%= page[:title] %>
+                    <i class="fa-solid fa-arrow-right text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                  </h3>
+                  <% if page[:description] %>
+                    <p class="text-sm text-base-content/70"><%= page[:description] %></p>
+                  <% end %>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center py-12 bg-base-200/30 rounded-xl">
+            <i class="fa-solid fa-file-circle-question text-4xl text-base-content/30 mb-4"></i>
+            <p class="text-base-content/60">No documentation pages in this category yet.</p>
+            <p class="text-sm text-base-content/40 mt-2">Check back soon!</p>
+          </div>
+        <% end %>
+      </div>
+    </main>
+  </div>
+</div>

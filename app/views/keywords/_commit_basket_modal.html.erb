@@ -1,0 +1,49 @@
+<%# Commit basket preview modal — opens from the sticky basket toolbar.
+    Rendered inside the keyword-editor controller scope so it can read its
+    values. Dialog top-layer handles the backdrop. %>
+<dialog id="commit-basket-modal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box w-full max-w-xl">
+    <h3 class="<%= card_title_classes %> mb-4">
+      <i class="fa-solid fa-pen-to-square mr-2 text-primary/70"></i>
+      Review &amp; commit to <%= @current_locale %> listing
+    </h3>
+
+    <%= form_with url: append_organization_keyword_path(@organization, "apple_app_#{@app.id}"),
+                  method: :patch,
+                  local: false,
+                  data: { turbo_frame: "_top" },
+                  class: "flex flex-col gap-3" do |f| %>
+      <%= f.hidden_field :locale, value: @current_locale %>
+      <%= f.hidden_field :store_listing_updated_at,
+                         value: @store_listing&.updated_at&.iso8601(6) %>
+
+      <div id="commit-basket-preview"
+           data-controller="commit-basket-preview"
+           data-commit-basket-preview-keywords-str-value="<%= @store_listing&.keywords || '' %>"
+           data-commit-basket-preview-limit-value="100">
+        <div class="rounded-xl border border-base-content/10 bg-base-100/50 p-3 min-h-[3rem] text-xs font-mono" data-commit-basket-preview-target="preview">
+          <%# Filled by the preview controller on modal open. %>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <span class="<%= char_badge_classes(0, 100) %>" data-commit-basket-preview-target="badge">&mdash;/100</span>
+          <span class="text-xs text-base-content/50" data-commit-basket-preview-target="free">&mdash;</span>
+        </div>
+        <%# Hidden inputs must live inside the controller element so Stimulus can find the target. %>
+        <div data-commit-basket-preview-target="hiddenInputs"></div>
+      </div>
+
+      <p class="text-xs text-base-content/55 leading-relaxed mt-2">
+        Writes to <strong class="text-base-content/80">StoreListing#keywords</strong>
+        for locale <strong class="text-base-content/80"><%= @current_locale %></strong>.
+        You can still edit the field afterward in the Listing editor.
+      </p>
+
+      <div class="flex justify-end gap-2 mt-4">
+        <button type="button" class="<%= btn_ghost_sm_classes %>" data-action="click->modal#close">Cancel</button>
+        <%= f.submit "Save to listing", class: btn_primary_classes %>
+      </div>
+    <% end %>
+
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </div>
+</dialog>

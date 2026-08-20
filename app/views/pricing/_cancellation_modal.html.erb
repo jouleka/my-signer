@@ -1,0 +1,399 @@
+<%#
+  Partial: pricing/cancellation_modal
+  Rendered from show.html.erb inside a subscription-present guard.
+  Requires available in scope:
+    - current_subscription   (from @billing_subscription)
+    - current_user
+%>
+<% if current_subscription.present? %>
+  <% cancel_audit = Pricing::PlanTransitionAudit.new(user: current_user, target_tier: "free") %>
+  <% blocked_orgs = cancel_audit.blocked_organizations %>
+  <% kept_orgs = cancel_audit.kept_organizations %>
+  <% org_violations = cancel_audit.organization_violations %>
+
+  <dialog id="billing-cancel-modal" class="modal modal-bottom sm:modal-middle" data-action="close->cancellation-flow#reset">
+    <div class="modal-box w-full max-w-xl border border-base-content/[0.08] bg-base-100 p-0 overflow-hidden rounded-[0.875rem]"
+         data-controller="cancellation-flow"
+         data-cancellation-flow-plan-tier-value="<%= current_subscription.plan_tier %>"
+         data-cancellation-flow-billing-interval-value="<%= current_subscription.billing_interval %>"
+         data-cancellation-flow-has-lower-paid-tier-value="<%= current_subscription.plan_tier == 'team' %>">
+
+      <%# ═══════════════════════════════════════════ %>
+      <%# STEP 1 — Exit survey                       %>
+      <%# ═══════════════════════════════════════════ %>
+      <div data-cancellation-flow-target="step">
+        <%# Header with soft primary gradient backdrop + close %>
+        <div class="relative px-6 pt-6 pb-5 sm:px-8 sm:pt-8 border-b border-base-content/[0.06] bg-gradient-to-b from-primary/[0.05] to-transparent">
+          <button type="button"
+                  class="absolute top-4 right-4 inline-flex items-center justify-center w-7 h-7 rounded-md text-base-content/40 hover:text-base-content/80 hover:bg-base-content/[0.06] transition-colors"
+                  data-controller="modal"
+                  data-action="click->modal#close"
+                  data-modal-target-value="billing-cancel-modal"
+                  aria-label="Close">
+            <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
+          </button>
+
+          <div class="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-primary/80 mb-3">
+            <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/15">
+              <i class="fa-solid fa-heart text-[0.55rem] text-primary" aria-hidden="true"></i>
+            </span>
+            <span>Step 1 of 3</span>
+          </div>
+
+          <h3 class="text-xl font-bold tracking-tight text-base-content">Before you go</h3>
+          <p class="mt-1.5 text-sm leading-relaxed text-base-content/55">We'll use your answer to improve the product. Nothing is sent until you confirm.</p>
+        </div>
+
+        <%# Reason selector %>
+        <div class="px-6 py-6 sm:px-8">
+          <p class="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-base-content/45 mb-4">What's the main reason?</p>
+
+          <div class="grid gap-2">
+            <% [
+              { reason: "expensive",        icon: "fa-solid fa-wallet",      label: "It's too expensive",             hint: "Pricing or budget" },
+              { reason: "not_using",        icon: "fa-solid fa-moon",        label: "I'm not using it enough",        hint: "Workflow or usage" },
+              { reason: "missing_features", icon: "fa-solid fa-puzzle-piece", label: "It's missing features I need",  hint: "Feature gap" },
+              { reason: "switching",        icon: "fa-solid fa-shuffle",     label: "I'm switching to another tool",  hint: "Trying an alternative" },
+              { reason: "temporary",        icon: "fa-solid fa-clock",       label: "I just need a break",            hint: "Pausing for now" },
+              { reason: "other",            icon: "fa-solid fa-ellipsis",    label: "Something else",                 hint: "Tell us in the next step" },
+            ].each do |opt| %>
+              <button type="button"
+                      class="group flex items-center gap-3.5 w-full rounded-xl border border-base-content/[0.08] bg-base-content/[0.015] px-4 py-3 text-left transition-all hover:border-base-content/20 hover:bg-base-content/[0.04]"
+                      data-cancellation-flow-target="reason"
+                      data-reason="<%= opt[:reason] %>"
+                      data-action="cancellation-flow#selectReason">
+                <span class="flex items-center justify-center w-9 h-9 rounded-lg bg-base-content/[0.06] text-base-content/60 group-hover:bg-primary/10 group-hover:text-primary shrink-0 transition-colors">
+                  <i class="<%= opt[:icon] %> text-sm" aria-hidden="true"></i>
+                </span>
+                <span class="flex flex-col min-w-0 flex-1">
+                  <span class="text-[0.9375rem] font-semibold text-base-content/90 leading-tight"><%= opt[:label] %></span>
+                  <span class="text-xs text-base-content/45 mt-0.5"><%= opt[:hint] %></span>
+                </span>
+                <i class="fa-solid fa-chevron-right text-[0.65rem] text-base-content/25 group-hover:text-base-content/50 shrink-0 transition-colors" aria-hidden="true"></i>
+              </button>
+            <% end %>
+          </div>
+        </div>
+
+        <%# Step 1 actions %>
+        <div class="flex items-center justify-between border-t border-base-content/[0.06] bg-base-content/[0.02] px-6 py-4 sm:px-8">
+          <button type="button"
+                  class="inline-flex items-center gap-1.5 text-sm font-semibold text-base-content/60 hover:text-base-content transition-colors"
+                  data-controller="modal"
+                  data-action="click->modal#close"
+                  data-modal-target-value="billing-cancel-modal">
+            <i class="fa-solid fa-arrow-left text-[0.65rem]" aria-hidden="true"></i>
+            Never mind
+          </button>
+          <button type="button"
+                  class="inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg bg-primary text-primary-content border border-transparent cursor-pointer transition-all hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:brightness-100"
+                  disabled
+                  data-cancellation-flow-target="nextButton"
+                  data-action="cancellation-flow#next">
+            Continue
+            <i class="fa-solid fa-arrow-right text-[0.65rem]" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+
+      <%# ═══════════════════════════════════════════ %>
+      <%# STEP 2 — Impact + personalized offer       %>
+      <%# ═══════════════════════════════════════════ %>
+      <div data-cancellation-flow-target="step" class="hidden">
+        <%# Header with back + close %>
+        <div class="relative px-6 pt-6 pb-5 sm:px-8 sm:pt-8 border-b border-base-content/[0.06] bg-gradient-to-b from-primary/[0.05] to-transparent">
+          <button type="button"
+                  class="absolute top-4 right-4 inline-flex items-center justify-center w-7 h-7 rounded-md text-base-content/40 hover:text-base-content/80 hover:bg-base-content/[0.06] transition-colors"
+                  data-controller="modal"
+                  data-action="click->modal#close"
+                  data-modal-target-value="billing-cancel-modal"
+                  aria-label="Close">
+            <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
+          </button>
+
+          <div class="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-primary/80 mb-3">
+            <button type="button"
+                    class="inline-flex items-center justify-center w-5 h-5 rounded-md text-primary/80 hover:bg-primary/10 transition-colors"
+                    data-action="cancellation-flow#back"
+                    aria-label="Back">
+              <i class="fa-solid fa-arrow-left text-[0.6rem]" aria-hidden="true"></i>
+            </button>
+            <span>Step 2 of 3 · Here's what changes</span>
+          </div>
+
+          <h3 class="text-xl font-bold tracking-tight text-base-content">Here's what changes if you cancel</h3>
+          <p class="mt-1.5 text-sm leading-relaxed text-base-content/55">You keep everything until the end of your current period.</p>
+        </div>
+
+        <div class="px-6 py-6 sm:px-8 space-y-5">
+          <%# Timeline — Today → Cancels on DATE → Free tier %>
+          <div class="relative">
+            <div class="flex items-start justify-between gap-2">
+              <%# Stage 1: Today (paid, active) %>
+              <div class="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-content shadow-[0_0_0_4px_oklch(var(--color-primary)/0.12)]">
+                  <i class="fa-solid fa-check text-[0.65rem]" aria-hidden="true"></i>
+                </div>
+                <div class="text-center">
+                  <div class="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-primary">Today</div>
+                  <div class="text-[0.65rem] text-base-content/45 mt-0.5 capitalize"><%= current_subscription.plan_tier %> active</div>
+                </div>
+              </div>
+
+              <%# Connector %>
+              <div class="h-px bg-base-content/15 flex-1 mt-4"></div>
+
+              <%# Stage 2: Until renewal %>
+              <div class="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-base-content/[0.08] text-base-content/50 border border-base-content/[0.1]">
+                  <i class="fa-solid fa-calendar-day text-[0.65rem]" aria-hidden="true"></i>
+                </div>
+                <div class="text-center">
+                  <div class="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-base-content/60">Access ends</div>
+                  <div class="text-[0.65rem] text-base-content/45 mt-0.5">
+                    <% if current_subscription.current_period_ends_at.present? %>
+                      <%= l(current_subscription.current_period_ends_at.to_date, format: :long) %>
+                    <% else %>
+                      End of period
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <%# Connector %>
+              <div class="h-px bg-base-content/15 flex-1 mt-4"></div>
+
+              <%# Stage 3: Free tier %>
+              <div class="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-base-content/[0.06] text-base-content/40 border border-dashed border-base-content/15">
+                  <i class="fa-solid fa-seedling text-[0.65rem]" aria-hidden="true"></i>
+                </div>
+                <div class="text-center">
+                  <div class="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-base-content/50">Then</div>
+                  <div class="text-[0.65rem] text-base-content/45 mt-0.5">Free tier</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <%# Personalized retention offer — prominent primary card %>
+          <div data-cancellation-flow-target="offerPanel"
+               class="relative rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-primary/[0.04] to-transparent px-5 py-4 overflow-hidden">
+            <div class="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-primary/10 blur-2xl pointer-events-none" aria-hidden="true"></div>
+            <div class="relative flex items-start gap-3.5">
+              <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/15 shrink-0">
+                <i data-offer-icon class="fa-solid fa-lightbulb text-sm text-primary" aria-hidden="true"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p data-offer-title class="text-[0.9375rem] font-bold text-base-content leading-snug">Before you decide…</p>
+                <p data-offer-body class="mt-1.5 text-[0.8125rem] leading-relaxed text-base-content/65">We have a few options that might work better than cancelling outright.</p>
+              </div>
+            </div>
+          </div>
+
+          <%# What you'll lose — only if there are blocked orgs or feature impacts %>
+          <% if blocked_orgs.any? || org_violations.any? %>
+            <div class="rounded-xl border border-warning/20 bg-warning/[0.06] px-5 py-4">
+              <div class="flex items-center gap-2 mb-3">
+                <i class="fa-solid fa-triangle-exclamation text-warning text-[0.75rem]" aria-hidden="true"></i>
+                <p class="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-warning">What you'll lose access to</p>
+              </div>
+
+              <% if blocked_orgs.any? %>
+                <ul class="space-y-2 list-none mb-3">
+                  <% blocked_orgs.each do |org| %>
+                    <li class="flex items-center gap-2.5 text-sm">
+                      <span class="flex items-center justify-center w-6 h-6 rounded-md bg-warning/15 text-[0.65rem] font-bold uppercase text-warning/90 shrink-0">
+                        <%= org.name.first %>
+                      </span>
+                      <span class="min-w-0">
+                        <span class="font-semibold text-base-content/85"><%= org.name %></span>
+                        <% org_project_count = org.screenshot_projects.count %>
+                        <% org_member_count = org.memberships.count %>
+                        <span class="text-xs text-base-content/45">
+                          · <%= org_project_count %> project<%= org_project_count == 1 ? '' : 's' %><%= org_member_count > 1 ? ", #{org_member_count} members" : '' %>
+                        </span>
+                      </span>
+                    </li>
+                  <% end %>
+                </ul>
+              <% end %>
+
+              <div class="flex flex-wrap gap-1.5">
+                <span class="inline-flex items-center gap-1 rounded-md bg-base-content/[0.04] border border-base-content/[0.06] px-2 py-1 text-[0.7rem] text-base-content/55">
+                  <i class="fa-solid fa-cloud-arrow-up text-[0.6rem]" aria-hidden="true"></i> Store uploads
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-md bg-base-content/[0.04] border border-base-content/[0.06] px-2 py-1 text-[0.7rem] text-base-content/55">
+                  <i class="fa-solid fa-crown text-[0.6rem]" aria-hidden="true"></i> <%= current_subscription.plan_tier.capitalize %> limits
+                </span>
+              </div>
+            </div>
+          <% end %>
+
+          <%# What you keep — green reassurance %>
+          <% if kept_orgs.any? %>
+            <div class="rounded-xl border border-[color:var(--color-cat-new)]/20 bg-[color:var(--color-cat-new)]/[0.05] px-5 py-4">
+              <div class="flex items-center gap-2 mb-3">
+                <i class="fa-solid fa-leaf text-[color:var(--color-cat-new)] text-[0.75rem]" aria-hidden="true"></i>
+                <p class="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-[color:var(--color-cat-new)]">What you keep</p>
+              </div>
+              <ul class="space-y-1.5 list-none">
+                <% kept_orgs.each do |org| %>
+                  <li class="flex items-center gap-2.5 text-sm">
+                    <span class="flex items-center justify-center w-6 h-6 rounded-md bg-[color:var(--color-cat-new)]/15 text-[0.65rem] font-bold uppercase text-[color:var(--color-cat-new)] shrink-0">
+                      <%= org.name.first %>
+                    </span>
+                    <span class="font-semibold text-base-content/80"><%= org.name %></span>
+                    <span class="text-xs text-base-content/40">on Free tier</span>
+                  </li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+        </div>
+
+        <%# Step 2 actions — "Keep my plan" emphasized %>
+        <div class="border-t border-base-content/[0.06] bg-base-content/[0.02] px-6 py-4 sm:px-8">
+          <div class="flex flex-col gap-2 sm:flex-row-reverse">
+            <button type="button"
+                    class="inline-flex items-center justify-center gap-2 flex-1 text-sm font-semibold px-5 py-2.5 rounded-lg bg-primary text-primary-content border border-transparent cursor-pointer transition-all hover:brightness-110"
+                    data-controller="modal"
+                    data-action="click->modal#close"
+                    data-modal-target-value="billing-cancel-modal">
+              <i class="fa-solid fa-heart text-[0.65rem]" aria-hidden="true"></i>
+              Keep my plan
+            </button>
+            <button type="button"
+                    class="inline-flex items-center justify-center gap-2 flex-1 text-sm font-semibold px-5 py-2.5 rounded-lg bg-transparent text-base-content/70 border border-base-content/[0.15] cursor-pointer transition-all hover:bg-base-content/[0.05] hover:text-base-content hover:border-base-content/25"
+                    data-action="cancellation-flow#next">
+              I still want to cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <%# ═══════════════════════════════════════════ %>
+      <%# STEP 3 — Feedback + final confirmation     %>
+      <%# ═══════════════════════════════════════════ %>
+      <div data-cancellation-flow-target="step" class="hidden">
+        <div class="relative px-6 pt-6 pb-5 sm:px-8 sm:pt-8 border-b border-base-content/[0.06] bg-gradient-to-b from-primary/[0.05] to-transparent">
+          <button type="button"
+                  class="absolute top-4 right-4 inline-flex items-center justify-center w-7 h-7 rounded-md text-base-content/40 hover:text-base-content/80 hover:bg-base-content/[0.06] transition-colors"
+                  data-controller="modal"
+                  data-action="click->modal#close"
+                  data-modal-target-value="billing-cancel-modal"
+                  aria-label="Close">
+            <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
+          </button>
+
+          <div class="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-primary/80 mb-3">
+            <button type="button"
+                    class="inline-flex items-center justify-center w-5 h-5 rounded-md text-primary/80 hover:bg-primary/10 transition-colors"
+                    data-action="cancellation-flow#back"
+                    aria-label="Back">
+              <i class="fa-solid fa-arrow-left text-[0.6rem]" aria-hidden="true"></i>
+            </button>
+            <span>Step 3 of 3 · Final</span>
+          </div>
+
+          <h3 class="text-xl font-bold tracking-tight text-base-content">Help us do better</h3>
+          <p class="mt-1.5 text-sm leading-relaxed text-base-content/55">Your feedback shapes what we build next. Two minutes now saves someone else from leaving later.</p>
+        </div>
+
+        <div class="px-6 py-6 sm:px-8 space-y-5">
+          <%# Feedback tags %>
+          <div>
+            <label class="block text-[0.7rem] font-bold uppercase tracking-[0.12em] text-base-content/45 mb-3">What would have made you stay?</label>
+            <div class="flex flex-wrap gap-2" data-cancellation-flow-target="feedbackTags">
+              <% [
+                "Lower price",
+                "Better features",
+                "Easier to use",
+                "Better support",
+                "More integrations",
+              ].each do |tag| %>
+                <button type="button"
+                        class="inline-flex items-center rounded-full border border-base-content/[0.12] bg-base-content/[0.02] px-3.5 py-1.5 text-[0.8125rem] font-medium text-base-content/70 transition-all hover:border-base-content/25 hover:bg-base-content/[0.06] hover:text-base-content"
+                        data-cancellation-flow-target="feedbackTag"
+                        data-action="cancellation-flow#toggleTag">
+                  <%= tag %>
+                </button>
+              <% end %>
+            </div>
+          </div>
+
+          <%# Feedback textarea %>
+          <div>
+            <label class="block text-[0.7rem] font-bold uppercase tracking-[0.12em] text-base-content/45 mb-2">
+              Tell us more <span class="normal-case tracking-normal font-normal text-base-content/30">(optional)</span>
+            </label>
+            <textarea
+              data-cancellation-flow-target="feedbackField"
+              class="<%= textarea_field_classes %>"
+              rows="3"
+              placeholder="Missing a feature? Hit a bug? Something that didn't fit your workflow? We read every single response."
+            ></textarea>
+          </div>
+        </div>
+
+        <%# Step 3 actions + reassurance.
+
+            When a plan-change downgrade is already scheduled, we gate the
+            cancellation path: users must first clear the scheduled downgrade
+            (single-slot Paddle state makes overlaying another scheduled
+            change semantically ambiguous). This 2-step flow prevents users
+            from ending up in a confusing state where they "cancelled" but
+            a downgrade is still queued. %>
+        <% downgrade_pending = current_subscription.respond_to?(:scheduled_plan_change?) && current_subscription.scheduled_plan_change? %>
+
+        <div class="border-t border-base-content/[0.06] bg-base-content/[0.02] px-6 py-4 sm:px-8">
+          <div class="flex flex-col gap-2 sm:flex-row-reverse">
+            <button type="button"
+                    class="inline-flex items-center justify-center gap-2 flex-1 text-sm font-semibold px-5 py-2.5 rounded-lg bg-primary text-primary-content border border-transparent cursor-pointer transition-all hover:brightness-110"
+                    data-controller="modal"
+                    data-action="click->modal#close"
+                    data-modal-target-value="billing-cancel-modal">
+              <i class="fa-solid fa-heart text-[0.65rem]" aria-hidden="true"></i>
+              I changed my mind
+            </button>
+
+            <% if downgrade_pending %>
+              <%= button_to billing_paddle_scheduled_change_path,
+                            method: :delete,
+                            class: "inline-flex items-center justify-center gap-2 flex-1 text-sm font-semibold px-5 py-2.5 rounded-lg bg-warning/[0.12] text-warning border border-warning/25 cursor-pointer transition-all hover:bg-warning/20",
+                            form: { data: { turbo: false }, class: "contents" } do %>
+                <i class="fa-solid fa-arrow-rotate-left text-[0.65rem]" aria-hidden="true"></i>
+                Cancel scheduled downgrade first
+              <% end %>
+            <% else %>
+              <%= button_to billing_paddle_portal_session_path,
+                            method: :post,
+                            params: { purpose: "cancel" },
+                            class: "inline-flex items-center justify-center gap-2 flex-1 text-sm font-semibold px-5 py-2.5 rounded-lg bg-warning/[0.12] text-warning border border-warning/25 cursor-pointer transition-all hover:bg-warning/20",
+                            form: { data: { turbo: false }, class: "contents" } do %>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[0.65rem]" aria-hidden="true"></i>
+                Confirm cancellation
+              <% end %>
+            <% end %>
+          </div>
+
+          <% if downgrade_pending %>
+            <p class="mt-3 text-center text-[0.7rem] text-base-content/55">
+              <i class="fa-solid fa-info-circle text-[0.6rem] mr-1" aria-hidden="true"></i>
+              A Pro downgrade is scheduled. Cancel that first, then come back to cancel the subscription.
+            </p>
+          <% else %>
+            <p class="mt-3 text-center text-[0.7rem] text-base-content/40">
+              <i class="fa-solid fa-shield text-[0.6rem] mr-1" aria-hidden="true"></i>
+              You can reactivate anytime. Your data stays safe for 90 days.
+            </p>
+          <% end %>
+        </div>
+      </div>
+
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+<% end %>

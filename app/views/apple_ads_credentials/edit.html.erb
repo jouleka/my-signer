@@ -1,0 +1,135 @@
+<%# Edit a connected Apple Search Ads credential. Shows last-connected
+    timestamp (or the last error, if the most recent verify failed) in the
+    header, and a Disconnect action at the bottom. Security note: we never
+    pre-fill :private_key_pem (value: ""), so the existing key never appears
+    in the HTML. %>
+
+<%= breadcrumbs([
+  { label: "Keywords & ASO", path: organization_keywords_path(@organization) },
+  { label: "Apple Search Ads" }
+]) %>
+
+<section class="max-w-2xl mx-auto">
+  <div class="<%= card_container_classes %> mb-6">
+    <div class="<%= card_header_classes %>">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-brands fa-apple"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Apple Search Ads</span>
+      <div class="flex-1"></div>
+      <% if @credential.last_successful_at %>
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-success/80">
+          <i class="fa-solid fa-circle-check text-[0.65rem]"></i>
+          Connected <%= time_ago_in_words(@credential.last_successful_at) %> ago
+        </span>
+      <% elsif @credential.last_error.present? %>
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-error/80">
+          <i class="fa-solid fa-circle-xmark text-[0.65rem]"></i>
+          Connection failed
+        </span>
+      <% end %>
+    </div>
+
+    <div class="<%= card_body_classes %>">
+      <%= form_with model: @credential,
+                    url: organization_apple_ads_credential_path(@organization),
+                    method: :patch,
+                    class: "space-y-4" do |f| %>
+
+        <p class="text-xs text-base-content/55 leading-relaxed mb-2">
+          Leave the <strong class="text-base-content/75">Private Key</strong> field blank to keep the existing key.
+          All other fields re-save on submit and the connection is re-verified.
+        </p>
+
+        <% if @credential.errors.any? %>
+          <div class="<%= sn_error_classes %>">
+            <div class="flex items-start gap-2.5 p-1">
+              <div class="<%= sn_icon_error_classes %>"><i class="fa-solid fa-circle-exclamation text-[0.6rem]"></i></div>
+              <div class="text-xs text-error/90 flex-1 min-w-0">
+                <strong>We couldn't save these changes.</strong>
+                <ul class="mt-1 list-disc list-inside space-y-0.5 text-error/80">
+                  <% @credential.errors.full_messages.each do |m| %>
+                    <li><%= m %></li>
+                  <% end %>
+                </ul>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <% if @credential.last_error.present? %>
+          <div class="<%= sn_warning_classes %>">
+            <div class="flex items-start gap-2.5 p-1">
+              <div class="<%= sn_icon_warning_classes %>"><i class="fa-solid fa-triangle-exclamation text-[0.6rem]"></i></div>
+              <div class="text-xs text-warning/90 flex-1 min-w-0">
+                <strong>Connection test failed:</strong>
+                <span class="text-warning/80"><%= @credential.last_error %></span>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <div>
+          <%= f.label :client_id, "Client ID", class: label_form_classes %>
+          <%= f.text_field :client_id,
+                           class: "mt-1 #{input_field_classes} font-mono text-xs",
+                           autocomplete: "off",
+                           spellcheck: "false" %>
+        </div>
+
+        <div>
+          <%= f.label :team_id, "Team ID (Org ID)", class: label_form_classes %>
+          <%= f.text_field :team_id,
+                           class: "mt-1 #{input_field_classes} font-mono text-xs",
+                           autocomplete: "off",
+                           spellcheck: "false" %>
+        </div>
+
+        <div>
+          <%= f.label :key_id, "Key ID", class: label_form_classes %>
+          <%= f.text_field :key_id,
+                           class: "mt-1 #{input_field_classes} font-mono text-xs",
+                           autocomplete: "off",
+                           spellcheck: "false" %>
+        </div>
+
+        <div>
+          <%= f.label :private_key_pem, "Private Key (paste to replace)", class: label_form_classes %>
+          <%# SECURITY: always re-render with value="" so the encrypted PEM
+              never appears in HTML. Controller drops this attribute when
+              blank so existing key is preserved. %>
+          <%= f.text_area :private_key_pem,
+                          value: "",
+                          rows: 10,
+                          class: "mt-1 #{input_field_classes} font-mono text-[0.7rem] resize-y",
+                          placeholder: "Leave blank to keep current key",
+                          autocomplete: "off",
+                          spellcheck: "false" %>
+          <div class="mt-2 flex items-start gap-3 justify-between">
+            <p class="<%= hint_text_classes %>">
+              Paste a new EC (ES256) private key to rotate. Blank keeps the current one.
+            </p>
+            <span class="<%= muted_badge_classes %> shrink-0">Encrypted at rest</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <%= link_to organization_keywords_path(@organization),
+                      class: "text-sm text-base-content/50 hover:text-base-content/85 inline-flex items-center gap-1.5 transition-colors" do %>
+            <i class="fa-solid fa-arrow-left text-xs"></i> Cancel
+          <% end %>
+          <%= f.submit "Save changes", class: btn_primary_classes %>
+        </div>
+      <% end %>
+
+      <div class="border-t border-base-content/[0.06] mt-6 pt-4">
+        <%= button_to organization_apple_ads_credential_path(@organization),
+                      method: :delete,
+                      data: { turbo_confirm: "Disconnect Apple Search Ads? Popularity data will stop updating for all tracked keywords." },
+                      class: "inline-flex items-center gap-1.5 text-xs text-error/70 hover:text-error transition-colors" do %>
+          <i class="fa-solid fa-link-slash"></i> Disconnect Apple Search Ads
+        <% end %>
+      </div>
+    </div>
+  </div>
+</section>

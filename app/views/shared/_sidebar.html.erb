@@ -1,0 +1,144 @@
+<%# Sidebar: visible for authenticated users. Responsive with DaisyUI drawer + collapsibles. %>
+<% if user_signed_in? %>
+  <% nav_tree = sidebar_navigation(developer_navigation(current_organization: current_organization)) %>
+  <% current_path = request.path %>
+<% end %>
+<div id="app-drawer" class="drawer lg:drawer-open lg:grid lg:grid-cols-[18rem_1fr]">
+  <input id="sidebar-toggle" type="checkbox" class="drawer-toggle" aria-label="Toggle sidebar navigation" />
+  <div class="drawer-content min-w-0 lg:col-start-2">
+    <%# Page content goes here; the layout renders this partial with a block %>
+    <%= yield %>
+  </div>
+  <div class="drawer-side z-30 lg:col-start-1 lg:row-start-1">
+    <label for="sidebar-toggle" aria-label="Close sidebar" class="drawer-overlay"></label>
+    <aside class="min-h-full w-72 bg-base-100 border-r border-base-200/50 backdrop-blur supports-[backdrop-filter]:bg-base-100/80">
+
+      <% if user_signed_in? %>
+        <nav class="menu px-2 py-3 text-base-content/90" aria-label="Application menu">
+          <% nav_tree.each do |section| %>
+            <li class="menu-title" role="presentation">
+              <span class="flex items-center gap-2">
+                <span><%= section[:title] %></span>
+                <% if section[:badge].present? %>
+                  <span class="badge badge-primary badge-xs gap-1">
+                    <i class="fa-solid fa-crown" style="font-size: 0.5rem" aria-hidden="true"></i>
+                    <%= section[:badge] %>
+                  </span>
+                <% end %>
+              </span>
+            </li>
+
+            <%# Standalone items first, then collapsible groups. Items are the
+                primary section entries; groups are secondary drawers (e.g. CLI & Docs). %>
+            <% Array(section[:items]).each do |item| %>
+              <li>
+                <% disabled = item[:disabled] || item[:path].blank? %>
+                <% tooltip = item[:hint] || (item[:requires_org] ? "Requires organization" : nil) %>
+                <% is_active = !disabled && current_path == item[:path] %>
+                <% content = capture do %>
+                  <span class="flex items-center gap-2">
+                    <% if item[:icon].present? %>
+                      <i class="<%= item[:icon] %> w-5" aria-hidden="true"></i>
+                    <% end %>
+                    <span><%= item[:label] %></span>
+                  </span>
+                  <% if item[:quick_create] %>
+                    <span class="badge badge-outline badge-xs">New</span>
+                  <% end %>
+                  <% if item[:requires_org] && disabled %>
+                    <span class="badge badge-outline badge-xs">Org</span>
+                  <% end %>
+                  <% if item[:badge].present? %>
+                    <span class="badge badge-outline badge-xs gap-1">
+                      <i class="fa-solid fa-crown" style="font-size: 0.5rem" aria-hidden="true"></i>
+                      <%= item[:badge] %>
+                    </span>
+                  <% end %>
+                  <% if item[:count_badge].to_i > 0 %>
+                    <span class="badge badge-warning badge-xs"><%= item[:count_badge] %></span>
+                  <% end %>
+                <% end %>
+
+                <% if disabled %>
+                  <span class="opacity-60 flex items-center justify-between gap-2 cursor-not-allowed w-full"
+                        title="<%= tooltip %>"
+                        aria-label="<%= item[:label] %> - <%= tooltip %>"
+                        aria-disabled="true">
+                    <%= content %>
+                  </span>
+                <% else %>
+                  <%= link_to item[:path],
+                              class: "justify-between gap-2 transition-all hover:translate-x-0.5 #{is_active ? 'active bg-primary/10 text-primary' : ''}",
+                              data: item[:data],
+                              title: tooltip,
+                              aria: { label: "#{item[:label]}#{tooltip.present? ? " - #{tooltip}" : ''}", current: (is_active ? 'page' : nil) } do %>
+                    <%= content %>
+                  <% end %>
+                <% end %>
+              </li>
+            <% end %>
+
+            <% Array(section[:groups]).each do |group| %>
+              <% group_has_active = Array(group[:items]).any? { |item| !item[:disabled] && item[:path].present? && current_path.start_with?(item[:path]) } %>
+              <li>
+                <details <%= "open" if group[:open] || group_has_active %>>
+                  <summary class="flex items-center gap-2"
+                           title="<%= group[:hint] %>"
+                           aria-label="<%= group[:label] %><%= group[:hint].present? ? " - #{group[:hint]}" : '' %>">
+                    <% if group[:icon].present? %>
+                      <i class="<%= group[:icon] %> w-5" aria-hidden="true"></i>
+                    <% end %>
+                    <span><%= group[:label] %></span>
+                  </summary>
+                  <ul aria-label="<%= group[:label] %> submenu">
+                    <% Array(group[:items]).each do |item| %>
+                      <li>
+                        <% disabled = item[:disabled] || item[:path].blank? %>
+                        <% tooltip = item[:hint] || (item[:requires_org] ? "Requires organization" : nil) %>
+                        <% is_active = !disabled && current_path == item[:path] %>
+                        <% content = capture do %>
+                          <span class="flex items-center gap-2">
+                            <% if item[:icon].present? %>
+                              <i class="<%= item[:icon] %> w-4" aria-hidden="true"></i>
+                            <% end %>
+                            <span><%= item[:label] %></span>
+                          </span>
+                          <% if item[:quick_create] %>
+                            <span class="badge badge-outline badge-xs">New</span>
+                          <% end %>
+                          <% if item[:requires_org] && disabled %>
+                            <span class="badge badge-outline badge-xs">Org</span>
+                          <% end %>
+                          <% if item[:count_badge].to_i > 0 %>
+                            <span class="badge badge-warning badge-xs"><%= item[:count_badge] %></span>
+                          <% end %>
+                        <% end %>
+
+                        <% if disabled %>
+                          <span class="opacity-60 flex items-center justify-between gap-2 cursor-not-allowed w-full"
+                                title="<%= tooltip %>"
+                                aria-label="<%= item[:label] %> - <%= tooltip %>"
+                                aria-disabled="true">
+                            <%= content %>
+                          </span>
+                        <% else %>
+                          <%= link_to item[:path],
+                                      class: "justify-between gap-2 transition-all hover:translate-x-0.5 #{is_active ? 'active bg-primary/10 text-primary' : ''}",
+                                      data: item[:data],
+                                      title: tooltip,
+                                      aria: { label: "#{item[:label]}#{tooltip.present? ? " - #{tooltip}" : ''}", current: (is_active ? 'page' : nil) } do %>
+                            <%= content %>
+                          <% end %>
+                        <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </details>
+              </li>
+            <% end %>
+          <% end %>
+        </nav>
+      <% end %>
+    </aside>
+  </div>
+</div>

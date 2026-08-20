@@ -1,0 +1,54 @@
+<%# Android conversion hints — surfaced when editing a Google Play release note.
+    Wired to conversion_hints_controller.js. %>
+<% note = local_assigns[:release_note] || @release_note %>
+<% return unless note&.android? %>
+
+<% hint_card_classes = "p-3 rounded-lg border border-base-content/[0.06] bg-base-content/[0.02] mb-2 transition-colors duration-150" %>
+<% hint_label_classes = "flex items-center gap-1.5 text-[0.8125rem] font-bold text-base-content/80 mb-1" %>
+<% hint_description_classes = "text-xs text-base-content/55 leading-relaxed" %>
+<% hint_example_classes = "text-[0.6875rem] text-base-content/35 italic mt-1.5" %>
+
+<div class="<%= card_container_classes %> mt-4"
+     data-controller="conversion-hints"
+     data-conversion-hints-platform-value="android">
+  <div data-conversion-hints-target="hintsPanel">
+    <div class="<%= card_header_classes %>">
+      <div class="<%= card_icon_classes %>">
+        <i class="fa-brands fa-google-play"></i>
+      </div>
+      <span class="<%= card_title_classes %>">Google Play Conversion Tips</span>
+    </div>
+    <div class="<%= card_body_classes %>">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2" data-conversion-hints-target="hintCards">
+        <div class="<%= hint_card_classes %>" data-hint-key="emoji">
+          <div class="<%= hint_label_classes %>">
+            <i class="fa-solid fa-face-smile"></i> Use Emojis
+          </div>
+          <p class="<%= hint_description_classes %>">Emojis help your release notes stand out in the Play Store feed.</p>
+          <p class="<%= hint_example_classes %>">Example: "Dark mode is here! 🌍"</p>
+        </div>
+        <div class="<%= hint_card_classes %>" data-hint-key="short">
+          <div class="<%= hint_label_classes %>">
+            <i class="fa-solid fa-arrows-left-right-to-line"></i> Keep It Short
+          </div>
+          <p class="<%= hint_description_classes %>">Google Play shows ~300 characters before truncating. Front-load key info.</p>
+          <p class="<%= hint_example_classes %>">Lead with the most important changes first.</p>
+        </div>
+        <div class="<%= hint_card_classes %>" data-hint-key="keywords">
+          <div class="<%= hint_label_classes %>">
+            <i class="fa-solid fa-key"></i> Include Keywords
+          </div>
+          <p class="<%= hint_description_classes %>">Mention your core features in release notes to improve discoverability.</p>
+          <p class="<%= hint_example_classes %>">Example: "Improved offline sync, faster photo editing."</p>
+        </div>
+        <div class="<%= hint_card_classes %>" data-hint-key="user_benefit">
+          <div class="<%= hint_label_classes %>">
+            <i class="fa-solid fa-user-check"></i> Focus on Benefits
+          </div>
+          <p class="<%= hint_description_classes %>">Frame changes as user benefits, not technical fixes.</p>
+          <p class="<%= hint_example_classes %>">"Photos now load 3x faster" vs "Optimized image cache"</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

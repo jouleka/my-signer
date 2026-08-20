@@ -1,0 +1,13 @@
+<%# ── Checklist Tab ── Wraps the existing release checklist widget. %>
+<% if @checklist %>
+  <%= render "releases/checklist", checklist: @checklist, app: @app, read_only: @entitlements&.release_checklist_read_only? %>
+<% else %>
+  <div class="<%= card_container_classes %>">
+    <div class="<%= card_body_classes %>">
+      <p class="<%= empty_inline_classes %>">
+        <i class="fa-solid fa-clipboard-check"></i>
+        No checklist available for this app yet.
+      </p>
+    </div>
+  </div>
+<% end %>

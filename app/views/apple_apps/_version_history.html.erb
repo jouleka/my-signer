@@ -1,0 +1,139 @@
+<%# Version History Partial for Apple Apps - displays AppStoreVersion records %>
+<% versions ||= [] %>
+<% show_view_all = local_assigns.fetch(:show_view_all, true) %>
+
+<%
+  # Map Apple's app_store_state to display styles
+  def state_style(state)
+    case state
+    when "READY_FOR_SALE"
+      { color: "border-success/50 bg-success/5", icon: "fa-circle-check", badge: "badge-success", dot: "bg-success", label: "Live" }
+    when "PENDING_DEVELOPER_RELEASE"
+      { color: "border-info/50 bg-info/5", icon: "fa-clock", badge: "badge-info", dot: "bg-info", label: "Pending Release" }
+    when "IN_REVIEW", "WAITING_FOR_REVIEW"
+      { color: "border-warning/50 bg-warning/5", icon: "fa-hourglass-half", badge: "badge-warning", dot: "bg-warning", label: state == "IN_REVIEW" ? "In Review" : "Waiting for Review" }
+    when "PREPARE_FOR_SUBMISSION"
+      { color: "border-base-300 bg-base-200/30", icon: "fa-file-pen", badge: "badge-ghost", dot: "bg-base-300", label: "Draft" }
+    when "REJECTED", "METADATA_REJECTED", "INVALID_BINARY"
+      { color: "border-error/50 bg-error/5", icon: "fa-circle-xmark", badge: "badge-error", dot: "bg-error", label: state.titleize }
+    when "DEVELOPER_REJECTED"
+      { color: "border-warning/50 bg-warning/5", icon: "fa-rotate-left", badge: "badge-warning", dot: "bg-warning", label: "Developer Rejected" }
+    when "DEVELOPER_REMOVED_FROM_SALE", "REMOVED_FROM_SALE"
+      { color: "border-base-300 bg-base-200/30", icon: "fa-trash", badge: "badge-ghost", dot: "bg-base-300", label: "Removed" }
+    when "PROCESSING_FOR_APP_STORE"
+      { color: "border-info/50 bg-info/5", icon: "fa-spinner", badge: "badge-info", dot: "bg-info", label: "Processing" }
+    when "PENDING_APPLE_RELEASE"
+      { color: "border-info/50 bg-info/5", icon: "fa-apple", badge: "badge-info", dot: "bg-info", label: "Pending Apple Release" }
+    when "REPLACED_WITH_NEW_VERSION"
+      { color: "border-base-300 bg-base-200/30", icon: "fa-code-branch", badge: "badge-ghost", dot: "bg-base-300", label: "Replaced" }
+    else
+      { color: "border-base-300", icon: "fa-circle-question", badge: "badge-ghost", dot: "bg-base-300", label: state&.titleize || "Unknown" }
+    end
+  end
+%>
+
+<div class="card bg-base-100 border border-base-200 shadow-xl overflow-hidden">
+  <div class="card-body p-3 sm:p-6 space-y-4 min-w-0">
+    <div class="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+      <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2">
+        <i class="fa-solid fa-clock-rotate-left text-secondary"></i>
+        Version History
+      </h2>
+      <div class="flex items-center gap-2">
+        <span class="badge badge-ghost badge-sm sm:badge-md"><%= versions.size %> versions</span>
+        <% if show_view_all && defined?(@app) && @organization %>
+          <%= link_to releases_organization_apple_app_path(@organization, @app), class: "btn btn-ghost btn-xs gap-1.5" do %>
+            View All
+            <i class="fa-solid fa-arrow-right"></i>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <% if versions.any? %>
+      <%# Timeline View %>
+      <div class="relative">
+        <%# Vertical line %>
+        <div class="absolute left-[18px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-secondary/50 via-base-300 to-base-300 hidden md:block"></div>
+
+        <div class="space-y-3 sm:space-y-4">
+          <% versions.first(show_view_all ? 5 : versions.size).each_with_index do |version, idx| %>
+            <% style = state_style(version.app_store_state) %>
+
+            <div class="flex gap-3 sm:gap-4 md:pl-10 relative">
+              <%# Timeline dot (desktop only) %>
+              <div class="absolute left-2 w-4 h-4 rounded-full <%= style[:dot] %> border-4 border-base-100 hidden md:block shadow-sm" style="top: 1.25rem;"></div>
+
+              <div class="card border <%= style[:color] %> shadow-sm flex-1 min-w-0 overflow-hidden hover:shadow-md transition-shadow">
+                <div class="card-body p-3 sm:p-4 space-y-2 sm:space-y-3 min-w-0">
+                  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                    <div class="space-y-1.5 sm:space-y-2 min-w-0">
+                      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                        <span class="badge <%= style[:badge] %> gap-1 sm:gap-1.5 badge-sm">
+                          <i class="fa-solid <%= style[:icon] %> text-[10px]"></i>
+                          <%= style[:label] %>
+                        </span>
+                        <% if version.phased_release_pending %>
+                          <span class="badge badge-outline badge-xs gap-1">
+                            <i class="fa-solid fa-chart-line text-[8px]"></i>
+                            Phased Pending
+                          </span>
+                        <% end %>
+                        <% if idx == 0 && show_view_all %>
+                          <span class="badge badge-primary badge-xs">Latest</span>
+                        <% end %>
+                      </div>
+                      <h3 class="font-semibold flex items-center gap-2">
+                        <code class="font-mono text-xs sm:text-sm bg-base-200 px-2 py-0.5 rounded">v<%= version.version_string %></code>
+                        <% if version.apple_build&.build_number.present? %>
+                          <span class="text-base-content/50 text-xs sm:text-sm">(<%= version.apple_build.build_number %>)</span>
+                        <% end %>
+                      </h3>
+                    </div>
+                    <div class="text-left sm:text-right text-xs sm:text-sm text-base-content/60 shrink-0">
+                      <div class="font-medium" title="<%= version.created_at.to_fs(:long) %>">
+                        <%= time_ago_in_words(version.created_at) %> ago
+                      </div>
+                      <div class="text-xs">
+                        <%= version.created_at.strftime("%b %d, %Y") %>
+                      </div>
+                    </div>
+                  </div>
+
+                  <%# Platform badge %>
+                  <% if version.platform.present? %>
+                    <div class="flex items-center gap-2">
+                      <span class="badge badge-outline badge-xs gap-1">
+                        <i class="fa-solid fa-mobile-screen text-[8px]"></i>
+                        <%= version.platform %>
+                      </span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <% if show_view_all && versions.size > 5 %>
+          <div class="mt-4 text-center">
+            <%= link_to releases_organization_apple_app_path(@organization, @app), class: "btn btn-ghost btn-sm gap-2" do %>
+              View all <%= versions.size %> versions
+              <i class="fa-solid fa-arrow-right"></i>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mb-4">
+          <i class="fa-solid fa-clock-rotate-left text-xl sm:text-2xl text-indigo-500/50"></i>
+        </div>
+        <h3 class="text-base sm:text-lg font-bold">No Versions Yet</h3>
+        <p class="text-base-content/60 max-w-sm mt-2 text-sm break-words">
+          Submit versions via the CLI or App Store Connect to see them here.
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>
