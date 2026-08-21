@@ -139,7 +139,7 @@ gem "rouge", "~> 4.2"
 
 gem "dockerfile-rails", ">= 1.7", group: :development
 
-gem "redis", "~> 5.4"
+gem "redis", "~> 6.0"
 
 # Ruby 3.4+ stdlib gems that are no longer default
 gem "csv"
