@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        uses: ruby/setup-ruby@a0102e0972be65f351c307e2d64b9314a57c8073 # master
         with:
           ruby-version: .ruby-version
           bundler-cache: true
@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        uses: ruby/setup-ruby@a0102e0972be65f351c307e2d64b9314a57c8073 # master
         with:
           ruby-version: .ruby-version
           bundler-cache: true
@@ -52,7 +52,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        uses: ruby/setup-ruby@a0102e0972be65f351c307e2d64b9314a57c8073 # master
         with:
           ruby-version: .ruby-version
           bundler-cache: true
@@ -78,7 +78,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        uses: ruby/setup-ruby@a0102e0972be65f351c307e2d64b9314a57c8073 # master
         with:
           ruby-version: .ruby-version
           bundler-cache: true
@@ -107,7 +107,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # master
+        uses: ruby/setup-ruby@a0102e0972be65f351c307e2d64b9314a57c8073 # master
         with:
           ruby-version: .ruby-version
           bundler-cache: true
