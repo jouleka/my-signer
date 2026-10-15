@@ -147,9 +147,11 @@ module Billing
       end
 
       def persist_scheduled_change!(updated_subscription)
-        payload_for_storage = updated_subscription.deep_dup
-        payload_for_storage["last_event_occurred_at"] =
-          updated_subscription["updated_at"].presence || current_subscription.provider_payload["last_event_occurred_at"]
+        payload_for_storage = StoredSubscriptionPayload.build(
+          updated_subscription,
+          event_occurred_at: updated_subscription["updated_at"].presence ||
+            current_subscription.provider_payload["last_event_occurred_at"]
+        )
 
         current_subscription.assign_attributes(
           provider_customer_id: updated_subscription["customer_id"] || current_subscription.provider_customer_id,

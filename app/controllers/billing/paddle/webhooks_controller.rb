@@ -1,7 +1,9 @@
 module Billing
   module Paddle
     class WebhooksController < ActionController::Base
-      skip_forgery_protection
+      # Paddle cannot provide a Rails CSRF token. Use a null session and then
+      # authenticate the exact raw body with Paddle's signed webhook header.
+      protect_from_forgery with: :null_session
 
       def create
         raw_body = request.raw_post

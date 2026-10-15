@@ -146,7 +146,10 @@ class OrganizationsController < ApplicationController
     authorize @organization, :sync?
     force = ActiveModel::Type::Boolean.new.cast(params[:force])
     result = enqueue_google_play_sync(@organization, force: force, min_interval: AutoSync::SYNC_MANUAL_MIN_INTERVAL)
-    redirect_path = params[:redirect_to].presence || organization_path(@organization)
+    # Keep callers on this application. Rails' url_from rejects absolute and
+    # protocol-relative URLs, preventing an attacker-controlled redirect_to
+    # parameter from turning this endpoint into an open redirect.
+    redirect_path = url_from(params[:redirect_to]) || organization_path(@organization)
 
     case result
     when :enqueued
