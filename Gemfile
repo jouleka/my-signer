@@ -135,7 +135,7 @@ gem "kaminari", "~> 1.2"
 
 # Markdown rendering for documentation
 gem "redcarpet", "~> 3.6"
-gem "rouge", "~> 4.2"
+gem "rouge", "~> 5.1"
 
 gem "dockerfile-rails", ">= 1.7", group: :development
 
