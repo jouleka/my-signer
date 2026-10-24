@@ -132,7 +132,7 @@ gem "google-apis-playdeveloperreporting_v1beta1"
 # OpenAI API for AI-powered store listing translations
 gem "ruby-openai", "~> 7.0"
 
-gem "kaminari", "~> 1.2"
+gem "kaminari", "~> 1.3"
 
 # Markdown rendering for documentation
 gem "redcarpet", "~> 3.6"
