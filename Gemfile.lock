@@ -218,7 +218,7 @@ GEM
       base64 (~> 0.2)
       faraday (>= 1.0, < 3.a)
     google-logging-utils (0.2.1)
-    googleauth (1.17.5)
+    googleauth (1.17.6)
       faraday (>= 1.0, < 3.a)
       google-cloud-env (~> 2.2)
       google-logging-utils (~> 0.1)
@@ -400,7 +400,7 @@ GEM
       actionpack (>= 7.0.0)
       activesupport (>= 7.0.0)
       rack
-    pstore (0.2.1)
+    pstore (0.3.0)
     public_suffix (7.0.5)
     puma (8.0.2)
       nio4r (~> 2.0)
