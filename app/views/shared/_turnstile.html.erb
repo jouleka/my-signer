@@ -1,0 +1,9 @@
+<%# Cloudflare Turnstile widget (managed mode is set on the widget in the
+    Cloudflare dashboard). Render inside a form; the server verifies the
+    posted `cf-turnstile-response` via TurnstileProtection.
+    Locals: turnstile_action (optional) — Turnstile action label, [a-z0-9_-], ≤32 chars. %>
+<% turnstile_action = local_assigns[:turnstile_action] %>
+<div class="turnstile-widget my-4 min-h-[65px]"
+     data-controller="turnstile"
+     data-turnstile-site-key-value="<%= TurnstileVerifier.site_key %>"
+     <% if turnstile_action.present? %>data-turnstile-action-value="<%= turnstile_action %>"<% end %>></div>

@@ -71,6 +71,8 @@
             <div class="validator-hint hint">We'll only send the unlock link if the account is actually locked.</div>
           </div>
 
+          <%= render "shared/turnstile", turnstile_action: "unlock" %>
+
           <button type="submit" class="btn-primary-ms mt-2">
             <i class="fa-solid fa-lock-open text-[11px]"></i>
             <%= t('.submit') %>

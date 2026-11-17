@@ -36,9 +36,47 @@ RSpec.describe StoreListingSync::ApplePusher do
 
     # Default: no editable version (the READY_FOR_SALE / live-app scenario)
     allow(mock_versions).to receive(:editable_versions).and_return([])
+    allow(mock_versions).to receive(:latest_version).and_return(nil)
   end
 
   describe "#push_app_info!" do
+    it "sends explicit empty values when the user clears optional metadata" do
+      store_listing.update!(subtitle: "", promotional_text: "", marketing_url: "")
+      expect(mock_app_info).to receive(:update_by_locale).with(
+        app_id: apple_app.app_store_id, locale: "en-GB", name: "Test App", subtitle: ""
+      )
+      allow(mock_versions).to receive(:editable_versions).and_return(
+        [ { "id" => "editable", "attributes" => { "appStoreState" => "PREPARE_FOR_SUBMISSION" } } ]
+      )
+      allow(mock_versions).to receive(:localizations).and_return(
+        [ { "id" => "gb", "attributes" => { "locale" => "en-GB" } } ]
+      )
+      expect(mock_versions).to receive(:update_localization).with(hash_including(
+        localization_id: "gb", promotional_text: "", marketing_url: ""
+      ))
+      described_class.new(organization: organization, store_listing: store_listing).push!
+      expect(store_listing.reload.push_status).to eq("success")
+    end
+
+    it "keeps edits made during a push marked as local changes" do
+      listing_id = store_listing.id
+      allow(mock_app_info).to receive(:update_by_locale) do
+        StoreListing.find(listing_id).update!(description: "Edited while pushing")
+      end
+      described_class.new(organization: organization, store_listing: store_listing).push!
+      expect(store_listing.reload.description).to eq("Edited while pushing")
+      expect(store_listing.sync_status).to eq("modified")
+    end
+
+    it "sends the saved privacy policy URL to Apple's app-info localization" do
+      store_listing.update!(privacy_policy_url: "https://example.test/privacy")
+      expect(mock_app_info).to receive(:update_by_locale).with(
+        app_id: apple_app.app_store_id, locale: "en-GB", name: "Test App", subtitle: "A test",
+        privacy_policy_url: "https://example.test/privacy"
+      )
+      described_class.new(organization: organization, store_listing: store_listing).push!
+    end
+
     context "when Apple accepts both name and subtitle" do
       it "calls update_by_locale once and does not skip any fields" do
         expect(mock_app_info).to receive(:update_by_locale).with(
@@ -121,6 +159,20 @@ RSpec.describe StoreListingSync::ApplePusher do
   end
 
   describe "the live READY_FOR_SALE scenario (the bug we just fixed)" do
+    it "updates promotional text on the live version when no editable version exists" do
+      allow(mock_app_info).to receive(:update_by_locale)
+      allow(mock_versions).to receive(:latest_version).and_return(
+        "id" => "live", "attributes" => { "appStoreState" => "READY_FOR_SALE" }
+      )
+      allow(mock_versions).to receive(:localizations).with(version_id: "live").and_return(
+        [ { "id" => "live-gb", "attributes" => { "locale" => "en-GB" } } ]
+      )
+      expect(mock_versions).to receive(:update_localization).with(localization_id: "live-gb", promotional_text: "Try it!")
+      result = described_class.new(organization: organization, store_listing: store_listing).push!
+      expect(result[:skipped_fields]).to include("description", "keywords")
+      expect(result[:skipped_fields]).not_to include("promotional_text")
+    end
+
     it "marks name and subtitle as skipped, and continues to push promotional_text" do
       # Apple rejects both name and subtitle during app-info push
       call_count = 0

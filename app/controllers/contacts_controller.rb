@@ -58,6 +58,15 @@ class ContactsController < ApplicationController
 
   private
 
+  def turnstile_verification_failed
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.update("contact-form-messages", partial: "contacts/alert", locals: { message: TURNSTILE_FAILURE_MESSAGE })
+      end
+      format.html { redirect_to unauthenticated_root_path(anchor: "contact"), flash: { contact_alert: TURNSTILE_FAILURE_MESSAGE } }
+    end
+  end
+
   def render_success_stream
     render turbo_stream: [
       turbo_stream.update("contact-form-messages", partial: "contacts/notice", locals: { message: "Thanks for reaching out! We'll get back to you soon." }),

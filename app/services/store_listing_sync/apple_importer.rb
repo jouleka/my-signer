@@ -34,13 +34,12 @@ module StoreListingSync
       locale_data = merge_localizations(app_info_localizations, version_localizations)
 
       # Upsert StoreListing records (without final timestamp — set after screenshots)
-      sync_time = Time.current
       imported = []
       ApplicationRecord.transaction do
         locale_data.each do |locale, fields|
           listing = @apple_app.store_listings.find_or_initialize_by(locale: locale)
           listing.organization = @organization
-          listing.assign_attributes(
+          listing.apply_store_import!(
             app_name: fields[:name],
             subtitle: fields[:subtitle],
             keywords: fields[:keywords],
@@ -52,7 +51,6 @@ module StoreListingSync
             privacy_policy_url: fields[:privacy_policy_url],
             sync_status: "synced"
           )
-          listing.save!
           imported << listing
         end
       end
@@ -120,7 +118,7 @@ module StoreListingSync
         end
       end
 
-      listing.update_column(:metadata, listing.metadata.merge("screenshots" => screenshots))
+      listing.with_lock { listing.update_column(:metadata, listing.metadata.merge("screenshots" => screenshots)) }
     rescue StandardError => e
       Rails.logger.warn("AppleImporter: Failed to sync screenshots for locale #{loc.dig('attributes', 'locale')}: #{e.message}")
     end

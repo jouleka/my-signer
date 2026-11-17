@@ -50,12 +50,15 @@ env:
     - AWS_SECRET_ACCESS_KEY
     - AWS_REGION
     - MYSIGNER_KMS_KEY_ARN
+    # Cloudflare Turnstile secret (bot check on sign-in/sign-up/password/contact).
+    # Required: without it those forms fail closed in production.
+    - TURNSTILE_SECRET_KEY
   clear:
     # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
     SOLID_QUEUE_IN_PUMA: true
 
-    # Set number of cores available to the application on each server (default: 1).
-    WEB_CONCURRENCY: 2
+    # Single-mode Puma avoids a master and extra web worker on the shared 2 GiB VPS.
+    WEB_CONCURRENCY: 0
 
     # Puma threads per worker. 3 is the Rails-recommended GVL-efficiency
     # default. Also sizes the cache DB pool via database.yml; the primary

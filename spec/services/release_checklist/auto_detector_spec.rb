@@ -10,7 +10,7 @@ RSpec.describe ReleaseChecklist::AutoDetector, type: :service do
     create(:release_checklist,
       organization: organization,
       listable: apple_app,
-      version_string: "1.0.0",
+      version_string: apple_app.app_store_versions.order(created_at: :desc).pick(:version_string) || "1.0.0",
       platform: "ios"
     )
   end

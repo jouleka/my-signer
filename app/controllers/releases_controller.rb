@@ -1,15 +1,14 @@
 class ReleasesController < ApplicationController
-  ALLOWED_TRANSLATION_FIELDS = %w[app_name subtitle keywords description promotional_text whats_new short_description].freeze
+  ALLOWED_TRANSLATION_FIELDS = %w[app_name subtitle keywords description promotional_text short_description].freeze
 
   before_action :authenticate_user!
   before_action :set_org
   before_action :resolve_release, only: %i[show update sync sync_status push translate add_locale create_listing
                                             update_release_note translate_release_note rewrite_release_note
                                             fetch_commits submit_for_review approve_review reject_review
-                                            create_release_note destroy_release_note
+                                            create_release_note destroy_release_note update_release_translation apply_release_note
                                             submit_to_store refresh_validation_errors]
   after_action :verify_authorized
-  after_action :clear_shown_push_success, only: :show
 
   # GET /organizations/:organization_id/releases
   def index
@@ -53,6 +52,8 @@ class ReleasesController < ApplicationController
 
     @release_note = current_release_note
     @checklist = ensure_checklist!
+    @push_status = StoreListingSync::PushStatus.for(@app)
+    @sync_operation = StoreListingSync::OperationStatus.new(@app).read
   end
 
   # PATCH /organizations/:organization_id/releases/:id
@@ -73,7 +74,7 @@ class ReleasesController < ApplicationController
         alert: "No store listing found for locale #{@current_locale}."
     end
 
-    if @store_listing.update(store_listing_params)
+    if @store_listing.with_lock { @store_listing.update(store_listing_params) }
       # User just saved content on a listing that was flagged "needs_review"
       # by the AI translator. A manual save means they reviewed (or
       # intentionally edited) — drop the flag so the yellow dot in the
@@ -103,7 +104,7 @@ class ReleasesController < ApplicationController
         format.turbo_stream do
           # Return validation errors as JSON in the body so the client can
           # surface them (the autosave fetch reads response.ok + body).
-          render json: { errors: @store_listing.errors.full_messages },
+          render json: { errors: @store_listing.errors.full_messages }, content_type: "application/json",
                  status: :unprocessable_content
         end
         format.html do
@@ -122,15 +123,23 @@ class ReleasesController < ApplicationController
     # Sync from stores: developer or higher (viewers blocked).
     authorize @organization, :sync?
 
-    StoreListingSyncJob.perform_later(
-      organization_id: @organization.id,
-      listable_type: @app.class.name,
-      listable_id: @app.id
-    )
+    status = StoreListingSync::OperationStatus.new(@app)
+    @app.with_lock do
+      if @app.store_listings.push_in_progress.exists?
+        return push_error_response("A push is already in progress. Wait for it to finish before syncing.")
+      end
+      unless status.active?
+        operation = status.start
+        StoreListingSyncJob.perform_later(
+          organization_id: @organization.id, listable_type: @app.class.name,
+          listable_id: @app.id, operation_id: operation[:id]
+        )
+      end
+    end
 
     respond_to do |format|
       format.html { redirect_to organization_release_path(@organization, params[:id]), notice: "Sync started. The page will refresh when complete." }
-      format.json { render json: { status: "enqueued" }, status: :accepted }
+      format.json { render json: { status: "enqueued", operation: status.read }, status: :accepted }
     end
   end
 
@@ -143,32 +152,17 @@ class ReleasesController < ApplicationController
     # Submission status is sourced from the latest AppStoreVersion (iOS only).
     # The Stimulus controller polls this endpoint after a submission is enqueued
     # to detect transitions: "submitting" → "submitted" / "failed".
-    version = @app.is_a?(AppleApp) ? @app.app_store_versions.order(created_at: :desc).first : nil
-    version&.reload
+    version = find_or_create_app_release.platform_release if @app.is_a?(AppleApp)
 
-    if primary_listing.nil?
-      return render json: {
-        sync_status: "unknown",
-        push_status: nil,
-        submission_status: version&.submission_status || "idle",
-        submission_error: version&.submission_error,
-        app_store_state: version&.app_store_state
-      }
-    end
-
-    primary_listing.reload
     render json: {
-      sync_status: primary_listing.sync_status,
-      last_synced_at: primary_listing.last_synced_at&.iso8601,
-      last_pushed_at: primary_listing.last_pushed_at&.iso8601,
-      push_status: primary_listing.push_status,
-      push_error: primary_listing.push_error,
-      push_fields_skipped: primary_listing.push_fields_skipped || [],
+      sync_status: primary_listing&.sync_status || "unknown",
+      sync_operation: StoreListingSync::OperationStatus.new(@app).read,
+      last_synced_at: primary_listing&.last_synced_at&.iso8601,
       locale_count: @app.store_listings.count,
       submission_status: version&.submission_status || "idle",
       submission_error: version&.submission_error,
       app_store_state: version&.app_store_state
-    }
+    }.merge(StoreListingSync::PushStatus.for(@app))
   end
 
   # POST /organizations/:organization_id/releases/:id/push
@@ -191,32 +185,29 @@ class ReleasesController < ApplicationController
 
     # Pending-review guard: refuse to push if there's a release note awaiting review
     primary_note = @app_release.primary_release_note
-    if @organization.supports_review_workflow? && primary_note&.pending_review?
+    if primary_note&.review_required?
       return push_error_response(
         "What's New is awaiting approval. Approve it before pushing, or wait for an admin to approve.",
         tab: "whats_new"
       )
     end
 
+    return push_error_response("Wait for the release note AI operation to finish.", tab: "whats_new") if primary_note&.ai_pending?
+
     # Auto-detected blocker guard: refuse push if any required auto-detected error exists.
     return if blocking_checklist_issues_redirect!(action_verb: "push")
 
-    # Apply draft release note (if any) to all matching store listings BEFORE pushing
-    if primary_note&.status == "draft" && primary_note.rendered_text.present?
-      ActiveRecord::Base.transaction do
+    pushed_listing_ids = []
+    @app.with_lock do
+      if @app.store_listings.push_in_progress.exists? || StoreListingSync::OperationStatus.new(@app).active?
+        return push_error_response("A store operation is already in progress. Wait for it to finish before pushing.")
+      end
+      if primary_note && primary_note.status != "applied" && primary_note.content_editable? && primary_note.rendered_text.present?
         primary_note.apply_to_store_listings!
       end
-    end
-
-    # Mark all listings for this app as pushing, then enqueue per-locale push jobs
-    pushed_listing_ids = []
-    @app.store_listings.find_each do |listing|
-      listing.update_columns(push_status: "pushing", push_error: nil, push_fields_skipped: [])
-      StoreListingPushJob.perform_later(
-        organization_id: @organization.id,
-        store_listing_id: listing.id
-      )
-      pushed_listing_ids << listing.id
+      pushed_listing_ids = @app.store_listings.order(:id).pluck(:id)
+      @app.store_listings.mark_pushing!
+      StoreListingBatchPushJob.perform_later(organization_id: @organization.id, store_listing_ids: pushed_listing_ids)
     end
 
     # Audit: iOS pushes = store_listing_pushed, Android pushes = play_store_pushed.
@@ -239,6 +230,8 @@ class ReleasesController < ApplicationController
       format.html { redirect_to organization_release_path(@organization, params[:id]), notice: "Push started. Changes are being sent to the store." }
       format.json { render json: { status: "enqueued" }, status: :accepted }
     end
+  rescue ActiveRecord::RecordInvalid, RuntimeError => e
+    push_error_response(ErrorMessageSanitizer.sanitize(e), tab: "whats_new")
   end
 
   # POST /organizations/:organization_id/releases/:id/submit_to_store
@@ -260,7 +253,7 @@ class ReleasesController < ApplicationController
         alert: "No active App Store Connect credential. Add one in Settings first."
     end
 
-    version = @app.app_store_versions.order(created_at: :desc).first
+    version = find_or_create_app_release.platform_release
     unless version
       return redirect_to organization_release_path(@organization, params[:id], tab: "submission"),
         alert: "No App Store version found. Sync from the store to fetch the latest version."
@@ -273,7 +266,13 @@ class ReleasesController < ApplicationController
 
     unless version.apple_build_id.present?
       return redirect_to organization_release_path(@organization, params[:id], tab: "submission"),
-        alert: "No build attached to version v#{version.version_string}. Attach a build in the Build tab first."
+        alert: "No build attached to version v#{version.version_string}. Attach a build in App Store Connect, then sync from the store."
+    end
+
+    primary_note = find_or_create_app_release.primary_release_note
+    if primary_note&.review_required? || primary_note&.ai_pending?
+      return redirect_to organization_release_path(@organization, params[:id], tab: "whats_new"),
+        alert: "Resolve the release note review or AI operation before submitting."
     end
 
     # Auto-detected blocker guard: shared with the push action.
@@ -360,7 +359,7 @@ class ReleasesController < ApplicationController
         alert: "No active App Store Connect credential."
     end
 
-    version = @app.app_store_versions.order(created_at: :desc).first
+    version = find_or_create_app_release.platform_release
     unless version&.version_id.present?
       return redirect_to organization_release_path(@organization, params[:id], tab: "submission"),
         alert: "No version found to refresh."
@@ -401,21 +400,19 @@ class ReleasesController < ApplicationController
         alert: "Cannot translate: invalid base or target locale."
     end
 
-    # Deduplicate rapid double-clicks: if a translation job was enqueued for
-    # this listing in the last 60 seconds, don't enqueue another. Two AI runs
-    # on the same listing produce different outputs and overwrite each other,
-    # which looks like "fields change for no reason" to the user.
-    dedup_key = "translating_listing_#{target_listing.id}"
-    already_translating = Rails.cache.exist?(dedup_key)
-
-    unless already_translating
-      Rails.cache.write(dedup_key, Time.current, expires_in: 60.seconds)
-      StoreListingTranslationJob.perform_later(
-        organization_id: @organization.id,
-        store_listing_id: target_listing.id,
-        base_listing_id: base_listing.id,
-        fields: permitted_translation_fields
-      )
+    target_listing.with_lock do
+      unless target_listing.translation_pending?
+        operation_id = SecureRandom.uuid
+        target_listing.update!(translation_status: "pending", metadata: target_listing.metadata
+          .except("translation_error").merge("translation_operation_id" => operation_id))
+        StoreListingTranslationJob.perform_later(
+          organization_id: @organization.id,
+          store_listing_id: target_listing.id,
+          base_listing_id: base_listing.id,
+          fields: permitted_translation_fields,
+          operation_id: operation_id
+        )
+      end
     end
 
     respond_to do |format|
@@ -442,30 +439,29 @@ class ReleasesController < ApplicationController
     authorize @organization, :manage_resources?
 
     locale = params[:locale].to_s.strip
-    if locale.blank?
-      return redirect_to organization_release_path(@organization, params[:id], tab: "listing"),
-        alert: "Please select a locale."
-    end
+    return unless validate_listing_locale(locale)
 
-    if @app.store_listings.exists?(locale: locale)
-      return redirect_to organization_release_path(@organization, params[:id], tab: "listing", locale: locale),
-        notice: "Locale #{locale} already exists."
-    end
+    @app.with_lock do
+      if @app.store_listings.exists?(locale: locale)
+        return redirect_to organization_release_path(@organization, params[:id], tab: "listing", locale: locale),
+          notice: "Locale #{locale} already exists."
+      end
 
-    current_count = @app.store_listings.count
-    max_locales = @organization.entitlements.max_store_listing_locales
-    if current_count >= max_locales
-      return redirect_to organization_release_path(@organization, params[:id], tab: "listing"),
-        alert: "You've reached your limit of #{max_locales} locale(s) on the #{@organization.plan_tier.titleize} plan."
-    end
+      current_count = @app.store_listings.count
+      max_locales = @organization.entitlements.max_store_listing_locales
+      if current_count >= max_locales
+        return redirect_to organization_release_path(@organization, params[:id], tab: "listing"),
+          alert: "You've reached your limit of #{max_locales} locale(s) on the #{@organization.plan_tier.titleize} plan."
+      end
 
-    listing = @app.store_listings.new(organization: @organization, locale: locale, sync_status: "draft")
-    if listing.save
-      redirect_to organization_release_path(@organization, params[:id], tab: "listing", locale: locale),
-        notice: "Locale #{locale} added."
-    else
-      redirect_to organization_release_path(@organization, params[:id], tab: "listing"),
-        alert: listing.errors.full_messages.to_sentence
+      listing = @app.store_listings.new(organization: @organization, locale: locale, sync_status: "draft")
+      if listing.save
+        redirect_to organization_release_path(@organization, params[:id], tab: "listing", locale: locale),
+          notice: "Locale #{locale} added."
+      else
+        redirect_to organization_release_path(@organization, params[:id], tab: "listing"),
+          alert: listing.errors.full_messages.to_sentence
+      end
     end
   end
 
@@ -475,20 +471,23 @@ class ReleasesController < ApplicationController
     # Create store listing: developer or higher (viewers blocked).
     authorize @organization, :manage_resources?
 
-    locale = params[:locale].presence || primary_locale_for(@app)
+    locale = (params[:locale].presence || primary_locale_for(@app)).to_s.strip
+    return unless validate_listing_locale(locale)
 
-    if @app.store_listings.exists?
-      return redirect_to organization_release_path(@organization, params[:id], tab: "listing"),
-        notice: "Store listings already exist for this app."
-    end
+    @app.with_lock do
+      if @app.store_listings.exists?
+        return redirect_to organization_release_path(@organization, params[:id], tab: "listing"),
+          notice: "Store listings already exist for this app."
+      end
 
-    listing = @app.store_listings.new(organization: @organization, locale: locale, sync_status: "draft")
-    if listing.save
-      redirect_to organization_release_path(@organization, params[:id], tab: "listing", locale: locale),
-        notice: "Initial store listing created. Sync from the store to populate fields."
-    else
-      redirect_to organization_release_path(@organization, params[:id], tab: "listing"),
-        alert: listing.errors.full_messages.to_sentence
+      listing = @app.store_listings.new(organization: @organization, locale: locale, sync_status: "draft")
+      if listing.save
+        redirect_to organization_release_path(@organization, params[:id], tab: "listing", locale: locale),
+          notice: "Initial store listing created. Sync from the store to populate fields."
+      else
+        redirect_to organization_release_path(@organization, params[:id], tab: "listing"),
+          alert: listing.errors.full_messages.to_sentence
+      end
     end
   end
 
@@ -501,7 +500,7 @@ class ReleasesController < ApplicationController
 
     rn = @organization.release_notes.build(release_note_params)
     rn.listable = @app
-    rn.locale ||= primary_locale_for(@app)
+    rn.locale = primary_locale_for(@app) if params.dig(:release_note, :locale).blank?
     rn.status ||= "draft"
     rn.source ||= "manual"
     rn.template_data ||= { "new" => [], "improved" => [], "fixed" => [] }
@@ -514,77 +513,59 @@ class ReleasesController < ApplicationController
       redirect_to organization_release_path(@organization, params[:id], tab: "whats_new"),
         alert: rn.errors.full_messages.to_sentence
     end
+  rescue JSON::ParserError, TypeError
+    release_note_save_error([ "Template data must be valid JSON." ])
   end
 
   # PATCH /organizations/:organization_id/releases/:id/release_notes/:note_id
   def update_release_note
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :update?
 
-    if note.update(release_note_params)
-      if note.saved_change_to_template_data? && !params.dig(:release_note, :rendered_text).present?
-        text = note.render_text_from_template
-        note.update_column(:rendered_text, text) if text.present?
-      end
+    attributes = release_note_params
+    if note.with_lock { authorize note, :update?; note.update(attributes) }
       respond_to do |format|
-        # Autosave path: the locale-switcher controller fetches with Accept: turbo-stream.
-        # Respond with head :ok so no redirect/page-nav happens while the user is typing.
-        format.turbo_stream { head :ok }
-        format.html do
-          redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id),
-            notice: "Release note saved."
-        end
+        format.turbo_stream { render json: note.slice(:status, :review_decision).merge(review_required: note.review_required?), content_type: "application/json" }
+        format.html { redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id), notice: "Release note saved." }
       end
     else
-      respond_to do |format|
-        format.turbo_stream { head :unprocessable_content }
-        format.html do
-          redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id),
-            alert: note.errors.full_messages.to_sentence
-        end
-      end
+      release_note_save_error(note.errors.full_messages)
     end
+  rescue JSON::ParserError, TypeError
+    release_note_save_error([ "Template data must be valid JSON." ])
   end
 
   # PATCH .../release_notes/:note_id/translations/:locale
   # Used by the locale-switcher autosave to update a single translation entry in
   # `release_note.translations` (a JSONB hash keyed by BCP-47 locale).
   def update_release_translation
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :update?
 
-    locale = params[:locale].to_s
-    text   = params[:translated_text].to_s
-
-    translations = note.translations.is_a?(Hash) ? note.translations.dup : {}
-    if text.strip.empty?
-      translations.delete(locale)
-    else
-      translations[locale] = text
+    locale = params[:locale].to_s.strip
+    text = params[:translated_text].to_s
+    unless locale.match?(ReleaseNote::LOCALE_FORMAT) && locale != note.locale
+      return release_note_save_error([ "Choose a valid translation locale other than the base locale." ])
     end
-
-    if note.update(translations: translations)
+    saved = note.with_lock do
+      authorize note, :update?
+      translations = note.translations.dup
+      text.strip.blank? ? translations.delete(locale) : translations[locale] = text
+      note.update(translations: translations)
+    end
+    if saved
       respond_to do |format|
-        format.turbo_stream { head :ok }
-        format.html do
-          redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id),
-            notice: "Translation saved."
-        end
+        format.turbo_stream { render json: note.slice(:status, :review_decision).merge(review_required: note.review_required?), content_type: "application/json" }
+        format.html { redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id), notice: "Translation saved." }
       end
     else
-      respond_to do |format|
-        format.turbo_stream { head :unprocessable_content }
-        format.html do
-          redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id),
-            alert: note.errors.full_messages.to_sentence
-        end
-      end
+      release_note_save_error(note.errors.full_messages)
     end
   end
 
   # DELETE /organizations/:organization_id/releases/:id/release_notes/:note_id
   def destroy_release_note
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :destroy?
     note.destroy
     redirect_to organization_release_path(@organization, params[:id], tab: "whats_new"),
@@ -596,7 +577,7 @@ class ReleasesController < ApplicationController
   # `whats_new` field and flips the note to `applied`. No store push happens here —
   # that's a separate step ("Push to App Store / Google Play").
   def apply_release_note
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :apply?
 
     begin
@@ -612,7 +593,7 @@ class ReleasesController < ApplicationController
 
   # POST /organizations/:organization_id/releases/:id/release_notes/:note_id/translate
   def translate_release_note
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :translate?
 
     @entitlements = @organization.entitlements
@@ -621,30 +602,21 @@ class ReleasesController < ApplicationController
         alert: "You've reached your monthly AI translation limit."
     end
 
-    ReleaseNoteTranslationJob.perform_later(organization_id: @organization.id, release_note_id: note.id)
-
-    respond_to do |format|
-      # Turbo path: swap the Translate button for a "Translating…" pill. When the
-      # job saves the translations hash onto the release note, ReleaseNote's
-      # broadcasts_refreshes fires and the page morphs, restoring the button and
-      # populating the translations list below.
-      format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          "translate-button",
-          partial: "releases/translate_button",
-          locals: { pending: true, release_note: note }
-        )
-      end
-      format.html do
-        redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id),
-          notice: "Translation started."
-      end
+    if note.rendered_text.blank? || !note.listable.store_listings.where.not(locale: note.locale).exists?
+      return release_note_save_error([ "Write release notes and add another listing locale before translating." ])
     end
+    start_release_note_operation(note, "translation", ReleaseNoteTranslationJob)
+
+    redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id),
+      status: :see_other, notice: "Translation started."
+  rescue StandardError => e
+    raise if e.is_a?(Pundit::NotAuthorizedError) || e.is_a?(ActiveRecord::RecordNotFound)
+    release_note_save_error([ ErrorMessageSanitizer.sanitize(e) ])
   end
 
   # POST /organizations/:organization_id/releases/:id/release_notes/:note_id/rewrite
   def rewrite_release_note
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :rewrite?
 
     @entitlements = @organization.entitlements
@@ -653,34 +625,19 @@ class ReleasesController < ApplicationController
         alert: "You've reached your monthly AI rewrite limit."
     end
 
-    ReleaseNoteRewriteJob.perform_later(
-      organization_id: @organization.id,
-      release_note_id: note.id,
-      raw_input: params[:raw_input]
-    )
+    return release_note_save_error([ "Enter a changelog to rewrite." ]) if params[:raw_input].to_s.strip.blank?
+    start_release_note_operation(note, "rewrite", ReleaseNoteRewriteJob, raw_input: params[:raw_input])
 
-    respond_to do |format|
-      # Turbo path: swap the AI Rewrite button for a "Rewriting…" pill. Modal is
-      # closed client-side on turbo:submit-end. The job's save will broadcast a
-      # refresh (see ReleaseNote#broadcasts_refreshes) which morphs the page and
-      # restores the button to its idle state with the new content below.
-      format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          "ai-rewrite-button",
-          partial: "releases/ai_rewrite_button",
-          locals: { pending: true }
-        )
-      end
-      format.html do
-        redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id),
-          notice: "AI rewrite started."
-      end
-    end
+    redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: note.id),
+      status: :see_other, notice: "AI rewrite started."
+  rescue StandardError => e
+    raise if e.is_a?(Pundit::NotAuthorizedError) || e.is_a?(ActiveRecord::RecordNotFound)
+    release_note_save_error([ ErrorMessageSanitizer.sanitize(e) ])
   end
 
   # POST /organizations/:organization_id/releases/:id/release_notes/:note_id/fetch_commits
   def fetch_commits
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :rewrite?
 
     repo_url = params[:repo_url].to_s.strip
@@ -707,7 +664,7 @@ class ReleasesController < ApplicationController
 
   # POST /organizations/:organization_id/releases/:id/release_notes/:note_id/submit_for_review
   def submit_for_review
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :submit_for_review?
     note.submit_for_review!(user: current_user)
     ReleaseNoteEvents::Notifier.notify_submitted_for_review(note, submitter: current_user)
@@ -720,7 +677,7 @@ class ReleasesController < ApplicationController
 
   # POST /organizations/:organization_id/releases/:id/release_notes/:note_id/approve_review
   def approve_review
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :approve_review?
     note.approve_review!(user: current_user, comment: params[:comment])
     ReleaseNoteEvents::Notifier.notify_approved(note, reviewer: current_user)
@@ -733,7 +690,7 @@ class ReleasesController < ApplicationController
 
   # POST /organizations/:organization_id/releases/:id/release_notes/:note_id/reject_review
   def reject_review
-    note = @organization.release_notes.find(params[:note_id])
+    note = @organization.release_notes.for_app(@app).find(params[:note_id])
     authorize note, :reject_review?
     comment = params[:comment].to_s.strip
     note.reject_review!(user: current_user, comment: comment)
@@ -772,9 +729,9 @@ class ReleasesController < ApplicationController
   end
 
   def find_or_create_app_release
-    version_string = params[:version_string].presence ||
-                     latest_version_string_for(@app) ||
-                     "unversioned"
+    selected_note = @organization.release_notes.for_app(@app).find(params[:note_id]) if params[:note_id].present?
+    version_string = params[:version_string].presence || selected_note&.version_string.presence || latest_version_string_for(@app) ||
+      @organization.release_notes.for_app(@app).where.not(status: "archived").order(created_at: :desc).pick(:version_string).presence || "unversioned"
 
     AppRelease.find_or_create_by!(
       organization: @organization,
@@ -818,15 +775,22 @@ class ReleasesController < ApplicationController
   end
 
   def ensure_checklist!
-    @organization.release_checklists.for_app(@app).last ||
-      @organization.release_checklists.create!(
-        listable: @app,
-        version_string: @app_release.version_string,
-        platform: @app_release.platform.to_s,
-        items: ReleaseChecklist::DEFAULT_ITEMS.deep_dup
-      )
-  rescue ActiveRecord::RecordInvalid
-    @organization.release_checklists.for_app(@app).last
+    @organization.release_checklists.create_or_find_by!(listable: @app, version_string: @app_release.version_string) do |checklist|
+      checklist.platform = @app_release.platform.to_s
+      checklist.items = ReleaseChecklist::DEFAULT_ITEMS.deep_dup
+    end
+  end
+
+  def validate_listing_locale(locale)
+    message = if locale.blank?
+      "Please select a locale."
+    elsif !StoreListing.supported_locales(@app.class.name).include?(locale)
+      "This locale is not supported by this store."
+    end
+    return true unless message
+
+    redirect_to organization_release_path(@organization, params[:id], tab: "listing"), alert: message
+    false
   end
 
   def store_listing_params
@@ -845,8 +809,23 @@ class ReleasesController < ApplicationController
       if params[:release_note][:template_data].present?
         permitted[:template_data] = JSON.parse(params[:release_note][:template_data])
       end
-    rescue JSON::ParserError
-      # template_data will be handled by form
+    end
+  end
+
+  def start_release_note_operation(note, kind, job, **arguments)
+    operation = ReleaseNotes::OperationStatus.new(note)
+    id = operation.start!(kind)
+    return unless id
+    job.perform_later(organization_id: @organization.id, release_note_id: note.id, operation_id: id, **arguments)
+  rescue StandardError => e
+    operation.finish!(id, error: e) if id
+    raise
+  end
+
+  def release_note_save_error(errors)
+    respond_to do |format|
+      format.turbo_stream { render json: { errors: errors }, content_type: "application/json", status: :unprocessable_content }
+      format.html { redirect_to organization_release_path(@organization, params[:id], tab: "whats_new", note_id: params[:note_id]), alert: errors.to_sentence }
     end
   end
 
@@ -862,7 +841,7 @@ class ReleasesController < ApplicationController
   # has severity "error". Called as `return if blocking_checklist_issues_redirect!(...)`.
   # Returns true (and performs the redirect) if there are blockers; returns false otherwise.
   def blocking_checklist_issues_redirect!(action_verb:)
-    checklist = @organization.release_checklists.for_app(@app).last
+    checklist = find_or_create_app_release.checklist
     return false unless checklist
 
     blocking = Array(checklist.auto_detected_items).select do |i|
@@ -891,15 +870,6 @@ class ReleasesController < ApplicationController
       format.html { redirect_to organization_release_path(@organization, params[:id]) }
       format.json { render json: { error: "Pushing metadata to the store requires a Pro plan or higher." }, status: :forbidden }
     end
-  end
-
-  # Clear transient push success state after rendering so the banner doesn't
-  # re-appear on tab switches. The view has already read the in-memory value.
-  def clear_shown_push_success
-    return unless @app && @store_listing
-    return unless %w[success partial_success].include?(@store_listing.push_status)
-    @app.store_listings.where(push_status: %w[success partial_success])
-        .update_all(push_status: nil, push_fields_skipped: [])
   end
 
   def push_error_response(message, tab: nil)

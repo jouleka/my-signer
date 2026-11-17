@@ -968,6 +968,30 @@ class ScreenshotProject < ApplicationRecord
     resolution_dir
   end
 
+  # True once Studio has staged per-locale exports. A translated batch must
+  # only use its own locale's exports (see ScreenshotUploadJob).
+  def localized_exports?
+    screenshot_exports.where.not(locale: "").exists?
+  end
+
+  # Resolutions available for a store upload in +locale+, using the same source
+  # rules as ScreenshotUploadJob#resolve_export_files: localized ActiveStorage
+  # exports when any exist, otherwise legacy disk exports, otherwise flat
+  # (unlocalized) ActiveStorage exports.
+  def staged_export_resolutions(locale: nil)
+    attached = screenshot_exports.joins(:image_attachment)
+    return attached.for_locale(locale).distinct.pluck(:resolution) if localized_exports?
+
+    disk = if exports_directory.exist?
+      exports_directory.children
+        .select { |dir| dir.directory? && dir.children.any? { |file| file.extname == ".png" } }
+        .map { |dir| dir.basename.to_s }
+    else
+      []
+    end
+    disk.presence || attached.for_locale(nil).distinct.pluck(:resolution)
+  end
+
   def clear_exports_directory!
     dir = verified_export_path(exports_directory)
     dir.rmtree if dir.exist?

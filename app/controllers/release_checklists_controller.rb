@@ -10,7 +10,7 @@ class ReleaseChecklistsController < ApplicationController
     authorize @checklist
 
     respond_to do |format|
-      format.html
+      format.html { redirect_to checklist_path }
       format.json do
         render json: {
           id: @checklist.id,
@@ -31,12 +31,12 @@ class ReleaseChecklistsController < ApplicationController
 
     if @checklist.update(checklist_params)
       respond_to do |format|
-        format.html { redirect_to organization_release_path(@organization, params[:release_id]), notice: "Checklist updated." }
+        format.html { redirect_to checklist_path, notice: "Checklist updated." }
         format.json { render json: { status: "updated", completion: @checklist.completion_percentage } }
       end
     else
       respond_to do |format|
-        format.html { render :show, status: :unprocessable_content }
+        format.html { redirect_to checklist_path, alert: @checklist.errors.full_messages.to_sentence }
         format.json { render json: { errors: @checklist.errors.full_messages }, status: :unprocessable_content }
       end
     end
@@ -46,7 +46,7 @@ class ReleaseChecklistsController < ApplicationController
   def check_item
     authorize @checklist, :check_item?
 
-    @checklist.check_item!(params[:key], current_user)
+    return item_error("Item not found", :not_found) unless @checklist.check_item!(params[:key], current_user)
 
     respond_to do |format|
       format.turbo_stream {
@@ -54,7 +54,7 @@ class ReleaseChecklistsController < ApplicationController
           checklist: @checklist.reload, app: find_release_app
         })
       }
-      format.json { render json: { status: "checked", completion: @checklist.completion_percentage, ready: @checklist.ready_for_submission? } }
+      format.json { render json: { status: "checked", **progress_payload } }
     end
   end
 
@@ -62,7 +62,7 @@ class ReleaseChecklistsController < ApplicationController
   def uncheck_item
     authorize @checklist, :uncheck_item?
 
-    @checklist.uncheck_item!(params[:key])
+    return item_error("Item not found", :not_found) unless @checklist.uncheck_item!(params[:key])
 
     respond_to do |format|
       format.turbo_stream {
@@ -70,7 +70,7 @@ class ReleaseChecklistsController < ApplicationController
           checklist: @checklist.reload, app: find_release_app
         })
       }
-      format.json { render json: { status: "unchecked", completion: @checklist.completion_percentage, ready: @checklist.ready_for_submission? } }
+      format.json { render json: { status: "unchecked", **progress_payload } }
     end
   end
 
@@ -78,10 +78,9 @@ class ReleaseChecklistsController < ApplicationController
   def reset
     authorize @checklist, :reset?
 
-    @checklist.items.each { |item| item["checked"] = false; item["checked_by_id"] = nil; item["checked_at"] = nil }
-    @checklist.save!
+    @checklist.reset_items!
 
-    redirect_to organization_release_path(@organization, params[:release_id]), notice: "Checklist has been reset."
+    redirect_to checklist_path, notice: "Checklist has been reset."
   end
 
   # POST /organizations/:organization_id/releases/:release_id/release_checklists/:id/add_custom_item
@@ -99,13 +98,10 @@ class ReleaseChecklistsController < ApplicationController
           })
         }
         format.json { render json: { custom_items: @checklist.custom_items, completion_percentage: @checklist.completion_percentage } }
-        format.html { redirect_back fallback_location: organization_release_path(@organization, params[:release_id]), notice: "Custom item added." }
+        format.html { redirect_back fallback_location: checklist_path, notice: "Custom item added." }
       end
     else
-      respond_to do |format|
-        format.json { render json: { error: "Could not add item (blank or duplicate)" }, status: :unprocessable_content }
-        format.html { redirect_back fallback_location: organization_releases_path(@organization), alert: "Could not add checklist item." }
-      end
+      item_error("Could not add item (blank or duplicate)", :unprocessable_content)
     end
   end
 
@@ -122,17 +118,35 @@ class ReleaseChecklistsController < ApplicationController
           })
         }
         format.json { render json: { custom_items: @checklist.custom_items, completion_percentage: @checklist.completion_percentage } }
-        format.html { redirect_back fallback_location: organization_release_path(@organization, params[:release_id]), notice: "Custom item removed." }
+        format.html { redirect_back fallback_location: checklist_path, notice: "Custom item removed." }
       end
     else
-      respond_to do |format|
-        format.json { render json: { error: "Item not found" }, status: :not_found }
-        format.html { redirect_back fallback_location: organization_releases_path(@organization), alert: "Item not found." }
-      end
+      item_error("Item not found", :not_found)
     end
   end
 
   private
+
+  def checklist_path
+    organization_release_path(@organization, params[:release_id], tab: "checklist", version_string: @checklist.version_string)
+  end
+
+  def progress_payload
+    all = @checklist.all_items_merged
+    { completion: @checklist.completion_percentage, ready: @checklist.ready_for_submission?,
+      checked: all.count { |item| item["checked"] == true }, total: all.size }
+  end
+
+  def item_error(message, status)
+    respond_to do |format|
+      format.json { render json: { error: message }, status: status }
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace("release-checklist", partial: "releases/checklist",
+          locals: { checklist: @checklist, app: find_release_app, error: message }), status: status
+      end
+      format.html { redirect_to checklist_path, alert: message }
+    end
+  end
 
   def set_org
     # Scoped to caller's orgs so non-member access 404s like a missing id —
@@ -143,10 +157,13 @@ class ReleaseChecklistsController < ApplicationController
 
   def set_checklist
     @checklist = @organization.release_checklists.find(params[:id])
+    expected_release_id = "#{@checklist.listable_type.underscore}_#{@checklist.listable_id}"
+    raise ActiveRecord::RecordNotFound unless params[:release_id] == expected_release_id
   end
 
   def require_release_checklist_write!
     return unless @organization.entitlements.release_checklist_read_only?
+    skip_authorization
 
     respond_to do |format|
       format.html { redirect_to organization_releases_path(@organization), alert: "Editing checklists requires a Pro plan or higher." }
@@ -156,7 +173,7 @@ class ReleaseChecklistsController < ApplicationController
   end
 
   def checklist_params
-    params.require(:release_checklist).permit(:version_string, :platform, :notes)
+    params.require(:release_checklist).permit(:version_string, :platform)
   end
 
   def find_release_app

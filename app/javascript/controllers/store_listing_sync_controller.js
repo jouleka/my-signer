@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { showConfirmDialog } from "controllers/confirm_dialog_controller"
 
 // Handles sync/push actions for store listings with polling-based auto-refresh.
 export default class extends Controller {
@@ -16,78 +17,35 @@ export default class extends Controller {
     this._disableButton(btn)
     this._activeOperation = "sync"
     this._showSyncBanner()
-    this._postAction(url, btn, "syncing")
+    this._postAction(url, btn)
   }
 
-  push(event) {
+  async push(event) {
     event.preventDefault()
-    const btn = event.currentTarget
-    const url = btn.dataset.url || btn.closest("form")?.action
-    if (!url) return
-    this._disableButton(btn)
-    this._activeOperation = "push"
-    this._showPushBanner()
-    this._postAction(url, btn, "pushing")
-  }
-
-  // Called via turbo:before-fetch-request on the push form. Turbo's styled
-  // confirm dialog has already been accepted at this point — we prevent the
-  // Turbo form submission and handle it via fetch + polling instead.
-  interceptPush(event) {
-    event.preventDefault()
-    const form = event.target.closest("form") || event.target
-    const url = form.action
-    const btn = form.querySelector('button[type="submit"]')
-    if (btn) this._disableButton(btn)
-    this._activeOperation = "push"
-    this._showPushBanner()
-    this._postAction(url, btn, "pushing")
-  }
-
-  translate(event) {
-    event.preventDefault()
-    const btn = event.currentTarget
-    const url = btn.dataset.url
-    const baseLocale = btn.dataset.baseLocale
-    if (!url) return
-
-    this._disableButton(btn)
-    const originalContent = Array.from(btn.childNodes).map(n => n.cloneNode(true))
-    btn.textContent = ""
-    const spinner = this._el("span", "loading loading-spinner loading-xs")
-    btn.append(spinner, " Translating...")
-
-    this._showTranslatingBanner()
-
-    fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-CSRF-Token": this._csrf(),
-        "Accept": "text/html"
-      },
-      credentials: "same-origin",
-      body: `base_locale=${encodeURIComponent(baseLocale)}&fields=all`
-    }).then(response => {
-      if (response.ok || response.redirected) {
-        setTimeout(() => this._reloadPage(), 2000)
-      } else {
-        this._showTranslateError("Translation request failed. Please try again.")
-        this._restoreButton(btn, originalContent)
-      }
-    }).catch(() => {
-      this._showTranslateError("Network error. Please try again.")
-      this._restoreButton(btn, originalContent)
+    const form = event.currentTarget
+    const btn = event.submitter || form.querySelector('button[type="submit"]')
+    const confirmed = await showConfirmDialog({
+      title: "Push changes", message: btn.dataset.turboConfirm,
+      confirmText: "Push", variant: "info"
     })
+    if (!confirmed) return
+    this._disableButton(btn)
+    this._activeOperation = "push"
+    this._showPushBanner()
+    this._postAction(form.action, btn)
   }
 
-  _restoreButton(btn, originalContent) {
-    this._enableButton(btn)
-    btn.textContent = ""
-    originalContent.forEach(n => btn.appendChild(n))
-  }
-
-  async _postAction(url, btn, pollingState) {
+  async _postAction(url, btn) {
+    this._activeButton = btn
+    for (const identifier of ["store-listing-editor", "locale-switcher"]) {
+      const element = this.element.querySelector(`[data-controller~="${identifier}"]`)
+      const editor = element && this.application.getControllerForElementAndIdentifier(element, identifier)
+      if (editor && !await editor.flushSave()) {
+        this._enableButton(btn)
+        this._clearStatus()
+        return
+      }
+    }
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -98,17 +56,18 @@ export default class extends Controller {
         credentials: "same-origin"
       })
 
-      if (!res.ok) {
+      if (!res.ok || res.redirected) {
         let msg = `HTTP ${res.status}`
         try { const d = await res.json(); if (d.error) msg = d.error } catch {}
         throw new Error(msg)
       }
 
+      const result = await res.json()
+      this._operationId = result.operation?.id
       this._startPolling()
     } catch (e) {
       this._enableButton(btn)
-      this._clearStatus()
-      this._showToast("Action failed: " + e.message, false)
+      this._showPushResult("error", "Action failed", e.message, 0)
     }
   }
 
@@ -116,8 +75,6 @@ export default class extends Controller {
     if (!this.hasStatusUrlValue) return
     if (this._timer) clearInterval(this._timer)
 
-    const originalSyncedAt = this._lastSyncedAt
-    const originalSyncStatus = this._syncStatus
     const operation = this._activeOperation
 
     this._timer = setInterval(async () => {
@@ -146,10 +103,15 @@ export default class extends Controller {
             this._handleSubmitFailure(data)
           }
         } else {
-          if ((data.last_synced_at && data.last_synced_at !== originalSyncedAt) || data.sync_status !== originalSyncStatus) {
+          const sync = data.sync_operation
+          if (sync?.id !== this._operationId) return
+          if (sync.status === "completed") {
             this._stopPolling()
             this._showToast("Sync completed", true)
             this._reloadPage()
+          } else if (sync.status === "failed") {
+            this._stopPolling()
+            this._showPushResult("error", "Sync failed", sync.error || "Please try again.", 0)
           }
         }
       } catch (e) {
@@ -171,6 +133,7 @@ export default class extends Controller {
       clearInterval(this._timer)
       this._timer = null
     }
+    this._enableButton(this._activeButton)
     if (this._timeout) {
       clearTimeout(this._timeout)
       this._timeout = null
@@ -178,14 +141,12 @@ export default class extends Controller {
   }
 
   _handlePushSuccess(data) {
-    this.element.querySelectorAll("[data-action*='push']").forEach(btn => this._enableButton(btn))
     this._reloadPage()
   }
 
   _handlePushFailure(data) {
     const error = data.push_error || "Unknown error occurred"
     this._showPushResult("error", "Push failed", error, 0)
-    this.element.querySelectorAll("[data-action*='push']").forEach(btn => this._enableButton(btn))
   }
 
   // Submission lifecycle handlers — used when the Stimulus controller detects
@@ -314,10 +275,13 @@ export default class extends Controller {
   }
 
   connect() {
-    const statusEl = this.element.querySelector("[data-last-synced-at]")
-    this._lastSyncedAt = statusEl ? statusEl.dataset.lastSyncedAt : null
-    this._lastPushedAt = statusEl ? statusEl.dataset.lastPushedAt : null
-    this._syncStatus = statusEl ? statusEl.dataset.syncStatus : null
+    const syncActive = this.element.querySelector("[data-sync-active]")
+    if (syncActive) {
+      this._operationId = syncActive.dataset.syncActive
+      this._activeOperation = "sync"
+      this._startPolling()
+      return
+    }
 
     // If page loaded with push in progress, resume polling
     const pushActive = document.getElementById("sync-status")?.querySelector("[data-push-active]")
@@ -359,46 +323,6 @@ export default class extends Controller {
     el.appendChild(wrapper)
   }
 
-  _showTranslatingBanner() {
-    const el = document.getElementById("sync-status")
-    if (!el) return
-    el.textContent = ""
-
-    const C = this.constructor
-    const wrapper = this._el("div", `${C.SN_BASE} ${C.SN_LOADING}`)
-    const flex = this._el("div", "flex items-center gap-3")
-    const spinner = this._el("span", "loading loading-spinner loading-xs text-primary")
-    const textCol = this._el("div")
-    const title = this._el("span", "text-sm font-medium text-base-content/80")
-    title.textContent = "AI translation in progress\u2026"
-    const sub = this._el("p", "text-xs text-base-content/40 mt-0.5")
-    sub.textContent = "Fields will be translated and marked for review."
-
-    textCol.append(title, sub)
-    flex.append(spinner, textCol)
-    wrapper.appendChild(flex)
-    el.appendChild(wrapper)
-  }
-
-  _showTranslateError(message) {
-    const el = document.getElementById("sync-status")
-    if (!el) return
-    el.textContent = ""
-
-    const C = this.constructor
-    const wrapper = this._el("div", `${C.SN_BASE} ${C.SN_ERROR}`)
-    const flex = this._el("div", "flex items-center gap-3")
-    const iconWrap = this._el("div", `${C.SN_ICON_BASE} ${C.SN_ICON_ERROR}`)
-    const icon = this._el("i", "fa-solid fa-xmark text-[0.625rem]")
-    iconWrap.appendChild(icon)
-    const label = this._el("span", "text-sm text-base-content/70")
-    label.textContent = message
-
-    flex.append(iconWrap, label)
-    wrapper.appendChild(flex)
-    el.appendChild(wrapper)
-  }
-
   _clearStatus() {
     const el = document.getElementById("sync-status")
     if (el) el.textContent = ""
@@ -413,11 +337,13 @@ export default class extends Controller {
   }
 
   _disableButton(btn) {
+    if (!btn) return
     btn.disabled = true
     btn.classList.add("btn-disabled")
   }
 
   _enableButton(btn) {
+    if (!btn) return
     btn.disabled = false
     btn.classList.remove("btn-disabled")
   }

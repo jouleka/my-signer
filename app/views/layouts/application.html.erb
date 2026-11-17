@@ -32,9 +32,9 @@
     <%# Canonical URL %>
     <link rel="canonical" href="<%= canonical_url %>">
 
-    <%# Tell search engines not to index authenticated/private pages %>
-    <% if user_signed_in? %>
-      <meta name="robots" content="noindex, nofollow">
+    <%# Tell search engines not to index authenticated, auth (devise) and app pages %>
+    <% if (robots_content = robots_meta_content) %>
+      <meta name="robots" content="<%= robots_content %>">
     <% end %>
 
     <%= csrf_meta_tags %>
@@ -42,7 +42,7 @@
 
     <%# Enable Turbo morph refresh so broadcasts_refreshes updates pages in place
         (no full reload) and preserves scroll position. %>
-    <meta name="turbo-refresh-method" content="morph">
+    <meta name="turbo-refresh-method" content="<%= content_for(:turbo_refresh_method).presence || "morph" %>">
     <meta name="turbo-refresh-scroll" content="preserve">
 
     <%= yield :head %>
@@ -107,23 +107,7 @@
     <%= javascript_importmap_tags %>
 
     <%# JSON-LD Structured Data %>
-    <%= content_for?(:json_ld) ? yield(:json_ld) : tag.script(
-      {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "MySigner",
-        "description": meta_description(content_for(:description).presence),
-        "url": "https://mysigner.dev",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "macOS, Linux, Windows",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        }
-      }.to_json.html_safe,
-      type: "application/ld+json"
-    ) %>
+    <%= content_for?(:json_ld) ? yield(:json_ld) : software_application_json_ld %>
   </head>
 
   <body class="flex flex-col min-h-screen" data-user-id="<%= current_user&.id || 'anon' %>">

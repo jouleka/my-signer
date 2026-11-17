@@ -3,6 +3,7 @@
 <% app = local_assigns[:app] %>
 <% return unless checklist %>
 <% read_only = local_assigns.fetch(:read_only, @organization&.entitlements&.release_checklist_read_only?) %>
+<% read_only ||= !policy(checklist).update? %>
 <% release_id = app.is_a?(AppleApp) ? "apple_app_#{app.id}" : "android_app_#{app.id}" %>
 <% interactive_items = (checklist.items || []) + (checklist.custom_items || []) %>
 <% auto_items = checklist.respond_to?(:auto_detected_items) ? Array(checklist.auto_detected_items) : [] %>
@@ -22,12 +23,10 @@
       <span class="<%= card_title_classes %>">Pre-Submission Checklist</span>
     </div>
     <div class="flex items-center gap-2">
-      <% if checklist.ready_for_submission? %>
-        <span class="badge badge-sm badge-success gap-1">
+        <span data-release-checklist-target="readyBadge" class="badge badge-sm badge-success gap-1 <%= 'hidden' unless checklist.ready_for_submission? %>">
           <i class="fa-solid fa-check text-[0.5rem]"></i> Ready
         </span>
-      <% end %>
-      <span class="inline-flex items-center text-[0.625rem] font-semibold tabular-nums px-[0.4rem] py-[0.1rem] rounded bg-base-content/[0.04] text-base-content/30" data-release-checklist-target="progressText">
+      <span class="inline-flex items-center text-[0.625rem] font-semibold tabular-nums px-[0.4rem] py-[0.1rem] rounded bg-base-content/[0.04] text-base-content/30" data-release-checklist-target="progressPercent">
         <%= checklist.completion_percentage %>%
       </span>
     </div>
@@ -49,6 +48,8 @@
       </span>
     <% end %>
   </div>
+
+  <p data-release-checklist-target="error" role="alert" class="px-5 py-3 text-sm text-error <%= 'hidden' unless local_assigns[:error] %>"><%= local_assigns[:error] %></p>
 
   <%# Checklist items (default + custom) %>
   <div class="flex flex-col">
@@ -83,13 +84,13 @@
     <div class="p-5 border-t border-base-content/5">
       <% if read_only %>
         <div class="flex items-center gap-2">
-          <span class="<%= hint_text_classes %>">Custom checklist items</span>
-          <%= pro_badge_html %>
+          <span class="<%= hint_text_classes %>">Checklist is read only.</span>
+          <%= pro_badge_html if @organization.entitlements.release_checklist_read_only? %>
         </div>
       <% else %>
         <form action="<%= add_custom_item_organization_release_release_checklist_path(@organization, release_id, checklist) %>"
               method="post"
-              class="flex gap-2 items-center">
+              class="flex gap-2 items-center flex-wrap">
           <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
           <input type="text" name="label" placeholder="Add a custom checklist item..." class="<%= input_field_classes %> flex-1" required>
           <label class="flex items-center gap-2 text-xs whitespace-nowrap">

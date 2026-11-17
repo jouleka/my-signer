@@ -437,6 +437,7 @@ RSpec.describe ReleaseNote, type: :model do
     end
 
     it "applies translations to other locale store listings" do
+      create(:store_listing, organization: organization, listable: apple_app, locale: "ja")
       note = create(:release_note, :with_translations,
         organization: organization,
         listable: apple_app,
@@ -643,8 +644,8 @@ RSpec.describe ReleaseNote, type: :model do
         expect(note).to be_reviewed
       end
 
-      it "#approved? returns true when reviewed with no comment" do
-        note = build(:release_note, reviewed_at: Time.current, review_comment: nil)
+      it "#approved? uses an explicit approval decision" do
+        note = build(:release_note, reviewed_at: Time.current, review_decision: "approved", review_comment: nil)
         expect(note).to be_approved
       end
 

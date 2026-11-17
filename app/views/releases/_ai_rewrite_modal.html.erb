@@ -61,7 +61,7 @@
         data: { release_note_rewrite_target: "form",
                 action: "submit->release-note-rewrite#submit turbo:submit-end->release-note-rewrite#handleSubmitEnd" } do |f| %>
       <label class="<%= label_form_classes %> mb-1.5">Raw commit messages or notes</label>
-      <textarea name="raw_input"
+      <textarea name="raw_input" required
                 class="<%= textarea_field_classes %> font-mono text-xs"
                 rows="10"
                 placeholder="- 1234abc Fix login bug&#10;- 5678def Add dark mode toggle&#10;- 9abc012 Improve sync performance"

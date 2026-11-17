@@ -22,12 +22,12 @@ class HomeController < ApplicationController
     return unless @organization
 
     # Sync state and credentials
-    @has_creds = @organization.app_store_connect_credentials.active.exists?
-    @last_cred = @organization.app_store_connect_credentials.order(last_synced_at: :desc).first
+    @last_cred = @organization.app_store_connect_credentials.active.first
+    @has_creds = @last_cred.present?
     @sync_running = sync_lock_present?(@organization.id)
 
-    @android_has_creds = @organization.google_play_credentials.active.exists?
-    @android_last_cred = @organization.google_play_credentials.order(last_synced_at: :desc).first
+    @android_last_cred = @organization.google_play_credentials.active.first
+    @android_has_creds = @android_last_cred.present?
     @android_sync_running = gp_sync_lock_present?(@organization.id)
 
     # API tokens (for CLI setup)
@@ -267,35 +267,7 @@ class HomeController < ApplicationController
     # 5. Screenshot studio count
     @screenshot_projects_count = @organization.screenshot_projects.count
 
-    # 6. Analytics overview (last 30 days vs previous 30 days)
-    analytics_scope = @organization.app_analytics_snapshots.last_n_days(30)
-    prev_analytics_scope = @organization.app_analytics_snapshots
-      .where(snapshot_date: 60.days.ago.to_date..30.days.ago.to_date)
-
-    current_downloads = analytics_scope.sum(:total_downloads)
-    prev_downloads = prev_analytics_scope.sum(:total_downloads)
-    current_impressions = analytics_scope.sum(:impressions)
-    prev_impressions = prev_analytics_scope.sum(:impressions)
-    current_crash_rate = analytics_scope.where.not(crash_rate: nil).average(:crash_rate)&.round(2)
-    prev_crash_rate = prev_analytics_scope.where.not(crash_rate: nil).average(:crash_rate)&.round(2)
-    current_conversion = analytics_scope.where.not(conversion_rate: nil).average(:conversion_rate)&.round(1)
-    prev_conversion = prev_analytics_scope.where.not(conversion_rate: nil).average(:conversion_rate)&.round(1)
-
-    @analytics_data = {
-      downloads: current_downloads,
-      downloads_trend: trend_direction(current_downloads, prev_downloads),
-      downloads_change: pct_change(current_downloads, prev_downloads),
-      impressions: current_impressions,
-      impressions_trend: trend_direction(current_impressions, prev_impressions),
-      impressions_change: pct_change(current_impressions, prev_impressions),
-      crash_rate: current_crash_rate,
-      crash_rate_trend: trend_direction(prev_crash_rate, current_crash_rate), # Inverted: lower is better
-      crash_rate_change: pct_change(current_crash_rate, prev_crash_rate),
-      conversion_rate: current_conversion,
-      conversion_trend: trend_direction(current_conversion, prev_conversion),
-      conversion_change: pct_change(current_conversion, prev_conversion),
-      has_data: analytics_scope.exists?
-    }
+    @analytics_data = Dashboard::AnalyticsSummary.new(@organization).to_h
   end
 
   def computed_status_for_asv(version)
@@ -313,10 +285,5 @@ class HomeController < ApplicationController
     diff = current.to_f - previous.to_f
     return :stable if diff.abs < 0.05
     diff > 0 ? :up : :down
-  end
-
-  def pct_change(current, previous)
-    return nil if current.nil? || previous.nil? || previous.to_f.zero?
-    (((current.to_f - previous.to_f) / previous.to_f) * 100).round(1)
   end
 end

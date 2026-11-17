@@ -462,13 +462,13 @@ RSpec.describe ReleaseChecklist, type: :model do
       expect(checklist_without_app.auto_detected_items).to eq([])
     end
 
-    it "returns empty array and logs warning on error" do
+    it "returns a blocking issue and logs warning when readiness cannot be checked" do
       allow_any_instance_of(ReleaseChecklist::AutoDetector).to receive(:detect).and_raise(StandardError, "boom")
       expect(Rails.logger).to receive(:warn).with(/auto_detected_items failed/)
 
       # Reset memoization with a fresh instance
       result = checklist.auto_detected_items
-      expect(result).to eq([])
+      expect(result).to include(hash_including("key" => "auto_check_failed", "required" => true))
     end
 
     it "memoizes the result" do

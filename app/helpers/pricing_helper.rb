@@ -1,6 +1,23 @@
 module PricingHelper
   SUPPORT_EMAIL = "support@mysigner.dev".freeze
 
+  # Rendered on /pricing (pricing/_faq) and emitted as FAQPage JSON-LD there,
+  # so the structured data always matches the visible content.
+  PRICING_FAQS = [
+    { q: "What happens when my trial ends?",
+      a: "Your account automatically downgrades to Free. We never charge you without explicit opt-in." },
+    { q: "Can I switch plans mid-month?",
+      a: "Yes — upgrades apply immediately with prorated charges. Downgrades take effect at your next renewal so you keep access to what you've already paid for." },
+    { q: "Is there a discount for non-profits or students?",
+      a: "Reach out to support@mysigner.dev — we offer discounts case-by-case." },
+    { q: "How does seat billing work on Team?",
+      a: "Team includes up to 10 seats per organization at the base price. We'll reach out directly if you need more." },
+    { q: "Which payment methods do you accept?",
+      a: "All major credit/debit cards, Apple Pay, Google Pay, and region-specific methods via Paddle. Wire transfer available on annual Team plans." },
+    { q: "Can I self-host or use on-prem?",
+      a: "Not today. MySigner is a hosted SaaS. Reach out if on-prem is a hard requirement and we'll share roadmap details." }
+  ].freeze
+
   def pricing_badge_class(tier)
     case tier.to_s
     when "team"

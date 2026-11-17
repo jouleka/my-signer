@@ -11,7 +11,7 @@
     method: :post, class: btn_primary_sm_classes,
     form: { class: "inline" },
     disabled: !can_apply,
-    data: { turbo_confirm: "Apply this release note to your store listings?\n\nThis copies the content (and all translations) onto each locale's listing. You can push to the store afterwards." } do %>
+    data: { locale_switcher_target: "applyButton", turbo_confirm: "Apply this release note to your store listings?\n\nThis copies the content (and all translations) onto each locale's listing. You can push to the store afterwards." } do %>
   <i class="fa-solid fa-circle-up"></i>
   Apply to Listings
 <% end %>

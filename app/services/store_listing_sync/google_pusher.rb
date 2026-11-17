@@ -14,11 +14,10 @@ module StoreListingSync
 
     # @return [Hash] Push result with :status, :pushed_fields, :skipped_fields
     #
-    # NOTE: Google Play allows only ONE open edit per service account at a time.
-    # If multiple push jobs run concurrently for the same app, the second
-    # create_edit call will invalidate the first. Consider serializing pushes
-    # per package_name if concurrent execution is possible.
+    # The web batch job serializes locales: committing one Google Play edit
+    # invalidates other open edits for that app.
     def push!
+      snapshot = @store_listing.push_snapshot
       client = GooglePlay::Client.new(credential: @credential)
       listings_service = GooglePlay::Listings.new(client)
 
@@ -26,9 +25,9 @@ module StoreListingSync
       @skipped_fields = []
 
       %w[app_name short_description description].each do |field|
-        if @store_listing.send(field).present?
+        if !@store_listing.value_for_store(field).nil?
           @pushed_fields << field
-        elsif @store_listing.send(field).nil? && field != "app_name"
+        else
           # nil fields are not sent to the store, so they may still have old values
           @skipped_fields << field
         end
@@ -37,9 +36,9 @@ module StoreListingSync
       listings_service.update(
         @android_app.package_name,
         locale: @store_listing.locale,
-        title: @store_listing.app_name,
-        short_description: @store_listing.short_description,
-        full_description: @store_listing.description
+        title: @store_listing.value_for_store(:app_name),
+        short_description: @store_listing.value_for_store(:short_description),
+        full_description: @store_listing.value_for_store(:description)
       )
 
       # Push release notes (whats_new) via the tracks/releases API.
@@ -47,16 +46,16 @@ module StoreListingSync
       # releases, not on store listings.
       push_release_notes!(client)
 
-      @store_listing.update!(
-        sync_status: "synced",
+      @store_listing.finish_push!({
+        sync_status: @skipped_fields.empty? ? "synced" : "partially_synced",
         last_synced_at: Time.current,
-        push_status: "success",
+        push_status: @skipped_fields.empty? ? "success" : "partial_success",
         push_error: nil,
         push_fields_skipped: @skipped_fields,
         last_pushed_at: Time.current
-      )
+      }, snapshot: snapshot)
 
-      { status: "success", pushed_fields: @pushed_fields, skipped_fields: @skipped_fields }
+      { status: @store_listing.push_status, pushed_fields: @pushed_fields, skipped_fields: @skipped_fields }
     end
 
     private

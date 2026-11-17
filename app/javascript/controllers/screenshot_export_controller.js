@@ -51,7 +51,7 @@ export default class extends Controller {
     const editorController = this.application.getControllerForElementAndIdentifier(editorElement, "screenshot-editor")
     if (!editorController) return
 
-    const settings = editorController.getCurrentSettings()
+    const settings = editorController.getProjectSettings({ includePreviewVariant: true })
     const sceneDataTargets = editorController.getSceneDataTargets()
     const imageCache = editorController.getImageCache()
 
@@ -138,12 +138,12 @@ export default class extends Controller {
             const sceneSettings = { ...settings, caption_text: caption, subtitle_text: subtitle, ...sceneOverrides }
 
             // Inject panoramic slice info for this scene
-            if (settings.background_type === "panoramic") {
+            if (sceneSettings.background_type === "panoramic") {
               sceneSettings.panoramic_scene_index = sceneIdx
               sceneSettings.panoramic_total_scenes = sceneDataTargets.length
             }
             // Use the preset's matching device frame for correct dimensions
-            if (settings.device_frame && settings.device_frame !== "none" && size.device_frame) {
+            if (sceneSettings.device_frame && sceneSettings.device_frame !== "none" && size.device_frame) {
               sceneSettings.device_frame = size.device_frame
             }
             const canvas = await editorController.renderAtSize(image, size.width, size.height, sceneSettings)
@@ -154,13 +154,13 @@ export default class extends Controller {
             )
 
             // Determine folder path based on layout format
-            const fileName = `screenshot_${String(position).padStart(2, "0")}.png`
+            // A preset can contain several resolutions. Include dimensions so
+            // ZIP entries for the same scene never replace each other.
+            const fileName = `screenshot_${String(position).padStart(2, "0")}_${size.width}x${size.height}.png`
 
             if (useFastlaneLayout) {
               // Fastlane layout: screenshots/{locale}/{fileName}
-              // When multiple presets are selected, add a device subfolder to
-              // prevent filename collisions (all presets share the same
-              // position-based filename).
+              // When multiple presets are selected, group files by device.
               const localeFolder = locale || "en-US"
               if (presetKeys.length > 1) {
                 const deviceFolder = this.folderForPreset(size.preset)

@@ -20,7 +20,9 @@ Rails.application.configure do
     # App Store / Play Store CDNs with unpredictable subdomains.
     policy.img_src     :self, :https, :data, "blob:"
     policy.object_src  :none
-    policy.script_src  :self, "'strict-dynamic'", "https://cdn.paddle.com"
+    # challenges.cloudflare.com: Turnstile api.js (loaded by the turnstile
+    # Stimulus controller) on sign-in/sign-up/password/contact forms.
+    policy.script_src  :self, "'strict-dynamic'", "https://cdn.paddle.com", "https://challenges.cloudflare.com"
     # `unsafe-inline` stays for DaisyUI/Tailwind runtime custom-property
     # styles; cdnjs is explicit for Font Awesome, cdn.paddle.com for the
     # Paddle.js checkout stylesheet. Dropped the `https:` wildcard that
@@ -31,7 +33,7 @@ Rails.application.configure do
     # :self). Dropped the `https:` catch-all that let any compromised
     # script exfiltrate to any HTTPS endpoint.
     policy.connect_src :self, "https://*.paddle.com", "https://cloudflareinsights.com"
-    policy.frame_src   :self, "https://*.paddle.com", "blob:"
+    policy.frame_src   :self, "https://*.paddle.com", "https://challenges.cloudflare.com", "blob:"
     policy.frame_ancestors :self
     # OmniAuth 302-redirects /users/auth/<provider> to the provider's
     # authorize URL; form-action is re-evaluated against the redirect

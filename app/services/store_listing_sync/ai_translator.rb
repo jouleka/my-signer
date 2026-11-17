@@ -29,18 +29,18 @@ module StoreListingSync
       @base_listing = base_listing
       @target_listing = target_listing
       @fields = fields
-      @client = build_client
     end
 
     # @return [Hash] Translated field values
     def translate!
       translatable = build_translatable_fields
-      return {} if translatable.empty?
+      raise "Translation failed: source fields are empty" if translatable.empty?
+      original = @target_listing.attributes.slice(*translatable.keys.map(&:to_s))
 
       limits = build_limits
       prompt = build_prompt(translatable, limits)
 
-      response = @client.chat(
+      response = build_client.chat(
         parameters: {
           model: "gpt-5-nano",
           messages: [
@@ -53,12 +53,21 @@ module StoreListingSync
       )
 
       content = response.dig("choices", 0, "message", "content")
-      parsed = JSON.parse(content)
+      parsed = JSON.parse(content.to_s)
 
       # Apply translations to target listing
-      apply_translations!(parsed)
-
-      parsed
+      keys = translatable.keys.map(&:to_s)
+      unless parsed.is_a?(Hash) && keys.all? { |key| parsed[key].is_a?(String) && parsed[key].present? }
+        raise "Translation failed: incomplete AI response"
+      end
+      translated = parsed.slice(*keys)
+      @target_listing.with_lock do
+        unless @target_listing.attributes.slice(*keys) == original
+          raise "Translation failed: listing changed while translating. Your edits were kept; please try again."
+        end
+        apply_translations!(translated)
+      end
+      translated
     rescue JSON::ParserError => e
       Rails.logger.error("AiTranslator: Failed to parse response - #{e.message}")
       raise "Translation failed: could not parse AI response"
@@ -84,9 +93,9 @@ module StoreListingSync
     # `fields: [:app_name, ...]` explicitly.
     def build_translatable_fields
       all_fields = if @target_listing.ios?
-        %i[subtitle keywords description promotional_text whats_new]
+        %i[subtitle keywords description promotional_text]
       else
-        %i[short_description description whats_new]
+        %i[short_description description]
       end
 
       # Explicit fields request — allow app_name if caller passed it in.
@@ -122,10 +131,10 @@ module StoreListingSync
 
       source_data = {}
       fields.each do |field, value|
-        source_data[field.to_s] = value.to_s[0, 500]
+        source_data[field.to_s] = value.to_s
       end
 
-      limit_notes = limits.map { |field, limit| "  #{field}: max #{limit} characters" }.join("\n")
+      limit_notes = limits.map { |field, limit| "  #{field}: max #{limit} #{field == :keywords ? 'bytes' : 'characters'}" }.join("\n")
 
       <<~PROMPT
         Translate the following #{platform} listing fields from #{source_label} to #{target_label}.
@@ -155,7 +164,10 @@ module StoreListingSync
         attrs[field] = self.class.enforce_char_limit(field, value, limits[field])
       end
 
+      raise "Translation failed: translated fields are empty" if attrs.values.any?(&:blank?)
+
       @target_listing.assign_attributes(attrs)
+      @target_listing.metadata = @target_listing.metadata.except("translation_error")
       @target_listing.translation_status = "needs_review"
       @target_listing.save!
     end
@@ -165,14 +177,15 @@ module StoreListingSync
     # text we truncate at the limit. Class method so it's unit-testable without
     # instantiating the whole service.
     def self.enforce_char_limit(field, text, limit)
-      return text if limit.nil? || text.length <= limit
+      length = field == :keywords ? text.bytesize : text.length
+      return text if limit.nil? || length <= limit
 
       if field == :keywords
         terms = text.split(",").map(&:strip).reject(&:empty?)
         kept = []
         terms.each do |t|
           candidate = (kept + [ t ]).join(",")
-          break if candidate.length > limit
+          break if candidate.bytesize > limit
           kept << t
         end
         kept.join(",")

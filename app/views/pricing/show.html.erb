@@ -3,8 +3,13 @@
     All state resolution lives in Pricing::ViewerContext (see app/services/pricing/viewer_context.rb).
 %>
 
-<% content_for(:title) { "Pricing" } %>
-<% content_for(:description) { "Simple, transparent pricing. Start free, upgrade when you're ready." } %>
+<% content_for(:title) { "Pricing: Free, Pro & Team Plans" } %>
+<% content_for(:description) { "MySigner pricing: Free plan, Pro at $12/month and Team at $49/month, or save with yearly billing. 14-day Pro trial, no card required." } %>
+<% content_for(:json_ld) do %>
+  <%= breadcrumb_json_ld([ { name: "Home", url: "/" }, { name: "Pricing" } ]) %>
+  <%= software_application_json_ld %>
+  <%= faq_json_ld(PricingHelper::PRICING_FAQS.map { |item| { question: item[:q], answer: item[:a] } }) %>
+<% end %>
 
 <%# Surface the subscription so the cancellation modal can reference it without an instance-variable dependency %>
 <% current_subscription = @billing_subscription if @billing_subscription.present? && @billing_subscription.effective_tier != "free" %>

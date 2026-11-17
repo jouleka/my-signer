@@ -4,6 +4,7 @@ class ApplicationController < ActionController::Base
 
   include Pundit::Authorization
   include AutoSync
+  include TurnstileProtection
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
   # BYOK revocation surfaces from deep in the credential read path
@@ -60,6 +61,10 @@ class ApplicationController < ActionController::Base
         redirect_back fallback_location: (user_signed_in? ? authenticated_root_path : unauthenticated_root_path), alert: "You are not authorized to perform this action."
       end
       format.json { render json: { error: "forbidden" }, status: :forbidden }
+      format.turbo_stream do
+        render json: { errors: [ "You are not authorized to perform this action. Reload to check the current release state." ] },
+          content_type: "application/json", status: :forbidden
+      end
     end
   end
 

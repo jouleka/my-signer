@@ -58,11 +58,9 @@ export default class extends Controller {
     }
   }
 
-  // Fired after Turbo finishes the form submission. On success the controller's
-  // turbo_stream response has already swapped the AI Rewrite button for a
-  // "Rewriting…" pill; we just need to close the modal and reset state so the
-  // next open is clean. On failure, restore the submit button.
-  handleSubmitEnd(event) {
+  // Success redirects to the persisted pending state. On failure keep the
+  // input and show the server's error so the user can retry.
+  async handleSubmitEnd(event) {
     const success = event?.detail?.success
     if (success) {
       const dialog = this.element.closest("dialog")
@@ -70,6 +68,12 @@ export default class extends Controller {
       if (this.hasFormTarget) this.formTarget.reset()
     }
     this.restore()
+    if (!success && this.hasStatusAreaTarget) {
+      let detail = "Could not start the rewrite. Please try again."
+      try { detail = (await event.detail.fetchResponse.response.clone().json()).errors?.[0] || detail } catch {}
+      this.statusAreaTarget.textContent = detail
+      this.statusAreaTarget.classList.add("text-error")
+    }
   }
 
   async fetchFromGit(event) {

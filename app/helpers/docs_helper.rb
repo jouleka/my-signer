@@ -1,6 +1,42 @@
 # frozen_string_literal: true
 
 module DocsHelper
+  # Appended to short frontmatter descriptions so every docs page gets a
+  # meta description long enough to be useful in search results.
+  DOCS_DESCRIPTION_SUFFIXES = {
+    "commands" => "MySigner CLI reference for building, signing and shipping iOS and Android apps.",
+    "dashboard" => "MySigner web dashboard documentation for iOS and Android releases.",
+    "guides" => "Step-by-step MySigner guide for shipping iOS and Android apps.",
+    "quickstart" => "Install the MySigner CLI and ship iOS and Android apps from your terminal."
+  }.freeze
+  DOCS_DESCRIPTION_MIN_LENGTH = 90
+
+  # Page <title> (before the " | MySigner" suffix). Articles and comparisons
+  # already have long, descriptive titles, so the category is omitted there.
+  def docs_page_title(title, category_slug, category)
+    return title if %w[blog compare].include?(category_slug)
+
+    if category_slug == "commands"
+      # Command pages are titled with the bare command name ("upload").
+      return "mysigner #{title} Command — CLI Reference" if title.match?(/\A[a-z][a-z-]*\z/)
+
+      return "#{title} — CLI Reference"
+    end
+
+    "#{title} — #{category[:title]}"
+  end
+
+  def docs_meta_description(frontmatter, title, category_slug, category)
+    description = frontmatter["description"].to_s.strip
+    if description.blank?
+      return "#{title} — MySigner #{category[:title].downcase} documentation for iOS and Android app signing."
+    end
+
+    suffix = DOCS_DESCRIPTION_SUFFIXES[category_slug]
+    return description if suffix.nil? || description.length >= DOCS_DESCRIPTION_MIN_LENGTH
+
+    "#{description.delete_suffix('.')}. #{suffix}"
+  end
   def docs_breadcrumbs(category, page_title = nil)
     items = [
       { label: "Documentation", path: docs_path }

@@ -1,6 +1,5 @@
-<% seo_title = @category_slug == "commands" ? "#{@title} Command" : @title %>
-<% content_for(:title) { "#{seo_title} — #{@category[:title]}" } %>
-<% content_for(:description) { @frontmatter["description"].presence || "#{@title} — MySigner #{@category[:title].downcase} documentation for iOS and Android app signing." } %>
+<% content_for(:title) { docs_page_title(@title, @category_slug, @category) } %>
+<% content_for(:description) { docs_meta_description(@frontmatter, @title, @category_slug, @category) } %>
 <% content_for(:json_ld) do %>
   <%= breadcrumb_json_ld([
     { name: "Home", url: "/" },
@@ -9,8 +8,8 @@
     { name: @title }
   ]) %>
   <%= tech_article_json_ld(
-    title: "#{@title} — #{@category[:title]} | MySigner",
-    description: @frontmatter["description"].presence || "#{@title} — MySigner #{@category[:title].downcase} documentation.",
+    title: @title,
+    description: docs_meta_description(@frontmatter, @title, @category_slug, @category),
     url: "/docs/#{@category_slug}/#{@slug}",
     category: @category[:title],
     date_modified: @file_mtime

@@ -101,6 +101,8 @@
             </label>
           <% end %>
 
+          <%= render "shared/turnstile", turnstile_action: "login" %>
+
           <button type="submit" class="btn-primary-ms mt-2">
             <i class="fa-solid fa-right-to-bracket text-[11px]"></i>
             <%= t('.submit') %>

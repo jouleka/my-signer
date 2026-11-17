@@ -89,6 +89,11 @@ class GooglePlayCredential < ApplicationRecord
       return
     end
 
+    unless data.is_a?(Hash)
+      errors.add(:service_account_json, "must be a JSON object")
+      return
+    end
+
     required_keys = %w[type project_id private_key client_email client_id]
     missing = required_keys - data.keys
     if missing.any?

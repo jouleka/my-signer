@@ -2,6 +2,7 @@
     Edits the StoreListing for the current locale.
     The whats_new field is read-only here — it's owned by the What's New tab. %>
 
+<% can_edit = policy(@organization).manage_resources? %>
 <% paired_divider = "text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-base-content/35 pt-5 pb-2 border-t border-base-content/[0.06] mt-1 first-of-type:border-t-0 first-of-type:mt-0 first-of-type:pt-2" %>
 
 <%# Live-refresh subscription: when StoreListingTranslationJob completes and
@@ -25,10 +26,12 @@
           Create an initial draft listing for the primary locale, then sync from the store
           to import existing metadata or start from scratch.
         </p>
+        <% if can_edit %>
         <%= button_to create_listing_organization_release_path(@organization, params[:id], locale: @primary_locale),
             method: :post, class: btn_primary_classes,
             form: { class: "inline" } do %>
           <i class="fa-solid fa-plus"></i> Create Initial Listing
+        <% end %>
         <% end %>
       </div>
     </div>
@@ -37,11 +40,11 @@
   <% base_listing = @listings_by_locale[@primary_locale] %>
   <% has_reference = base_listing && base_listing.id != @store_listing.id %>
 
-  <section class="flex flex-col gap-6" data-controller="store-listing-editor">
+  <section id="store-listing-editor-<%= @store_listing.id %>" class="flex flex-col gap-6" data-controller="store-listing-editor">
 
     <%# ── Locale switcher + Add Locale ── %>
-    <div class="flex items-end gap-3">
-      <div class="flex gap-[0.125rem] border-b border-base-content/[0.06] overflow-x-auto flex-1 scrollbar-none">
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="flex gap-[0.125rem] border-b border-base-content/[0.06] overflow-x-auto flex-1 min-w-0 basis-full sm:basis-auto scrollbar-none">
         <% @locales.each do |locale| %>
           <% listing = @listings_by_locale[locale] %>
           <% is_active = locale == @current_locale %>
@@ -61,17 +64,18 @@
       <div class="flex items-center gap-2">
         <%= render "releases/ai_translate_listing_button", has_reference: has_reference %>
 
-        <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="<%= btn_ghost_sm_classes %>">
+        <% if can_edit %>
+        <details class="dropdown dropdown-end">
+          <summary class="<%= btn_ghost_sm_classes %>">
             <i class="fa-solid fa-plus"></i> Add Locale
-          </div>
+          </summary>
           <div tabindex="0" class="dropdown-content z-20 bg-base-100 border border-base-200 rounded-xl shadow-2xl p-4 w-72 mt-2">
             <%= form_with url: add_locale_organization_release_path(@organization, params[:id]),
                 method: :post, class: "space-y-3" do |f| %>
               <label class="<%= label_form_classes %>">Select locale to add</label>
               <select name="locale" class="<%= input_field_classes %>">
                 <option value="">Choose locale...</option>
-                <% available_locales = (defined?(ScreenshotProject::APP_STORE_LOCALES) ? ScreenshotProject::APP_STORE_LOCALES : []) - @locales %>
+                <% available_locales = StoreListing.supported_locales(@app.class.name) - @locales %>
                 <% available_locales.each do |loc| %>
                   <option value="<%= loc %>"><%= loc %></option>
                 <% end %>
@@ -81,16 +85,31 @@
               </button>
             <% end %>
           </div>
-        </div>
+        </details>
+        <% end %>
       </div>
     </div>
+
+    <% if can_edit %>
+    <div class="flex items-center gap-3" role="status" aria-live="polite">
+      <span data-store-listing-editor-target="savingIndicator" class="text-xs text-success/80">Saved</span>
+      <button type="button" class="<%= btn_ghost_sm_classes %>" data-action="store-listing-editor#flushSave">Save</button>
+    </div>
+
+    <% end %>
+
+    <% if @store_listing.translation_status == "failed" %>
+      <div class="<%= sn_error_classes %>" role="alert">
+        Translation failed: <%= @store_listing.metadata["translation_error"] %>
+      </div>
+    <% end %>
 
     <%# Sync state strip — shows the persistent state of THIS locale's listing
         (synced / modified / draft / conflict). Push state (pushing / failed /
         success) is rendered separately by the store-listing-sync Stimulus
         controller into #sync-status at the top of the page, so we don't show
         push banners here to avoid duplicate notifications. %>
-    <% unless @store_listing.push_status == "pushing" %>
+    <% unless @store_listing.push_in_progress? || (@store_listing.sync_status == "partially_synced" && @push_status&.dig(:push_status) == "partial_success") %>
       <%= render "releases/listing_sync_status",
           status: @store_listing.sync_status,
           store_listing: @store_listing %>
@@ -126,6 +145,7 @@
                 store_listing_editor_target: "form",
                 action: "input->store-listing-editor#scheduleAutosave focusout->store-listing-editor#flushOnBlur"
               }) do |f| %>
+          <fieldset <%= "disabled" unless can_edit %> class="min-w-0">
 
           <% if has_reference %>
             <%# ═══ PAIRED LAYOUT: reference + edit side-by-side ═══ %>
@@ -145,14 +165,6 @@
                     <i class="fa-solid fa-pen text-xs opacity-50"></i>
                     Editing: <%= @store_listing.locale %>
                   </div>
-                  <%# Autosave indicator — flips Unsaved → Saving… → Saved as
-                      the user types. Saving is debounced 900ms via the
-                      store-listing-editor controller. %>
-                  <span data-store-listing-editor-target="savingIndicator"
-                        class="inline-flex items-center gap-1.5 text-[0.625rem] text-success/80">
-                    <i class="fa-regular fa-circle-check"></i>
-                    <span>Saved</span>
-                  </span>
                 </div>
               </div>
 
@@ -255,6 +267,7 @@
                 </div>
               </div>
 
+              <% if @store_listing.ios? %>
               <%# ── Links (edit-only, full width) ── %>
               <div class="<%= paired_divider %>">Links</div>
 
@@ -286,6 +299,7 @@
                 </div>
               </div>
 
+              <% end %>
             </div>
 
           <% else %>
@@ -337,6 +351,7 @@
               </div>
             </div>
 
+            <% if @store_listing.ios? %>
             <div class="py-5 border-t border-base-content/[0.06]">
               <h3 class="<%= label_uppercase_classes %> mb-4">Links</h3>
               <%= render "releases/form_field", f: f, field: :support_url, label: "Support URL",
@@ -346,6 +361,7 @@
               <%= render "releases/form_field", f: f, field: :privacy_policy_url, label: "Privacy Policy URL",
                   listing: @store_listing, type: :input %>
             </div>
+            <% end %>
           <% end %>
 
           <% if @store_listing.errors.any? %>
@@ -366,6 +382,7 @@
             </div>
           <% end %>
 
+          </fieldset>
         <% end %>
 
       </div>

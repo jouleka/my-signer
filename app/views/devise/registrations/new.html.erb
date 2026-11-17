@@ -151,6 +151,8 @@
             </span>
           </label>
 
+          <%= render "shared/turnstile", turnstile_action: "signup" %>
+
           <button type="submit" class="btn-primary-ms" data-form-validator-target="submit">
             <i class="fa-solid fa-arrow-right text-[11px]"></i>
             <%= t('.submit') %>

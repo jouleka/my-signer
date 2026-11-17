@@ -21,12 +21,6 @@ export default class extends Controller {
   ]
   static values  = { locale: String }
 
-  connect() {
-    // Sync once on connect so the hidden textarea reflects the visible UI
-    // state (safe even if server-side value is already correct).
-    this._serialize(false)
-  }
-
   // ── Mode switching (Template ⇄ Freeform) ──
 
   switchToTemplate(event) {

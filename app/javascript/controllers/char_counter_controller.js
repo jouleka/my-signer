@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["input", "count", "display", "bar", "track"]
-  static values = { limit: Number }
+  static values = { limit: Number, bytes: Boolean }
 
   connect() {
     this.update()
@@ -11,7 +11,9 @@ export default class extends Controller {
   update() {
     if (!this.hasInputTarget || !this.hasCountTarget) return
 
-    const length = this.inputTarget.value.length
+    const length = this.bytesValue
+      ? new TextEncoder().encode(this.inputTarget.value).length
+      : Array.from(this.inputTarget.value).length
     const limit = this.limitValue
 
     this.countTarget.textContent = length

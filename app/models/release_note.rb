@@ -39,7 +39,8 @@ class ReleaseNote < ApplicationRecord
   BUILD_NUMBER_FORMAT = /\A[0-9A-Za-z.\-]+\z/
 
   before_validation :normalize_locale
-  before_save :auto_render_text, if: -> { template_data_changed? && rendered_text.blank? }
+  before_validation :auto_render_text, if: -> { template_data_changed? && (rendered_text.blank? || !rendered_text_changed?) }
+  before_save :invalidate_content_state, if: -> { persisted? && content_changed? }
   before_save :set_applied_timestamp, if: -> { status_changed? && status == "applied" }
   before_save :set_published_timestamp, if: -> { status_changed? && status == "published" }
 
@@ -55,6 +56,9 @@ class ReleaseNote < ApplicationRecord
     allow_blank: true
   validate :rendered_text_within_char_limit
   validate :template_data_structure
+  validate :translations_structure
+  validate :reviewed_content_is_frozen
+  validates :review_decision, inclusion: { in: %w[approved rejected] }, allow_nil: true
 
   scope :for_app, ->(listable) { where(listable: listable) }
   scope :drafts, -> { where(status: "draft") }
@@ -101,22 +105,26 @@ class ReleaseNote < ApplicationRecord
   end
 
   def apply_to_store_listings!
-    transaction do
+    with_lock do
+      raise "Cannot apply while this release note needs approval." if review_required?
+      raise "Cannot apply a #{status} release note." unless content_editable?
+      raise "Write release notes before applying them." if rendered_text.blank?
+      raise "Wait for the AI operation to finish before applying." if ai_pending?
       # Apply rendered_text to base locale StoreListing
       base_listing = organization.store_listings
         .where(listable: listable, locale: locale)
         .first
 
-      if base_listing
-        base_listing.update!(whats_new: rendered_text)
-      end
+      raise "Create a store listing for #{locale} before applying." unless base_listing
+      base_listing.update!(whats_new: rendered_text)
 
       # Apply translations to other locale StoreListings
       translations.each do |target_locale, translated_text|
         listing = organization.store_listings
           .where(listable: listable, locale: target_locale)
           .first
-        listing&.update!(whats_new: translated_text)
+        raise "Create a store listing for #{target_locale} before applying." unless listing
+        listing.update!(whats_new: translated_text)
       end
 
       update!(status: "applied", applied_at: Time.current)
@@ -162,32 +170,30 @@ class ReleaseNote < ApplicationRecord
   end
 
   def submit_for_review!(user:)
-    raise "Cannot submit: already #{status}" unless status == "draft"
-    update!(
-      status: "pending_review",
-      submitted_for_review_at: Time.current
-    )
+    with_lock do
+      raise "Cannot submit: already #{status}" unless status == "draft"
+      raise "Write release notes before submitting for review." if rendered_text.blank?
+      raise "Wait for the AI operation to finish before submitting for review." if ai_pending?
+      update!(status: "pending_review", submitted_for_review_at: Time.current,
+        review_decision: nil, reviewed_by: nil, reviewed_at: nil, review_comment: nil)
+    end
   end
 
   def approve_review!(user:, comment: nil)
-    raise "Cannot approve: status is #{status}, not pending_review" unless status == "pending_review"
-    update!(
-      status: "draft", # back to draft so it can be applied
-      reviewed_by: user,
-      reviewed_at: Time.current,
-      review_comment: comment.presence
-    )
+    with_lock do
+      raise "Cannot approve: status is #{status}, not pending_review" unless status == "pending_review"
+      update!(status: "draft", review_decision: "approved", reviewed_by: user,
+        reviewed_at: Time.current, review_comment: comment.to_s.strip.presence)
+    end
   end
 
   def reject_review!(user:, comment:)
-    raise "Cannot reject: status is #{status}, not pending_review" unless status == "pending_review"
-    raise "Rejection requires a comment" if comment.to_s.strip.blank?
-    update!(
-      status: "draft",
-      reviewed_by: user,
-      reviewed_at: Time.current,
-      review_comment: comment
-    )
+    with_lock do
+      raise "Cannot reject: status is #{status}, not pending_review" unless status == "pending_review"
+      raise "Rejection requires a comment" if comment.to_s.strip.blank?
+      update!(status: "draft", review_decision: "rejected", reviewed_by: user,
+        reviewed_at: Time.current, review_comment: comment.to_s.strip)
+    end
   end
 
   def pending_review?
@@ -199,11 +205,37 @@ class ReleaseNote < ApplicationRecord
   end
 
   def approved?
-    reviewed? && review_comment.blank?
+    reviewed? && review_decision == "approved"
   end
 
   def rejected?
-    reviewed? && review_comment.present? && status == "draft"
+    reviewed? && review_decision == "rejected" && status == "draft"
+  end
+
+  # The review workflow only applies while the organization has more than one
+  # member. A solo org (e.g. after teammates leave) must not be deadlocked by a
+  # note left in pending_review or rejected, since nobody can approve it.
+  def review_workflow_active?
+    organization&.supports_review_workflow? || false
+  end
+
+  def review_required?
+    return false unless review_workflow_active?
+    pending_review? || (submitted_for_review_at.present? && !approved?)
+  end
+
+  # Without an active review workflow a pending_review note behaves as a draft.
+  def content_editable?
+    %w[draft applied].include?(status) || (pending_review? && !review_workflow_active?)
+  end
+
+  def ai_pending?
+    operation = metadata.fetch("ai_operation", {})
+    %w[pending running].include?(operation["status"]) && operation["started_at"].to_s > 1.hour.ago.iso8601
+  end
+
+  def content_snapshot
+    attributes.slice("version_string", "locale", "template_data", "rendered_text", "translations", "status")
   end
 
   private
@@ -214,8 +246,45 @@ class ReleaseNote < ApplicationRecord
   end
 
   def auto_render_text
-    text = render_text_from_template
-    self.rendered_text = text if text.present?
+    return unless template_data.is_a?(Hash) && template_data.values.all? { |items| items.is_a?(Array) && items.all? { |item| item.is_a?(String) } }
+    self.rendered_text = render_text_from_template
+  end
+
+  def content_changed?
+    %w[version_string locale template_data rendered_text translations].any? { |field| will_save_change_to_attribute?(field) }
+  end
+
+  def invalidate_content_state
+    if approved?
+      self.review_decision = nil
+      self.reviewed_by = nil
+      self.reviewed_at = nil
+      self.review_comment = nil
+    end
+    if status == "applied"
+      self.status = "draft"
+      self.applied_at = nil
+    end
+  end
+
+  def reviewed_content_is_frozen
+    if persisted? && status_in_database == "pending_review" && content_changed? && review_workflow_active?
+      errors.add(:base, "Release notes cannot be edited while awaiting review.")
+    end
+  end
+
+  def translations_structure
+    unless translations.is_a?(Hash)
+      errors.add(:translations, "must be a hash")
+      return
+    end
+    translations.each do |target_locale, text|
+      unless target_locale.match?(LOCALE_FORMAT) && target_locale != locale && text.is_a?(String)
+        errors.add(:translations, "must map other valid locales to text")
+        next
+      end
+      errors.add(:translations, "for #{target_locale} is too long (maximum is #{char_limit} characters)") if text.length > char_limit
+    end
   end
 
   def set_applied_timestamp
@@ -235,8 +304,6 @@ class ReleaseNote < ApplicationRecord
   end
 
   def template_data_structure
-    return if template_data.blank? || template_data == {}
-
     unless template_data.is_a?(Hash)
       errors.add(:template_data, "must be a hash")
       return

@@ -1,6 +1,6 @@
 module AppStoreConnect
   class CredentialValidator
-    # Carries the structured trace of all endpoints we tried so callers
+    # Carries the structured validation trace so callers
     # (controller, audit log) can report and store WHY validation failed.
     class ValidationError < StandardError
       attr_reader :trace
@@ -13,7 +13,7 @@ module AppStoreConnect
 
     # Per-endpoint outcome recorded during validation. `outcome` is one of:
     #   :extracted   — endpoint returned 2xx and we got a Team ID from it
-    #   :empty       — endpoint returned 2xx but `data: []` or no Team ID extractable from the payload
+    #   :empty       — endpoint returned 2xx but no bundle prefix was available
     #   :denied      — endpoint returned 401/403 (key role/access doesn't grant this resource)
     #   :http_error  — endpoint returned another HTTP status (404/5xx/etc.) or network error
     Probe = Struct.new(:endpoint, :outcome, :status, :data_count, :error_class, :error_message, keyword_init: true)
@@ -26,100 +26,61 @@ module AppStoreConnect
     end
 
     def validate!
-      client = Client.new(credential: @credential, timeout: @timeout)
-
-      samples = []
-      sources = []
-      trace = []
-
-      # Order: bundleIds first (most reliable — has seedId directly on every
-      # bundle resource). apps + certificates request `include: "team"` so
-      # Apple populates the team relationship in the response, which the
-      # extractors below read.
-      attempts = [
-        [ "bundleIds",    { limit: 1, include: "profiles,team" }, :extract_team_id_from_bundle_ids ],
-        [ "apps",         { limit: 1, include: "team" },          :extract_team_id_from_apps ],
-        [ "certificates", { limit: 1, include: "team" },          :extract_team_id_from_certificates ]
-      ]
-
-      attempts.each do |endpoint, params, extractor|
-        begin
-          body = client.get(endpoint, params: params)
-          samples << body
-          sources << endpoint
-          team_id = send(extractor, body)
-          data_count = Array(body["data"]).size
-
-          if team_id.present?
-            trace << Probe.new(endpoint: endpoint, outcome: :extracted, status: 200, data_count: data_count)
-            return Result.new(team_id: team_id, sources: sources, raw_samples: samples, trace: trace)
-          else
-            trace << Probe.new(endpoint: endpoint, outcome: :empty, status: 200, data_count: data_count)
-          end
-        rescue => e
-          msg = e.message.to_s
-          status = msg.match(/\bHTTP\s+(\d{3})/)&.captures&.first&.to_i
-          outcome = case status
-          when 401, 403 then :denied
-          else
-                      # Apple sometimes returns "FORBIDDEN_ERROR" or
-                      # "NOT_AUTHORIZED" in the body without a stripped status.
-                      # Treat those as :denied too.
-                      msg.match?(/forbidden|not[_\s]authorized|unauthorized/i) ? :denied : :http_error
-          end
-          samples << { "error" => msg, "source" => endpoint }
-          sources << "#{endpoint}:error"
-          trace << Probe.new(
-            endpoint: endpoint, outcome: outcome, status: status,
-            error_class: e.class.name, error_message: sanitize(msg)
-          )
-        end
+      begin
+        client = Client.new(credential: @credential, timeout: @timeout)
+        # Apple exposes seedId on bundleIds. Apps and certificates do not
+        # expose a team relationship, and include=team is not a valid query.
+        body = client.get("bundleIds", params: { limit: 1, "fields[bundleIds]" => "seedId" })
+      rescue => e
+        status = e.message.match(/\bHTTP\s+(\d{3})/)&.captures&.first&.to_i
+        probe = Probe.new(
+          endpoint: "bundleIds", outcome: [ 401, 403 ].include?(status) ? :denied : :http_error,
+          status: status, error_class: e.class.name, error_message: sanitize(e.message)
+        )
+        fail_validation!(probe)
       end
 
-      # All three attempts exhausted without an extractable Team ID.
-      log_failure!(trace)
-      raise ValidationError.new(failure_message(trace), trace: trace)
+      bundles = Array(body["data"])
+      team_id = bundles.filter_map { |bundle| bundle.dig("attributes", "seedId").presence }.first
+      probe = Probe.new(endpoint: "bundleIds", outcome: team_id ? :extracted : :empty,
+        status: 200, data_count: bundles.size)
+      fail_validation!(probe) unless team_id
+
+      Result.new(team_id: team_id, sources: [ "bundleIds" ], raw_samples: [ body ], trace: [ probe ])
     end
 
     private
 
-    # Build a single concise log line summarizing why each endpoint didn't
-    # yield a Team ID. Goes to Rails.logger.warn so it shows up in the
-    # standard production log stream without an explicit logger configured.
-    # Sanitized: no PEM bodies, no JWTs, no bearer tokens (defense in depth —
-    # Apple's error responses shouldn't include those but the validator must
-    # never echo them even if a future SDK quirk drops them in).
-    def log_failure!(trace)
-      summary = trace.map do |probe|
-        bits = [ probe.endpoint, probe.outcome ]
-        bits << "status=#{probe.status}" if probe.status
-        bits << "data_count=#{probe.data_count}" if probe.data_count
-        bits << "err=#{probe.error_class}" if probe.error_class
-        bits.join(":")
-      end.join(" | ")
-      Rails.logger.warn("[ASC::CredentialValidator] team_id not extractable — #{summary}")
+    def fail_validation!(probe)
+      bits = [ probe.endpoint, probe.outcome ]
+      bits << "status=#{probe.status}" if probe.status
+      bits << "data_count=#{probe.data_count}" if probe.data_count
+      bits << "err=#{probe.error_class}" if probe.error_class
+      Rails.logger.warn("[ASC::CredentialValidator] validation failed — #{bits.join(':')}")
+      raise ValidationError.new(failure_message(probe), trace: [ probe ])
     end
 
-    # Construct a user-actionable error message based on what we saw. Falls
-    # back to the original generic copy if the trace doesn't match a known
-    # signature. The controller will surface this as a flash alert.
-    def failure_message(trace)
-      denied_endpoints = trace.select { |p| p.outcome == :denied }.map(&:endpoint)
-      empty_endpoints  = trace.select { |p| p.outcome == :empty  }.map(&:endpoint)
-
-      if denied_endpoints.size == trace.size
-        "Your API key does not have access to Bundle IDs, Apps, or Certificates. " \
+    # The controller surfaces this message as a flash alert.
+    def failure_message(probe)
+      if probe.error_message.to_s.match?(/agreement|contract/i)
+        "Ask the Apple Account Holder to review and accept pending agreements in App Store Connect " \
+        "or the Apple Developer account, then retry."
+      elsif probe.status == 401
+        "Apple could not authenticate your API key. Check the Key ID, Issuer ID, and .p8 private key, " \
+        "and confirm the key has not been revoked."
+      elsif probe.status == 403
+        "Your API key does not have access to Bundle IDs. " \
         "Grant the key 'Access to Certificates, Identifiers and Profiles' in App Store Connect, " \
-        "or regenerate it under a role with broader access (e.g. Admin)."
-      elsif empty_endpoints.size == trace.size
-        "Your Apple Developer team has no Bundle IDs, Apps, or Certificates yet. " \
+        "and check the team's account requirements."
+      elsif probe.outcome == :empty && probe.data_count == 0
+        "Apple returned no Bundle IDs for this key. " \
         "Register at least one Bundle ID in 'Certificates, Identifiers & Profiles', then retry."
-      elsif denied_endpoints.any? && empty_endpoints.any?
-        "Your API key was denied access to some resources (#{denied_endpoints.join(', ')}) " \
-        "and returned no data on others (#{empty_endpoints.join(', ')}). Check the key's role " \
-        "and team selection in App Store Connect."
+      elsif probe.status == 429
+        "Apple is rate limiting requests. Wait a few minutes, then retry."
+      elsif probe.status.to_i >= 500 || probe.error_class.to_s.start_with?("Faraday::")
+        "Could not reach Apple successfully. Please retry in a few minutes."
       else
-        "Could not extract Team ID from Apple API. Please ensure your API key has proper access to Apps, Bundle IDs, or Certificates."
+        "Could not validate the Apple connection. Check the Key ID, Issuer ID, and .p8 private key, then retry."
       end
     end
 
@@ -137,56 +98,6 @@ module AppStoreConnect
       def active?
         true
       end
-    end
-
-    def extract_team_id_from_apps(body)
-      extract_team_id(body) do |item|
-        [
-          item.dig("relationships", "team", "data", "id"),
-          extract_from_url(item.dig("relationships", "team", "links", "related"))
-        ]
-      end
-    end
-
-    def extract_team_id_from_bundle_ids(body)
-      extract_team_id(body) do |item|
-        [
-          item.dig("attributes", "seedId"), # The seedId IS the Team ID!
-          item.dig("relationships", "team", "data", "id"),
-          extract_from_url(item.dig("relationships", "team", "links", "related"))
-        ]
-      end
-    end
-
-    def extract_team_id_from_certificates(body)
-      extract_team_id(body) do |item|
-        [
-          item.dig("relationships", "team", "data", "id"),
-          extract_from_url(item.dig("relationships", "team", "links", "related"))
-        ]
-      end
-    end
-
-    def extract_team_id(body)
-      return if body.blank?
-
-      Array(body["data"]).each do |item|
-        Array(yield(item)).each do |candidate|
-          return candidate if candidate.present?
-        end
-      end
-
-      Array(body["included"]).each do |included_item|
-        candidate = included_item.dig("attributes", "teamId") || included_item.dig("attributes", "teamIdentifier")
-        return candidate if candidate.present?
-      end
-
-      nil
-    end
-
-    def extract_from_url(url)
-      return if url.blank?
-      url.match(%r{/teams/([^/?]+)})&.captures&.first
     end
   end
 end

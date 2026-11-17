@@ -6,9 +6,9 @@ module GooglePlay
   class Client
     SCOPE = "https://www.googleapis.com/auth/androidpublisher".freeze
 
-    def initialize(credential:, timeout: 30)
+    def initialize(credential:, timeout: 30, allow_inactive: false)
       @credential = credential
-      validate_credential!
+      validate_credential!(allow_inactive: allow_inactive)
 
       @auth = build_authorization
 
@@ -140,8 +140,8 @@ module GooglePlay
       )
     end
 
-    def validate_credential!
-      raise "Credential inactive" if @credential.respond_to?(:active?) && !@credential.active?
+    def validate_credential!(allow_inactive:)
+      raise "Credential inactive" if !allow_inactive && @credential.respond_to?(:active?) && !@credential.active?
     end
   end
 end

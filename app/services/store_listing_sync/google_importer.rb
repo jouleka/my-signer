@@ -34,13 +34,12 @@ module StoreListingSync
 
           listing = @android_app.store_listings.find_or_initialize_by(locale: locale)
           listing.organization = @organization
-          listing.assign_attributes(
+          listing.apply_store_import!(
             app_name: listing_data[:title],
             short_description: listing_data[:short_description],
             description: listing_data[:full_description],
             sync_status: "synced"
           )
-          listing.save!
           imported << listing
           locales << locale
         end
@@ -96,7 +95,7 @@ module StoreListingSync
               end
             end
 
-            listing.update_column(:metadata, listing.metadata.merge("screenshots" => screenshots))
+            listing.with_lock { listing.update_column(:metadata, listing.metadata.merge("screenshots" => screenshots)) }
           rescue StandardError => e
             Rails.logger.warn("GoogleImporter: Failed to sync screenshots for locale #{listing.locale}: #{e.message}")
           end

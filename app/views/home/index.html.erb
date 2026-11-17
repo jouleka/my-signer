@@ -98,9 +98,9 @@
         <% if @analytics_data[:downloads_change] %>
           <span class="<%= @analytics_data[:downloads_change] > 0 ? 'text-[var(--color-cat-new)]' : 'text-error/80' %>">
             <%= @analytics_data[:downloads_change] > 0 ? "+" : "" %><%= @analytics_data[:downloads_change] %>%
-          </span> vs prev 30d
+          </span> vs prev <%= @analytics_data[:days] %>d
         <% else %>
-          last 30 days
+          last <%= @analytics_data[:days] %> days
         <% end %>
       </div>
     </div>

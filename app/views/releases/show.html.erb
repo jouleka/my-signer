@@ -10,7 +10,7 @@
 ]) %>
 
 <section class="flex flex-col gap-4" data-controller="store-listing-sync"
-         data-store-listing-sync-status-url-value="<%= sync_status_organization_release_path(@organization, params[:id]) %>">
+         data-store-listing-sync-status-url-value="<%= sync_status_organization_release_path(@organization, params[:id], version_string: @app_release.version_string) %>">
 
   <%# ── Header ── %>
   <div class="flex flex-wrap items-start justify-between gap-4 mb-2">
@@ -40,16 +40,18 @@
       </div>
     </div>
     <div class="flex gap-2 shrink-0">
+      <% if policy(@organization).sync? %>
       <button type="button" class="<%= btn_ghost_classes %>"
               data-action="store-listing-sync#sync"
               data-url="<%= sync_organization_release_path(@organization, params[:id]) %>">
         <i class="fa-solid fa-arrows-rotate"></i> Sync from Store
       </button>
+      <% end %>
 
-      <% if @entitlements.store_listing_push_enabled? %>
+      <% if @entitlements.store_listing_push_enabled? && policy(@organization).manage_resources? %>
         <%= button_to push_organization_release_path(@organization, params[:id]),
             method: :post, class: btn_success_classes,
-            form: { class: "inline", data: { action: "turbo:before-fetch-request->store-listing-sync#interceptPush" } },
+            form: { class: "inline", data: { turbo: false, action: "submit->store-listing-sync#push" } },
             data: { turbo_confirm: "Push all changes to #{@app.is_a?(AppleApp) ? 'App Store' : 'Google Play'}?" } do %>
           <i class="fa-solid fa-cloud-arrow-up"></i>
           Push to <%= @app.is_a?(AppleApp) ? "App Store" : "Google Play" %>
@@ -60,7 +62,14 @@
 
   <%# ── Sync status banner (populated by store-listing-sync controller) ── %>
   <div id="sync-status">
-    <% if @store_listing&.push_status == "pushing" %>
+    <% push_state = @push_status || StoreListingSync::PushStatus.for(@app) %>
+    <% sync_operation = @sync_operation || StoreListingSync::OperationStatus.new(@app).read %>
+    <% if %w[queued running retrying].include?(sync_operation[:status]) %>
+      <div class="<%= sn_loading_classes %>" data-sync-active="<%= sync_operation[:id] %>">Syncing from store&hellip;</div>
+    <% elsif sync_operation[:status] == "failed" %>
+      <div class="<%= sn_error_classes %>">Sync failed: <%= sync_operation[:error] %></div>
+    <% end %>
+    <% if push_state[:push_status] == "pushing" %>
       <%# Server-rendered fallback so Stimulus connect() can resume polling %>
       <div class="<%= sn_loading_classes %>" data-push-active="true">
         <div class="flex items-center gap-3">
@@ -71,7 +80,12 @@
           </div>
         </div>
       </div>
-    <% elsif @store_listing&.push_status == "failed" %>
+    <% elsif push_state[:push_status] == "partial_success" %>
+      <div class="<%= sn_warning_classes %>">
+        <p class="text-sm font-semibold">Some fields were not pushed</p>
+        <p class="text-xs mt-1"><%= push_state[:push_fields_skipped].join(", ") %>. Your local values are saved.</p>
+      </div>
+    <% elsif push_state[:push_status] == "failed" %>
       <%# Server-rendered error so the failure is visible on page refresh %>
       <div class="<%= sn_error_classes %>">
         <div class="flex items-start gap-3">
@@ -80,7 +94,7 @@
           </div>
           <div class="flex-1 min-w-0">
             <span class="text-sm font-semibold text-base-content/90">Push failed</span>
-            <p class="text-xs text-base-content/50 mt-1 leading-relaxed"><%= @store_listing.push_error || "An unknown error occurred." %></p>
+            <p class="text-xs text-base-content/50 mt-1 leading-relaxed"><%= push_state[:push_error] || "An unknown error occurred." %></p>
           </div>
         </div>
       </div>
@@ -97,7 +111,7 @@
       { key: "checklist",  label: "Checklist",  icon: "fa-solid fa-clipboard-check" }
     ] %>
     <% tabs.each do |t| %>
-      <% link_params = { tab: t[:key] } %>
+      <% link_params = { tab: t[:key], version_string: @app_release.version_string } %>
       <% link_params[:locale] = @current_locale if t[:key] == "listing" && @current_locale.present? %>
       <%= link_to organization_release_path(@organization, params[:id], link_params),
           class: (@tab == t[:key] ? tab_active_classes : tab_inactive_classes) do %>

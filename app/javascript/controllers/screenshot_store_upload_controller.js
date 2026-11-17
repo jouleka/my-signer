@@ -6,7 +6,7 @@ export default class extends Controller {
     "ascAppSelect", "ascVersionSelect", "ascLocaleInput", "ascPresetCheckbox", "ascAllLocalesCheckbox",
     "gpAppSelect", "gpLanguageInput", "gpPresetCheckbox", "gpAllLocalesCheckbox",
     "cppSelect", "cppLocaleSelect", "cppPresetCheckbox", "cppReplaceExisting",
-    "replaceExisting",
+    "ascReplaceExisting", "gpReplaceExisting",
     "progressContainer", "progressText", "progressBar",
     "progressSpinner", "successIcon", "errorIcon",
     "uploadButton", "statusText",
@@ -346,7 +346,7 @@ export default class extends Controller {
     const editorController = this.application.getControllerForElementAndIdentifier(this.element, "screenshot-editor")
     if (!editorController) throw new Error("Editor controller not found")
 
-    const settings = editorController.getCurrentSettings()
+    const settings = editorController.getProjectSettings({ includePreviewVariant: true })
     const sceneDataTargets = editorController.getSceneDataTargets()
     const imageCache = editorController.getImageCache()
     const allPresets = JSON.parse(this.element.dataset.screenshotExportPresetsValue || "{}")
@@ -385,7 +385,7 @@ export default class extends Controller {
     const allEntries = []
 
     for (const locale of localesToRender) {
-      for (const sceneData of sceneDataTargets) {
+      for (const [sceneIdx, sceneData] of sceneDataTargets.entries()) {
         const sceneId = sceneData.dataset.sceneId
         const defaultCaption = sceneData.dataset.sceneCaption || ""
         const defaultSubtitle = sceneData.dataset.sceneSubtitle || ""
@@ -408,8 +408,12 @@ export default class extends Controller {
 
         for (const size of sizes) {
           const sceneSettings = { ...settings, caption_text: caption, subtitle_text: subtitle, ...sceneOverrides }
+          if (sceneSettings.background_type === "panoramic") {
+            sceneSettings.panoramic_scene_index = sceneIdx
+            sceneSettings.panoramic_total_scenes = sceneDataTargets.length
+          }
           // Use the preset's matching device frame for correct dimensions
-          if (settings.device_frame && settings.device_frame !== "none" && size.device_frame) {
+          if (sceneSettings.device_frame && sceneSettings.device_frame !== "none" && size.device_frame) {
             sceneSettings.device_frame = size.device_frame
           }
           const canvas = await editorController.renderAtSize(image, size.width, size.height, sceneSettings)
@@ -495,7 +499,7 @@ export default class extends Controller {
       const config = {
         version_id: this.hasAscVersionSelectTarget ? this.ascVersionSelectTarget.value : "",
         presets: presets,
-        replace_existing: this.hasReplaceExistingTarget ? this.replaceExistingTarget.checked : false
+        replace_existing: this.hasAscReplaceExistingTarget ? this.ascReplaceExistingTarget.checked : false
       }
       if (allLocales) {
         config.all_locales = true
@@ -519,7 +523,7 @@ export default class extends Controller {
       const config = {
         package_name: this.hasGpAppSelectTarget ? this.gpAppSelectTarget.value : "",
         presets: presets,
-        replace_existing: this.hasReplaceExistingTarget ? this.replaceExistingTarget.checked : false
+        replace_existing: this.hasGpReplaceExistingTarget ? this.gpReplaceExistingTarget.checked : false
       }
       if (allLocales) {
         config.all_locales = true
@@ -597,6 +601,7 @@ export default class extends Controller {
   // --- Progress state helpers ---
 
   showProgress() {
+    if (this.hasProgressBarTarget) this.progressBarTarget.classList.remove("hidden")
     if (this.hasProgressContainerTarget) {
       this.progressContainerTarget.classList.remove("hidden")
     }

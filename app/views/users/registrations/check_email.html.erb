@@ -94,13 +94,15 @@
             ConfirmationsController honors so the user lands back here
             with the resent flash, instead of bouncing to sign-in. %>
         <% if email.present? %>
-          <%= button_to user_confirmation_path,
-                  method: :post,
-                  params: { user: { email: email }, return_to: "check_email" },
-                  data: { turbo: false },
-                  class: "btn-primary-ms mt-5 w-full" do %>
-            <i class="fa-solid fa-paper-plane text-[11px]"></i>
-            Resend the email
+          <%# form_with (not button_to) so the Turnstile widget can sit in the form. %>
+          <%= form_with url: user_confirmation_path, method: :post, data: { turbo: false } do %>
+            <%= hidden_field_tag "user[email]", email %>
+            <%= hidden_field_tag :return_to, "check_email" %>
+            <%= render "shared/turnstile", turnstile_action: "confirmation" %>
+            <button type="submit" class="btn-primary-ms mt-5 w-full">
+              <i class="fa-solid fa-paper-plane text-[11px]"></i>
+              Resend the email
+            </button>
           <% end %>
         <% else %>
           <%= link_to new_user_confirmation_path, class: "btn-primary-ms mt-5 w-full inline-flex items-center justify-center" do %>

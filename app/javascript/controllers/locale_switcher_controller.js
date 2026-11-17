@@ -11,11 +11,11 @@ import { Controller } from "@hotwired/stimulus"
  *   3. Hide locale-specific action buttons that only make sense on the base
  *      locale (AI Rewrite, Translate to all).
  *   4. Autosave inputs via fetch — debounced while typing, flushed on blur,
- *      flushed when switching locales, flushed on page hide. Shows a small
+ *      flushed before navigation and actions. Shows a small
  *      "Saving… / Saved / Unsaved" indicator in the action row.
  *
- * The server responds to autosave POSTs with `head :ok` (no redirect, no
- * render) so the page never navigates while the user is typing.
+ * Saves return JSON with the note's status and review state. Failed drafts
+ * stay in the queue until corrected or retried.
  */
 export default class extends Controller {
   static targets = [
@@ -28,7 +28,7 @@ export default class extends Controller {
     "translationCharCount",
     "translationPreview",
     "savingIndicator",
-    "baseOnlyAction"
+    "baseOnlyAction", "approvedBanner", "reviewReminder", "noteStatus", "applyButton"
   ]
   static values = {
     active: String,
@@ -36,16 +36,45 @@ export default class extends Controller {
   }
 
   connect() {
-    this._autosaveTimer = null
-    this._pendingForm = null
-    this._pageHideHandler = () => this._flushSave()
-    window.addEventListener("pagehide", this._pageHideHandler)
+    this._pendingForms = new Map()
+    this._revision = 0
+    this._visitHandler = async event => {
+      if (!this._pendingForms.size) return
+      event.preventDefault()
+      if (await this.flushSave()) window.Turbo.visit(event.detail.url)
+    }
+    this._submitHandler = async event => {
+      if (!this._pendingForms.size) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      const { target, submitter } = event
+      const isEditor = [...this.baseFormTargets, ...this.translationFormTargets].includes(target)
+      if (await this.flushSave() && !isEditor) target.requestSubmit(submitter)
+    }
+    this._submitEndHandler = async event => {
+      if (event.detail.success) return
+      let detail = "Please try again."
+      try { detail = (await event.detail.fetchResponse.response.clone().json()).errors?.[0] || detail } catch {}
+      this._setSaving("error", detail)
+    }
+    this.element.addEventListener("turbo:submit-end", this._submitEndHandler)
+    this._unloadHandler = event => {
+      if (!this._pendingForms.size) return
+      event.preventDefault()
+      event.returnValue = ""
+    }
+    document.addEventListener("turbo:before-visit", this._visitHandler)
+    document.addEventListener("submit", this._submitHandler, true)
+    window.addEventListener("beforeunload", this._unloadHandler)
     this._applyActive()
   }
 
   disconnect() {
-    if (this._autosaveTimer) clearTimeout(this._autosaveTimer)
-    window.removeEventListener("pagehide", this._pageHideHandler)
+    clearTimeout(this._autosaveTimer)
+    document.removeEventListener("turbo:before-visit", this._visitHandler)
+    document.removeEventListener("submit", this._submitHandler, true)
+    this.element.removeEventListener("turbo:submit-end", this._submitEndHandler)
+    window.removeEventListener("beforeunload", this._unloadHandler)
   }
 
   // ── Locale switching ──
@@ -54,7 +83,7 @@ export default class extends Controller {
     const locale = event.target.value
     if (!locale || locale === this.activeValue) return
     // Flush any pending save for the locale we're leaving before switching.
-    this._flushSave()
+    this.flushSave()
     this.activeValue = locale
   }
 
@@ -82,15 +111,15 @@ export default class extends Controller {
   scheduleAutosave(event) {
     const form = event.target.closest("form")
     if (!form) return
-    this._pendingForm = form
+    this._pendingForms.set(form, ++this._revision)
     this._setSaving("unsaved")
     if (this._autosaveTimer) clearTimeout(this._autosaveTimer)
-    this._autosaveTimer = setTimeout(() => this._save(), 900)
+    this._autosaveTimer = setTimeout(() => this.flushSave(), 500)
   }
 
   // Blur → save right away if dirty.
   flushOnBlur() {
-    this._flushSave()
+    this.flushSave()
   }
 
   // Live-update the per-locale translation preview while the user types.
@@ -108,7 +137,7 @@ export default class extends Controller {
     const counter = this.translationCharCountTargets.find(el => el.dataset.locale === locale)
     if (counter) {
       const limit = parseInt(counter.dataset.limit || "0", 10)
-      const len = textarea.value.length
+      const len = Array.from(textarea.value).length
       counter.textContent = `${len}/${limit}`
       counter.classList.remove("text-error", "text-warning", "text-base-content/40")
       if (limit > 0 && len > limit) counter.classList.add("text-error")
@@ -119,50 +148,54 @@ export default class extends Controller {
 
   // ── Save implementation ──
 
-  _flushSave() {
-    if (!this._autosaveTimer) return
+  // Serialize saves across version, base content and translations. A request
+  // only clears the revision it sent; newer edits and failures stay pending.
+  flushSave() {
     clearTimeout(this._autosaveTimer)
-    this._autosaveTimer = null
-    this._save()
+    if (this._saving) return this._saving
+    if (!this._pendingForms.size) return Promise.resolve(true)
+    this._saving = this._saveChanges().finally(() => { this._saving = null })
+    return this._saving
   }
 
-  async _save() {
-    const form = this._pendingForm
-    this._pendingForm = null
-    this._autosaveTimer = null
-    if (!form) return
-
-    this._setSaving("saving")
-
-    try {
-      const formData = new FormData(form)
-      // Rails form_with's _method override needs to be honored by fetch.
-      const method = (formData.get("_method") || form.method || "POST").toString().toUpperCase()
-      if (formData.has("_method")) formData.delete("_method")
-
-      const response = await fetch(form.action, {
-        method: method === "GET" ? "GET" : method,
-        body: method === "GET" ? undefined : formData,
-        headers: {
-          "Accept": "text/vnd.turbo-stream.html, text/html;q=0.9",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        credentials: "same-origin"
-      })
-
-      if (response.ok) {
-        this._setSaving("saved")
-      } else {
-        this._setSaving("error")
+  async _saveChanges() {
+    while (this._pendingForms.size) {
+      const [form, revision] = this._pendingForms.entries().next().value
+      this._setSaving("saving")
+      try {
+        const formData = new FormData(form)
+        const method = (formData.get("_method") || form.method || "POST").toString().toUpperCase()
+        formData.delete("_method")
+        const response = await fetch(form.action, {
+          method, body: formData,
+          headers: { "Accept": "text/vnd.turbo-stream.html", "X-Requested-With": "XMLHttpRequest" },
+          credentials: "same-origin"
+        })
+        if (!response.ok || response.redirected) {
+          let detail = "Please try saving again."
+          try { detail = (await response.json()).errors?.[0] || detail } catch {}
+          throw new Error(detail)
+        }
+        const state = await response.json()
+        if (this.hasNoteStatusTarget) this.noteStatusTarget.textContent = state.status === "draft" ? "Draft" : this.noteStatusTarget.textContent
+        if (state.review_required && state.review_decision !== "rejected" && this.hasApprovedBannerTarget) {
+          this.approvedBannerTarget.classList.add("hidden")
+          this.reviewReminderTarget.classList.remove("hidden")
+          if (this.hasApplyButtonTarget) this.applyButtonTarget.disabled = true
+        }
+        if (this._pendingForms.get(form) === revision) this._pendingForms.delete(form)
+      } catch (error) {
+        this._setSaving("error", error.message)
+        return false
       }
-    } catch (_e) {
-      this._setSaving("error")
     }
+    this._setSaving("saved")
+    return true
   }
 
   // Renders the saving indicator using DOM APIs (not innerHTML) so static text
   // stays static — no XSS surface.
-  _setSaving(state) {
+  _setSaving(state, detail = null) {
     if (!this.hasSavingIndicatorTarget) return
     const el = this.savingIndicatorTarget
     // Clear previous content/class state.
@@ -191,7 +224,7 @@ export default class extends Controller {
       el.appendChild(icon)
     }
     const textNode = document.createElement("span")
-    textNode.textContent = textFor
+    textNode.textContent = detail ? `${textFor} — ${detail}` : textFor
     el.appendChild(textNode)
   }
 }
