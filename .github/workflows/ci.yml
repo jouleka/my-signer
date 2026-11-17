@@ -89,6 +89,15 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/my_signer_test
         run: bin/rails db:test:prepare && bundle exec rspec
 
+      - name: Upload system test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capybara-screenshots
+          path: tmp/capybara
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Run Minitest suite (account-deletion / soft-delete coverage)
         env:
           RAILS_ENV: test
