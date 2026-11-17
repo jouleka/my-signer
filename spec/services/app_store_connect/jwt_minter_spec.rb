@@ -25,6 +25,26 @@ RSpec.describe AppStoreConnect::JwtMinter do
     expect(first).to eq(second)
   end
 
+  it "signs temporary validation credentials independently without caching or auditing them" do
+    credentials = 2.times.map do |index|
+      AppStoreConnect::CredentialValidator::TempCredential.new(
+        key_id: "TEMPKEY#{index}", issuer_id: "issuer-#{index}",
+        private_key: OpenSSL::PKey::EC.generate("prime256v1").to_pem
+      )
+    end
+
+    expect(EncryptedTokenCache).not_to receive(:fetch)
+    expect {
+      credentials.each do |credential|
+        jwt = described_class.for(credential)
+        key = OpenSSL::PKey.read(credential.private_key)
+        claims, headers = JWT.decode(jwt, key, true, algorithm: "ES256")
+        expect(headers["kid"]).to eq(credential.key_id)
+        expect(claims["iss"]).to eq(credential.issuer_id)
+      end
+    }.not_to change(AuditEvent, :count)
+  end
+
   it "stores the JWT ENCRYPTED at rest in the cache (M-5)" do
     jwt = described_class.for(cred)
     raw = Rails.cache.read("asc_jwt:#{cred.id}")

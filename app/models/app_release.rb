@@ -50,18 +50,15 @@ class AppRelease < ApplicationRecord
 
   # Returns the ReleaseNote records for THIS specific version.
   def release_notes_for_this_version
-    return release_notes.none if version_string.blank?
-    release_notes.where(version_string: version_string)
+    release_notes.where(version_string: version_string == "unversioned" ? [ nil, "" ] : version_string)
   end
 
-  # Returns the most relevant release note for the primary locale of this version,
-  # falling back to any release note for this version, then any unarchived note
-  # for the app (newest first).
+  # Notes from a previous version must never become the new release's What's New.
   def primary_release_note
-    notes = release_notes_for_this_version
+    notes = release_notes_for_this_version.where.not(status: "archived").order(updated_at: :desc)
     return notes.find_by(locale: primary_locale) if notes.exists?(locale: primary_locale)
     return notes.first if notes.exists?
-    release_notes.where.not(status: "archived").order(updated_at: :desc).first
+    nil
   end
 
   # The "primary" locale for this app, used as the default in the UI.
@@ -73,16 +70,16 @@ class AppRelease < ApplicationRecord
 
   # The current checklist for this app + version, or nil.
   def checklist
-    organization.release_checklists.for_app(listable).last
+    organization.release_checklists.for_app(listable).find_by(version_string: version_string)
   end
 
   # The latest synced platform-specific release record (read-only mirror of store data).
   def platform_release
     case listable_type
     when "AppleApp"
-      listable.app_store_versions.order(created_at: :desc).first
+      listable.app_store_versions.where(version_string: version_string).order(created_at: :desc).first
     when "AndroidApp"
-      listable.play_store_releases.order(Arel.sql("COALESCE(released_at, created_at) DESC")).first
+      listable.play_store_releases.where(version_code: version_string).order(Arel.sql("COALESCE(released_at, created_at) DESC")).first
     end
   end
 
@@ -112,6 +109,8 @@ class AppRelease < ApplicationRecord
     when "in_review" then "In Review"
     when "rejected" then "Rejected"
     when "draft" then "Draft"
+    when "submitted" then "Submitted"
+    when "removed" then "Removed"
     else "Unknown"
     end
   end

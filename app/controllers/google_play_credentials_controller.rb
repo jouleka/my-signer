@@ -44,7 +44,7 @@ class GooglePlayCredentialsController < ApplicationController
   def test
     authorize @credential, :test?
     begin
-      client = GooglePlay::Client.new(credential: @credential)
+      client = GooglePlay::Client.new(credential: @credential, allow_inactive: true)
       client.ping!
       redirect_to @org, notice: "Google Play connection successful"
     rescue => e

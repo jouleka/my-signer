@@ -1,0 +1,44 @@
+# MySigner
+
+> MySigner is a developer tool for shipping mobile apps: one CLI (`mysigner`) to build, sign and deploy iOS and Android apps to the App Store (including TestFlight) and Google Play, plus a web dashboard for certificates, provisioning profiles, keystores, store listings, screenshots, reviews and keyword tracking.
+
+Key facts:
+
+- Install: `gem install mysigner` (requires Ruby 3.2+). iOS builds require macOS with Xcode; Android builds require Java 11+ and the Android SDK.
+- Auto-detects the project type: native Swift/Kotlin, React Native, Flutter, Ionic/Capacitor, Expo and .NET MAUI.
+- One command to build, sign and upload, e.g. `mysigner ship testflight`, `mysigner ship appstore`, `mysigner ship internal --platform android`.
+- Uses App Store Connect API keys and Google Play service-account credentials; CI/CD authenticates with the `MYSIGNER_API_TOKEN` environment variable.
+- Hosted SaaS (no self-hosted / on-prem option).
+- Pricing (USD): Free plan; Pro $12/month or $96/year; Team $49/month or $390/year (up to 10 seats per organization). New accounts get a 14-day Pro trial with no card required, then drop to Free unless they subscribe.
+
+## Docs
+
+- [Getting Started](https://mysigner.dev/docs/quickstart/getting-started): Install the CLI, connect Apple and Google accounts, and ship a first build
+- [ship command](https://mysigner.dev/docs/commands/ship): Build, sign, and upload an app in one command
+- [CLI command reference](https://mysigner.dev/docs/commands): All `mysigner` commands (build, export, upload, submit, certificates, profiles, keystore, devices, doctor, ...)
+- [iOS to TestFlight](https://mysigner.dev/docs/guides/ios-testflight): Build and deploy an iOS app to TestFlight
+- [iOS to App Store](https://mysigner.dev/docs/guides/ios-appstore): Submit an iOS app to the App Store for review and release
+- [Android to Play Store](https://mysigner.dev/docs/guides/android-playstore): Build and deploy an Android app to Google Play
+- [GitHub Actions](https://mysigner.dev/docs/guides/ci-cd-github): Automate iOS and Android deployment with GitHub Actions
+- [GitLab CI](https://mysigner.dev/docs/guides/ci-cd-gitlab): Automate app deployment with GitLab CI/CD
+- [Bitrise](https://mysigner.dev/docs/guides/ci-cd-bitrise): Automate app deployment with Bitrise
+- [Troubleshooting](https://mysigner.dev/docs/guides/troubleshooting): Solutions for common issues and errors
+- [Credentials](https://mysigner.dev/docs/dashboard/credentials): Set up App Store Connect and Google Play credentials
+- [API Tokens](https://mysigner.dev/docs/dashboard/api-tokens): Generate and manage API tokens for the CLI and CI/CD
+- [Pricing & Plans](https://mysigner.dev/docs/dashboard/pricing-plans): Free, Pro, and Team feature comparison and limits
+
+## Comparisons
+
+- [MySigner vs Fastlane](https://mysigner.dev/docs/compare/fastlane): When MySigner replaces Fastlane and when Fastlane still wins
+- [MySigner vs EAS Build](https://mysigner.dev/docs/compare/eas-build): Options for shipping Expo and React Native apps to the stores
+- [MySigner vs AppFollow](https://mysigner.dev/docs/compare/appfollow): Replying to App Store and Google Play reviews
+- [MySigner vs Sensor Tower](https://mysigner.dev/docs/compare/sensor-tower): ASO, keyword tracking and store analytics
+
+## Optional
+
+- [Pricing](https://mysigner.dev/pricing): Plans and FAQ
+- [All documentation](https://mysigner.dev/docs): Quickstart, commands, guides, dashboard docs and articles
+- [Sitemap](https://mysigner.dev/sitemap.xml): Every public page
+- [Security](https://mysigner.dev/security): How MySigner protects signing keys, store credentials and source code
+- [Privacy Policy](https://mysigner.dev/privacy-policy)
+- [Terms of Service](https://mysigner.dev/terms-and-conditions)

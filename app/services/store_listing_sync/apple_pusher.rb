@@ -32,6 +32,7 @@ module StoreListingSync
 
     # @return [Hash] Push result with :status, :skipped_fields, :version_state
     def push!
+      snapshot = @store_listing.push_snapshot
       client = AppStoreConnect::Client.new(credential: @credential)
       @result = { skipped_fields: [], version_state: nil, pushed_fields: [] }
 
@@ -40,14 +41,14 @@ module StoreListingSync
 
       fully_synced = @result[:skipped_fields].empty?
 
-      @store_listing.update!(
+      @store_listing.finish_push!({
         sync_status: fully_synced ? "synced" : "partially_synced",
         last_synced_at: Time.current,
         push_status: fully_synced ? "success" : "partial_success",
         push_error: nil,
         push_fields_skipped: @result[:skipped_fields],
         last_pushed_at: Time.current
-      )
+      }, snapshot: snapshot)
 
       @result.merge(status: fully_synced ? "success" : "partial_success")
     end
@@ -57,9 +58,9 @@ module StoreListingSync
     def push_app_info!(client)
       app_info_service = AppStoreConnect::AppInfo.new(client)
 
-      attrs = {}
-      attrs[:name] = @store_listing.app_name if @store_listing.app_name.present?
-      attrs[:subtitle] = @store_listing.subtitle if @store_listing.subtitle.present?
+      attrs = { name: @store_listing.value_for_store(:app_name),
+        subtitle: @store_listing.value_for_store(:subtitle),
+        privacy_policy_url: @store_listing.value_for_store(:privacy_policy_url) }.compact
 
       return if attrs.empty?
 
@@ -111,11 +112,15 @@ module StoreListingSync
       # Find the latest editable version
       versions = versions_service.editable_versions(app_id: @apple_app.app_store_id)
       version = versions.first
+      unless version
+        latest = versions_service.latest_version(app_id: @apple_app.app_store_id)
+        version = latest if %w[READY_FOR_SALE READY_FOR_DISTRIBUTION].include?(latest&.dig("attributes", "appStoreState"))
+      end
 
       unless version
         # No editable version — track all version-level fields as skipped
         version_fields = %w[description keywords whats_new promotional_text support_url marketing_url]
-        skipped = version_fields.select { |f| @store_listing.send(f).present? }
+        skipped = version_fields.select { |f| !@store_listing.value_for_store(f).nil? }
         @result[:skipped_fields].concat(skipped)
         return
       end
@@ -127,11 +132,11 @@ module StoreListingSync
       # Track which fields are being skipped due to version state
       unless metadata_editable
         skipped = []
-        skipped << "description" if @store_listing.description.present?
-        skipped << "keywords" if @store_listing.keywords.present?
-        skipped << "whats_new" if @store_listing.whats_new.present?
-        skipped << "support_url" if @store_listing.support_url.present?
-        skipped << "marketing_url" if @store_listing.marketing_url.present?
+        skipped << "description" if !@store_listing.value_for_store(:description).nil?
+        skipped << "keywords" if !@store_listing.value_for_store(:keywords).nil?
+        skipped << "whats_new" if !@store_listing.value_for_store(:whats_new).nil?
+        skipped << "support_url" if !@store_listing.value_for_store(:support_url).nil?
+        skipped << "marketing_url" if !@store_listing.value_for_store(:marketing_url).nil?
         @result[:skipped_fields].concat(skipped)
       end
 
@@ -191,18 +196,12 @@ module StoreListingSync
     end
 
     def build_version_localization_attrs(metadata_editable: false)
-      attrs = {}
-
-      # promotionalText can always be updated regardless of version state
-      attrs[:promotional_text] = @store_listing.promotional_text unless @store_listing.promotional_text.nil?
-
-      # All other version-level fields require the version to be in an editable state
+      attrs = { promotional_text: @store_listing.value_for_store(:promotional_text) }.compact
       if metadata_editable
-        attrs[:description] = @store_listing.description unless @store_listing.description.nil?
-        attrs[:keywords] = @store_listing.keywords unless @store_listing.keywords.nil?
-        attrs[:whats_new] = @store_listing.whats_new unless @store_listing.whats_new.nil?
-        attrs[:support_url] = @store_listing.support_url unless @store_listing.support_url.nil?
-        attrs[:marketing_url] = @store_listing.marketing_url unless @store_listing.marketing_url.nil?
+        %i[description keywords whats_new support_url marketing_url].each do |field|
+          value = @store_listing.value_for_store(field)
+          attrs[field] = value unless value.nil?
+        end
       end
 
       attrs

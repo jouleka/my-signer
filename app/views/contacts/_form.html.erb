@@ -39,6 +39,8 @@
     <input type="text" name="contact[website]" tabindex="-1" autocomplete="off" />
   </div>
 
+  <%= render "shared/turnstile", turnstile_action: "contact" %>
+
   <div class="form-control mt-2">
     <button type="submit" class="btn btn-primary gap-2">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">

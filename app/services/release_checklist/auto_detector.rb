@@ -99,7 +99,7 @@ class ReleaseChecklist
     # === iOS rules ===
 
     def check_ios_rejected_version
-      version = app.app_store_versions.order(created_at: :desc).first
+      version = ios_versions.order(created_at: :desc).first
       return nil unless version
       return nil unless %w[REJECTED METADATA_REJECTED DEVELOPER_REJECTED].include?(version.app_store_state)
 
@@ -128,7 +128,7 @@ class ReleaseChecklist
     end
 
     def check_ios_invalid_binary
-      version = app.app_store_versions.order(created_at: :desc).first
+      version = ios_versions.order(created_at: :desc).first
       return nil unless version&.app_store_state == "INVALID_BINARY"
 
       {
@@ -184,7 +184,7 @@ class ReleaseChecklist
     end
 
     def check_ios_build_not_attached
-      version = app.app_store_versions
+      version = ios_versions
                    .where(app_store_state: "PREPARE_FOR_SUBMISSION")
                    .order(created_at: :desc)
                    .first
@@ -241,7 +241,7 @@ class ReleaseChecklist
     # `{"code" => String, "detail" => String, "raw" => Hash}`.
     def check_ios_pre_submission_validation_errors
       items = []
-      app.app_store_versions.find_each do |version|
+      ios_versions.find_each do |version|
         next unless version.respond_to?(:issues)
         stored = version.issues
         next if stored.blank?
@@ -366,11 +366,11 @@ class ReleaseChecklist
     def check_release_notes_missing_for_version
       # If we have a synced iOS version or Android release with a version_string,
       # but no ReleaseNote exists for that version, flag it.
-      return nil if ios? && app.app_store_versions.empty?
+      return nil if ios? && ios_versions.empty?
       return nil if android? && app.play_store_releases.empty?
 
       target_version = if ios?
-                         app.app_store_versions.order(created_at: :desc).first&.version_string
+                         ios_versions.order(created_at: :desc).first&.version_string
       else
                          app.play_store_releases.order(created_at: :desc).first&.version_code
       end
@@ -437,6 +437,11 @@ class ReleaseChecklist
 
     # === Helpers ===
 
+    def ios_versions
+      version = checklist&.version_string.presence || app.app_store_versions.order(created_at: :desc).pick(:version_string)
+      app.app_store_versions.where(version_string: version)
+    end
+
     def primary_store_listing
       return nil unless app.respond_to?(:store_listings)
 
@@ -454,8 +459,7 @@ class ReleaseChecklist
       # falling back to the latest draft for the app.
       return nil unless checklist&.version_string.present?
 
-      organization.release_notes.for_app(app).find_by(version_string: checklist.version_string) ||
-        organization.release_notes.for_app(app).drafts.first
+      organization.release_notes.for_app(app).where.not(status: "archived").find_by(version_string: checklist.version_string)
     end
   end
 end

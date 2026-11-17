@@ -56,6 +56,14 @@ RSpec.describe StoreListingSync::GoogleImporter do
       expect(en_listing.sync_status).to eq("synced")
     end
 
+    it "preserves an unpushed draft during a store refresh" do
+      listing = create(:store_listing, organization: organization, listable: android_app,
+        locale: "en-US", description: "My Android draft", sync_status: "draft")
+      described_class.new(organization: organization, android_app: android_app).import!
+      expect(listing.reload.description).to eq("My Android draft")
+      expect(listing.sync_status).to eq("draft")
+    end
+
     it "raises without active credential" do
       credential.update!(active: false)
       expect {

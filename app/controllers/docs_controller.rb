@@ -37,6 +37,10 @@ class DocsController < ApplicationController
     @category = CATEGORIES[@category_slug]
     return render_not_found unless @category
 
+    # "_index.md" partials are not standalone pages; serving them created
+    # thin duplicate URLs like /docs/commands/_index.
+    return render_not_found if @slug.start_with?("_")
+
     file_path = doc_file_path(@category_slug, @slug)
     return render_not_found unless file_path && File.exist?(file_path)
 
@@ -48,11 +52,35 @@ class DocsController < ApplicationController
     @toc = generate_toc(markdown_content)
     @pages = category_pages(@category_slug)
     @prev_page, @next_page = find_adjacent_pages(@slug)
-    @file_mtime = File.mtime(file_path)
+    @file_mtime = self.class.last_modified(@frontmatter, file_path)
     @related_pages = find_related_pages(@category_slug, @slug)
 
     # HTTP Last-Modified / ETag helps Google determine freshness and enables 304 responses
     fresh_when(last_modified: @file_mtime, public: true)
+  end
+
+  # Last-modified time for a docs page: an explicit `updated:` (or `date:`)
+  # frontmatter value wins, because file mtimes in the deployed image reflect
+  # the build checkout rather than real content edits. Shared with the sitemap.
+  def self.last_modified(frontmatter, file_path)
+    value = frontmatter["updated"] || frontmatter["date"]
+    time = case value
+    when Time, DateTime then value.to_time
+    when Date then value.in_time_zone
+    when String then Time.zone.parse(value)
+    end
+    time || File.mtime(file_path)
+  rescue ArgumentError
+    File.mtime(file_path)
+  end
+
+  def self.frontmatter_for(file_path)
+    content = File.read(file_path)
+    return {} unless content.start_with?("---")
+
+    YAML.safe_load(content.split("---", 3)[1].to_s, permitted_classes: [ Date, Time ]) || {}
+  rescue Psych::Exception
+    {}
   end
 
   private

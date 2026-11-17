@@ -1,20 +1,9 @@
 <% content_for(:title) { "Ship iOS & Android Apps from Your Terminal" } %>
-<% content_for(:description) { "One CLI to build, sign, and deploy to App Store and Google Play. Automate code signing, provisioning profiles, and app store submissions. Free tier available, no credit card required." } %>
+<% content_for(:description) { "One CLI to build, sign and deploy iOS & Android apps to the App Store and Google Play. Automate code signing, profiles and store submissions. Free plan available." } %>
 <% content_for(:json_ld) do %>
+  <%= organization_json_ld %>
   <%= website_json_ld %>
-  <%= tag.script(
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "MySigner",
-      "description": "One CLI to build, sign, and deploy iOS & Android apps to App Store and Google Play.",
-      "url": "https://mysigner.dev",
-      "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "macOS, Linux, Windows",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-    }.to_json.html_safe,
-    type: "application/ld+json"
-  ) %>
+  <%= software_application_json_ld(description: "One CLI to build, sign, and deploy iOS & Android apps to App Store and Google Play.") %>
 <% end %>
 
 <%= render "landing/hero" %>

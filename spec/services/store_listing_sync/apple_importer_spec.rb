@@ -76,7 +76,7 @@ RSpec.describe StoreListingSync::AppleImporter do
     it "updates existing listings" do
       StoreListing.create!(
         organization: organization, listable: apple_app, locale: "en-US",
-        app_name: "Old Name", sync_status: "draft"
+        app_name: "Old Name", sync_status: "synced"
       )
 
       importer = described_class.new(organization: organization, apple_app: apple_app)
@@ -85,6 +85,14 @@ RSpec.describe StoreListingSync::AppleImporter do
       listing = apple_app.store_listings.find_by(locale: "en-US")
       expect(listing.app_name).to eq("My App")
       expect(listing.sync_status).to eq("synced")
+    end
+
+    it "preserves unpushed local edits during a store refresh" do
+      listing = create(:store_listing, organization: organization, listable: apple_app,
+        locale: "en-US", description: "My local changes", sync_status: "modified")
+      described_class.new(organization: organization, apple_app: apple_app).import!
+      expect(listing.reload.description).to eq("My local changes")
+      expect(listing.sync_status).to eq("modified")
     end
 
     it "raises without active credential" do

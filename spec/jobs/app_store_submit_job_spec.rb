@@ -37,6 +37,7 @@ RSpec.describe AppStoreSubmitJob, type: :job do
     allow(AppStoreConnect::Client).to receive(:new).and_return(mock_client)
     allow(AppStoreConnect::Versions).to receive(:new).and_return(mock_versions_service)
     allow(mock_versions_service).to receive(:validation_errors).and_return([])
+    allow(mock_versions_service).to receive(:update_release_settings)
   end
 
   describe "#perform" do
@@ -59,8 +60,10 @@ RSpec.describe AppStoreSubmitJob, type: :job do
         expect(version.submission_error).to be_nil
       end
 
-      it "does not call update_release_settings when release_type is AFTER_APPROVAL" do
-        expect(mock_versions_service).not_to receive(:update_release_settings)
+      it "persists automatic release even when the store previously used manual release" do
+        version.update!(raw_json: { "attributes" => { "releaseType" => "MANUAL" } })
+        expect(mock_versions_service).to receive(:update_release_settings)
+          .with(version_id: version.version_id, release_type: "AFTER_APPROVAL", earliest_release_date: nil)
 
         described_class.perform_now(
           organization_id: organization.id,

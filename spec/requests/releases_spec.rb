@@ -95,7 +95,7 @@ RSpec.describe "Releases", type: :request do
       it "enqueues a push job" do
         expect {
           post push_organization_release_path(organization, apple_release_id)
-        }.to have_enqueued_job(StoreListingPushJob)
+        }.to have_enqueued_job(StoreListingBatchPushJob)
       end
 
       it "redirects with success notice" do
@@ -114,7 +114,7 @@ RSpec.describe "Releases", type: :request do
         it "blocks the push and redirects with alert" do
           expect {
             post push_organization_release_path(organization, apple_release_id)
-          }.not_to have_enqueued_job(StoreListingPushJob)
+          }.not_to have_enqueued_job(StoreListingBatchPushJob)
           expect(flash[:alert]).to match(/awaiting approval/i)
         end
       end
@@ -124,12 +124,13 @@ RSpec.describe "Releases", type: :request do
       it "shows upgrade prompt and does not enqueue" do
         expect {
           post push_organization_release_path(organization, apple_release_id)
-        }.not_to have_enqueued_job(StoreListingPushJob)
+        }.not_to have_enqueued_job(StoreListingBatchPushJob)
       end
     end
   end
 
   describe "POST /organizations/:organization_id/releases/:id/push (auto-detected blockers)" do
+    let!(:version) { create(:app_store_version, organization: organization, apple_app: apple_app, version_string: "1.0.0") }
     let!(:listing) { create(:store_listing, organization: organization, listable: apple_app, locale: "en-US") }
     let!(:checklist) { create(:release_checklist, organization: organization, listable: apple_app, version_string: "1.0.0") }
 
@@ -151,7 +152,7 @@ RSpec.describe "Releases", type: :request do
 
       expect {
         post push_organization_release_path(organization, "apple_app_#{apple_app.id}")
-      }.not_to have_enqueued_job(StoreListingPushJob)
+      }.not_to have_enqueued_job(StoreListingBatchPushJob)
 
       expect(response).to redirect_to(
         organization_release_path(organization, "apple_app_#{apple_app.id}", tab: "checklist")
@@ -175,7 +176,7 @@ RSpec.describe "Releases", type: :request do
 
       expect {
         post push_organization_release_path(organization, "apple_app_#{apple_app.id}")
-      }.to have_enqueued_job(StoreListingPushJob)
+      }.to have_enqueued_job(StoreListingBatchPushJob)
     end
 
     it "does NOT block push when there are no auto items" do
@@ -183,7 +184,7 @@ RSpec.describe "Releases", type: :request do
 
       expect {
         post push_organization_release_path(organization, "apple_app_#{apple_app.id}")
-      }.to have_enqueued_job(StoreListingPushJob)
+      }.to have_enqueued_job(StoreListingBatchPushJob)
     end
 
     it "skips guard when no checklist exists for the app" do
@@ -192,7 +193,7 @@ RSpec.describe "Releases", type: :request do
 
       expect {
         post push_organization_release_path(organization, "apple_app_#{apple_app.id}")
-      }.to have_enqueued_job(StoreListingPushJob)
+      }.to have_enqueued_job(StoreListingBatchPushJob)
     end
   end
 

@@ -221,8 +221,11 @@ class CustomProductPagesController < ApplicationController
 
     presets = Array(params[:presets])
 
-    # Check which presets have exported files available
-    missing_presets = check_missing_preset_exports(project, presets)
+    # Upload the exports staged for this localization's own locale.
+    upload_locale = cpp_localization.locale.presence || @cpp.apple_app&.primary_locale
+
+    # Check which presets have staged exports for this localization's locale
+    missing_presets = check_missing_preset_exports(project, presets, locale: upload_locale)
     if missing_presets.any?
       preset_labels = { "ios_required" => "iPhone Required", "ios_optional" => "iPhone 5.5\"", "ios_ipad" => "iPad" }
       missing_labels = missing_presets.map { |p| preset_labels[p] || p }.join(", ")
@@ -233,6 +236,7 @@ class CustomProductPagesController < ApplicationController
 
     config = {
       "cpp_localization_id" => cpp_localization.remote_id,
+      "locale" => upload_locale,
       "presets" => presets,
       "replace_existing" => params[:replace_existing] == "true" || params[:replace_existing] == true
     }
@@ -530,14 +534,10 @@ class CustomProductPagesController < ApplicationController
     []
   end
 
-  # Checks which presets have no exported files on disk
-  def check_missing_preset_exports(project, presets)
-    exports_dir = project.exports_directory
-    existing_resolutions = if exports_dir.exist?
-      exports_dir.children.select(&:directory?).map { |d| d.basename.to_s }
-    else
-      []
-    end
+  # Checks which presets have no staged exports. Reads the same source as the
+  # upload job (ActiveStorage exports staged by Studio, legacy disk fallback).
+  def check_missing_preset_exports(project, presets, locale:)
+    existing_resolutions = project.staged_export_resolutions(locale: locale)
 
     presets.select do |preset_key|
       preset_sizes = ScreenshotProject::EXPORT_PRESETS[preset_key] || []

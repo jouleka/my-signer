@@ -253,6 +253,7 @@ FactoryBot.define do
     end
 
     trait :review_requested_changes do
+      review_decision { "rejected" }
       status { "draft" }
       submitted_for_review_at { 1.hour.ago }
       reviewed_at { 30.minutes.ago }

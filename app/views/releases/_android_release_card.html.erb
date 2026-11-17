@@ -1,6 +1,6 @@
 <%# Android release status card %>
 <% app = local_assigns[:app] %>
-<% latest = app.play_store_releases.order(Arel.sql("COALESCE(released_at, created_at) DESC")).first %>
+<% latest = @app_release.platform_release %>
 
 <div class="<%= card_container_classes %>">
   <div class="<%= card_header_split_classes %>">

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_20_153108) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_03_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -779,6 +779,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_20_153108) do
     t.bigint "reviewed_by_id"
     t.datetime "reviewed_at"
     t.text "review_comment"
+    t.string "review_decision"
     t.index ["created_by_id"], name: "index_release_notes_on_created_by_id"
     t.index ["listable_type", "listable_id", "version_string"], name: "idx_release_notes_app_version"
     t.index ["organization_id", "listable_type", "listable_id", "status"], name: "idx_release_notes_org_app_status"

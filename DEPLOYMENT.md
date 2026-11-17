@@ -59,3 +59,10 @@ Do not replace `SSH_KNOWN_HOSTS` with an unauthenticated `ssh-keyscan` during a 
 ## Backups and rollback
 
 Before the first production deployment, configure encrypted database and Active Storage backups outside the application host and test restoring them. Kamal can roll back application containers, but it does not replace database or object-storage backups.
+
+## Cloudflare Turnstile
+
+Public sign-in, sign-up, password reset, confirmation/unlock resend and contact forms are protected by Cloudflare Turnstile.
+
+- `TURNSTILE_SITE_KEY` (optional): the widget site key. Production defaults to the MySigner widget; development and test use Cloudflare's always-pass test keys.
+- `TURNSTILE_SECRET_KEY` (required in production): the widget secret. With Kamal it is read from `.kamal/secrets.d/turnstile_secret_key` (gitignored). If it is missing, the protected forms reject every submission.

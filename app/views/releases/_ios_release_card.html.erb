@@ -1,6 +1,6 @@
 <%# iOS release status card %>
 <% app = local_assigns[:app] %>
-<% latest = app.app_store_versions.includes(:apple_build).order(created_at: :desc).first %>
+<% latest = @app_release.platform_release %>
 <% release_config = app.respond_to?(:app_store_release) ? app.app_store_release : nil %>
 
 <div class="<%= card_container_classes %>">

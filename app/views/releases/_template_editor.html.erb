@@ -9,7 +9,7 @@
   { key: "fixed",    label: "FIXED",    icon: "fa-solid fa-wrench",   target: "fixedList",    border: "border-l-[var(--color-cat-fixed)]",    label_color: "text-[var(--color-cat-fixed)]" }
 ] %>
 
-<div data-release-note-editor-target="templatePanel">
+<div>
   <% categories.each do |cat| %>
     <% items = (template_data[cat[:key]] || template_data[cat[:key].to_sym] || []).select(&:present?) %>
     <div class="border-l-[3px] pl-4 mb-6 <%= cat[:border] %>">

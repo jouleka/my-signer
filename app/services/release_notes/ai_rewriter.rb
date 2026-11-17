@@ -39,6 +39,8 @@ module ReleaseNotes
 
     # @return [Hash] Parsed AI response with categorized notes
     def rewrite!
+      snapshot = @release_note.content_snapshot.deep_dup
+      operation_id = @release_note.metadata.dig("ai_operation", "id")
       platform = @release_note.ios? ? "iOS App Store" : "Google Play Store"
       char_limit = @release_note.char_limit
 
@@ -59,7 +61,12 @@ module ReleaseNotes
       content = response.dig("choices", 0, "message", "content")
       parsed = JSON.parse(content)
 
-      apply_rewrite!(parsed)
+      @release_note.with_lock do
+        unless @release_note.content_editable? && @release_note.content_snapshot == snapshot && @release_note.metadata.dig("ai_operation", "id") == operation_id
+          raise "Release notes changed while rewriting. Please try again."
+        end
+        apply_rewrite!(parsed)
+      end
 
       parsed
     rescue JSON::ParserError => e
@@ -96,6 +103,7 @@ module ReleaseNotes
     end
 
     def apply_rewrite!(parsed)
+      raise "Rewrite failed: AI returned invalid content" unless parsed.is_a?(Hash)
       template_data = {}
       %w[new improved fixed].each do |category|
         items = parsed[category]
@@ -103,6 +111,9 @@ module ReleaseNotes
       end
 
       rendered_text = parsed["rendered_text"]
+      if rendered_text && !rendered_text.is_a?(String)
+        raise "Rewrite failed: AI returned invalid text"
+      end
 
       # Guard against empty/garbage AI responses. Without this, an empty response
       # silently overwrites the note with blank fields and the UI defaults to
@@ -120,7 +131,7 @@ module ReleaseNotes
       @release_note.save!
       # Push a live refresh to subscribed pages so the editor re-renders with
       # the new AI content. (Autosave does not broadcast — see ReleaseNote.)
-      @release_note.trigger_live_refresh
+      ReleaseNotes::OperationStatus.new(@release_note).refresh
     end
   end
 end

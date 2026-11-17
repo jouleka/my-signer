@@ -11,7 +11,7 @@ on:
 
 jobs:
   scan_ruby:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -30,7 +30,7 @@ jobs:
         run: bundle exec bundle-audit check --update
 
   scan_js:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -46,7 +46,7 @@ jobs:
         run: bin/importmap audit
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -61,7 +61,7 @@ jobs:
         run: bin/rubocop -f github
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -87,7 +87,16 @@ jobs:
         env:
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/my_signer_test
-        run: bin/rails db:test:prepare && bundle exec rspec
+        run: bin/rails tailwindcss:build && bin/rails db:test:prepare && bundle exec rspec
+
+      - name: Upload system test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capybara-screenshots
+          path: tmp/capybara
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Run Minitest suite (account-deletion / soft-delete coverage)
         env:
@@ -96,7 +105,7 @@ jobs:
         run: bin/rails db:test:prepare && bundle exec rails test
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
     needs: [scan_ruby, scan_js, lint, test]
     concurrency:
@@ -141,6 +150,7 @@ jobs:
           ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${{ secrets.ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY }}
           ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${{ secrets.ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT }}
           PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
           PADDLE_CLIENT_SIDE_TOKEN: ${{ secrets.PADDLE_CLIENT_SIDE_TOKEN }}
           PADDLE_WEBHOOK_SECRET: ${{ secrets.PADDLE_WEBHOOK_SECRET }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -171,6 +181,7 @@ jobs:
           printf '%s' "$ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"   > .kamal/secrets.d/active_record_encryption_deterministic_key
           printf '%s' "$ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT" > .kamal/secrets.d/active_record_encryption_key_derivation_salt
           printf '%s' "$PADDLE_API_KEY"                               > .kamal/secrets.d/paddle_api_key
+          printf '%s' "$TURNSTILE_SECRET_KEY"                         > .kamal/secrets.d/turnstile_secret_key
           printf '%s' "$PADDLE_CLIENT_SIDE_TOKEN"                     > .kamal/secrets.d/paddle_client_side_token
           printf '%s' "$PADDLE_WEBHOOK_SECRET"                        > .kamal/secrets.d/paddle_webhook_secret
           printf '%s' "$AWS_ACCESS_KEY_ID"                            > .kamal/secrets.d/aws_access_key_id

@@ -10,9 +10,9 @@ module AppStoreConnect
     API_BASE = "https://api.appstoreconnect.apple.com".freeze
     V1 = "/v1".freeze
 
-    def initialize(credential:, timeout: 20)
+    def initialize(credential:, timeout: 20, allow_inactive: false)
       @credential = credential
-      validate_credential!
+      validate_credential!(allow_inactive: allow_inactive)
       @conn = Faraday.new(url: API_BASE) do |f|
         f.request :retry, max: 4, interval: 0.4, interval_randomness: 0.2, backoff_factor: 2,
                            retry_statuses: [ 429, 500, 502, 503, 504 ], methods: %i[get post patch delete]
@@ -150,12 +150,12 @@ module AppStoreConnect
       JwtMinter.for(@credential)
     end
 
-    def validate_credential!
+    def validate_credential!(allow_inactive:)
       %i[key_id issuer_id private_key].each do |a|
         v = @credential.public_send(a)
         raise "Missing credential #{a}" if v.blank?
       end
-      raise "Credential inactive" if @credential.respond_to?(:active?) && !@credential.active?
+      raise "Credential inactive" if !allow_inactive && @credential.respond_to?(:active?) && !@credential.active?
     end
 
     # Validates that an external URL is safe to request (HTTPS, no private IPs)

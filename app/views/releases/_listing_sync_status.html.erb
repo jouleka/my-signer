@@ -65,6 +65,12 @@
     </div>
   <% end %>
 
+<% when "partially_synced" %>
+  <div class="<%= sn_warning_classes %>">
+    <p class="text-sm font-semibold">Some fields were not pushed</p>
+    <p class="text-xs mt-1">Skipped: <%= Array(listing.push_fields_skipped).map { |field| field_labels[field] || field.to_s.humanize }.join(", ") %>. Your local values are saved.</p>
+  </div>
+
 <% when "modified" %>
   <%# Local changes pending — persistent %>
   <div class="<%= sn_modified_classes %>">
@@ -83,7 +89,7 @@
       <div class="<%= sn_icon_error_classes %>">
         <i class="fa-solid fa-exclamation text-[0.625rem]"></i>
       </div>
-      <span class="text-sm font-medium text-base-content/90">Conflict detected between local and store versions. Re-sync to resolve.</span>
+      <span class="text-sm font-medium text-base-content/90">Local and store versions differ. Your local values are kept when syncing.</span>
     </div>
   </div>
 
@@ -115,7 +121,7 @@
       <div class="<%= sn_icon_neutral_classes %>">
         <i class="fa-solid fa-file-pen text-[0.625rem]"></i>
       </div>
-      <span class="text-sm text-base-content/60">Draft listing. Sync from the store to import existing data, or start editing.</span>
+      <span class="text-sm text-base-content/60">Draft listing. Local drafts are kept when syncing from the store.</span>
     </div>
   </div>
 <% end %>

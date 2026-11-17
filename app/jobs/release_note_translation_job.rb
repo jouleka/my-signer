@@ -22,13 +22,19 @@ class ReleaseNoteTranslationJob < ApplicationJob
   #
   # @param organization_id [Integer]
   # @param release_note_id [Integer]
-  def perform(organization_id:, release_note_id:)
+  def perform(organization_id:, release_note_id:, operation_id: nil)
     organization = Organization.find_by(id: organization_id)
     return unless organization
 
     release_note = organization.release_notes.find_by(id: release_note_id)
     return unless release_note
-    return if release_note.rendered_text.blank?
+    operation = ReleaseNotes::OperationStatus.new(release_note)
+    return unless operation.claim!(operation_id)
+    unless release_note.content_editable? && release_note.rendered_text.present?
+      operation.finish!(operation_id, error: "Write an editable release note before translating.")
+      return
+    end
+    snapshot = release_note.content_snapshot.deep_dup
 
     # Find all other locales that have store listings for this app
     target_locales = organization.store_listings
@@ -37,10 +43,14 @@ class ReleaseNoteTranslationJob < ApplicationJob
       .pluck(:locale)
       .uniq
 
-    return if target_locales.empty?
+    if target_locales.empty?
+      operation.finish!(operation_id, error: "Add another listing locale before translating.")
+      return
+    end
 
     client = build_client
-    translations = release_note.translations || {}
+    translations = release_note.translations.deep_dup
+    failures = []
     platform = release_note.ios? ? "iOS App Store" : "Google Play Store"
     char_limit = release_note.char_limit
 
@@ -64,7 +74,10 @@ class ReleaseNoteTranslationJob < ApplicationJob
         end
       end
 
-      next unless can_translate
+      unless can_translate
+        failures << "#{target_locale}: monthly translation limit reached"
+        next
+      end
 
       charged_unpersisted += 1
 
@@ -78,21 +91,30 @@ class ReleaseNoteTranslationJob < ApplicationJob
           char_limit: char_limit
         )
 
-        translations[target_locale] = translated_text if translated_text.present?
+        unless translated_text.is_a?(String) && translated_text.strip.present? && translated_text.length <= char_limit
+          raise "AI returned empty, invalid or overlong text (maximum #{char_limit} characters)."
+        end
+        translations[target_locale] = translated_text
       rescue StandardError => e
         Rails.logger.warn("ReleaseNoteTranslationJob: Failed to translate to #{target_locale} - #{e.class}: #{e.message}")
         # Refund quota for failed translation
         refund_quota!(organization, 1)
         charged_unpersisted -= 1
+        failures << "#{target_locale}: #{ErrorMessageSanitizer.sanitize(e)}"
         # Skip this locale, continue with others
         next
       end
     end
 
     # Save all collected translations and push a live refresh to subscribed pages.
-    if translations.present?
+    if charged_unpersisted.positive?
       begin
-        release_note.update!(translations: translations)
+        release_note.with_lock do
+          unless operation.current?(operation_id) && release_note.content_editable? && release_note.content_snapshot == snapshot
+            raise "Release notes changed while translating. Please try again."
+          end
+          release_note.update!(translations: translations)
+        end
       rescue StandardError
         # The translations were charged but never persisted — refund every
         # quota unit charged in this run so a failed save doesn't leak quota.
@@ -100,11 +122,13 @@ class ReleaseNoteTranslationJob < ApplicationJob
         raise
       end
       charged_unpersisted = 0
-      release_note.trigger_live_refresh
     end
+    operation.finish!(operation_id, error: failures.presence&.join("; "))
+    operation.refresh unless operation_id
   rescue ActiveRecord::RecordNotFound => e
     Rails.logger.warn("ReleaseNoteTranslationJob: Record not found - #{e.message}")
   rescue StandardError => e
+    operation&.finish!(operation_id, error: e)
     Rails.logger.error("ReleaseNoteTranslationJob failed: #{e.class} - #{e.message}")
     Rails.logger.error(e.backtrace&.first(10)&.join("\n"))
     raise

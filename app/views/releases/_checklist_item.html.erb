@@ -80,7 +80,8 @@
            <% if checklist.persisted? && !read_only %>
              data-action="change->release-checklist#toggle"
              data-release-checklist-key-param="<%= item["key"] %>"
-             data-release-checklist-url-param="<%= checked ? uncheck_url : check_url %>"
+             data-release-checklist-check-url="<%= check_url %>"
+             data-release-checklist-uncheck-url="<%= uncheck_url %>"
            <% else %>
              disabled
            <% end %>>

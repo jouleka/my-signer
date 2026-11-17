@@ -1,12 +1,12 @@
-<%# Analytics Overview — key metrics from the last 30 days with trends %>
-<div class="<%= card_container_classes %>">
+<%# Analytics Overview — limited to the organization's available history %>
+<div class="<%= card_container_classes %>" aria-label="Analytics overview">
   <div class="<%= card_header_split_classes %>">
     <div class="flex items-center gap-2.5">
       <div class="<%= card_icon_classes %>">
         <i class="fa-solid fa-chart-bar"></i>
       </div>
       <span class="<%= card_title_classes %>">Analytics</span>
-      <span class="<%= muted_badge_classes %>">30d</span>
+      <span class="<%= muted_badge_classes %>"><%= @analytics_data[:days] %>d</span>
     </div>
     <%= link_to organization_analytics_path(@organization), class: btn_ghost_xs_classes do %>
       Full Report <i class="fa-solid fa-arrow-right text-[0.5rem]"></i>
@@ -28,7 +28,7 @@
           <% if @analytics_data[:downloads_change] %>
             <%= pct_change_html(@analytics_data[:downloads_change]) %>
           <% else %>
-            <span class="<%= hint_text_classes %>">vs prev 30d</span>
+            <span class="<%= hint_text_classes %>">last <%= @analytics_data[:days] %> days</span>
           <% end %>
         </div>
 
@@ -45,7 +45,7 @@
           <% if @analytics_data[:impressions_change] %>
             <%= pct_change_html(@analytics_data[:impressions_change]) %>
           <% else %>
-            <span class="<%= hint_text_classes %>">vs prev 30d</span>
+            <span class="<%= hint_text_classes %>">last <%= @analytics_data[:days] %> days</span>
           <% end %>
         </div>
 

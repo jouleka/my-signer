@@ -10,8 +10,8 @@ class AppStoreSubmitJob < ApplicationJob
   #   submission_status = "submitted"  → Apple accepted; state also updated to WAITING_FOR_REVIEW
   #   submission_status = "failed"     → Apple rejected or an error occurred; submission_error set
   #
-  # Release type is updated on the Apple version BEFORE submission (MANUAL and
-  # SCHEDULED only — AFTER_APPROVAL is Apple's default and needs no PATCH).
+  # Persist the selected release type before submission, including switching
+  # an existing manual or scheduled version back to automatic release.
   #
   # @param organization_id [Integer]
   # @param app_store_version_id [Integer] Local AppStoreVersion ID
@@ -28,19 +28,16 @@ class AppStoreSubmitJob < ApplicationJob
       return
     end
 
-    client = AppStoreConnect::Client.new(credential: credential)
-    versions_service = AppStoreConnect::Versions.new(client)
-
     begin
+      client = AppStoreConnect::Client.new(credential: credential)
+      versions_service = AppStoreConnect::Versions.new(client)
       # Update release_type on the Apple version first, if the user changed it.
       # Apple stores releaseType on the version itself, not on the submission.
-      if %w[MANUAL SCHEDULED].include?(release_type)
-        versions_service.update_release_settings(
-          version_id: version.version_id,
-          release_type: release_type,
-          earliest_release_date: earliest_release_date
-        )
-      end
+      versions_service.update_release_settings(
+        version_id: version.version_id,
+        release_type: release_type,
+        earliest_release_date: earliest_release_date
+      )
 
       # Submit for review. The service internally reuses any existing open draft
       # for (app, platform) to honor Apple's one-open-submission-per-platform rule.
@@ -70,7 +67,7 @@ class AppStoreSubmitJob < ApplicationJob
       Rails.logger.error("[AppStoreSubmitJob] failed: #{e.class} - #{e.message}")
       Rails.logger.error(e.backtrace&.first(10)&.join("\n"))
       record_failure(version, format_error_message(e))
-      refresh_validation_errors(version, versions_service)
+      refresh_validation_errors(version, versions_service) if versions_service
     end
   end
 

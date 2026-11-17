@@ -9,7 +9,7 @@
 <% rows      = local_assigns[:rows] || 3 %>
 <% limit     = base_listing.char_limit_for(field) %>
 <% base_val  = base_listing.send(field) %>
-<% base_len  = base_val.to_s.length %>
+<% base_len  = base_listing.char_usage_for(field) %>
 <% over_base = limit && base_len > limit %>
 
 <div class="grid grid-cols-2 gap-6 items-start py-2 max-lg:grid-cols-1 max-lg:gap-3">
@@ -22,7 +22,7 @@
       </label>
       <% if limit %>
         <span class="<%= char_badge_classes(base_len, limit) %>">
-          <%= base_len %>/<%= limit %>
+          <%= base_len %>/<%= limit %><%= " bytes" if field.to_sym == :keywords %>
         </span>
       <% end %>
     </div>

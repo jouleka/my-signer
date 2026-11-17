@@ -149,7 +149,7 @@ class ScreenshotProjectsController < ApplicationController
   end
 
   # POST /organizations/:organization_id/screenshot_projects/:id/upload_export
-  # Receives a batch of rendered PNGs from the browser and writes them to disk
+  # Receives a batch of rendered PNGs from the browser and stores them in ActiveStorage.
   # Supports both multipart FormData (binary files) and legacy JSON (base64)
   def upload_export
     authorize @organization, :manage_resources?
@@ -196,11 +196,17 @@ class ScreenshotProjectsController < ApplicationController
       width = screenshot[:width].to_i
       height = screenshot[:height].to_i
       position = screenshot[:scene_position].to_i
+      locale = screenshot[:locale].to_s.strip.presence
+
+      if locale && !(ScreenshotProject::APP_STORE_LOCALES + ScreenshotProject::GOOGLE_PLAY_LOCALES).include?(locale)
+        return render json: { message: "Unsupported screenshot locale: #{locale}" }, status: :unprocessable_content
+      end
 
       next if width <= 0 || width > 4096 || height <= 0 || height > 4096
       next unless scene_positions.include?(position)
-      next if seen_files["#{width}x#{height}:#{position}"]
-      seen_files["#{width}x#{height}:#{position}"] = true
+      file_key = [ locale, width, height, position ]
+      next if seen_files[file_key]
+      seen_files[file_key] = true
 
       # Support both multipart file upload and legacy base64
       raw = nil
@@ -229,11 +235,14 @@ class ScreenshotProjectsController < ApplicationController
       next if raw.bytesize > 10.megabytes
 
       total_bytes += raw.bytesize
-      decoded << { width: width, height: height, position: position, raw: raw }
+      decoded << { width: width, height: height, position: position, locale: locale, raw: raw }
     end
 
     if decoded.empty?
       return render json: { message: "No valid screenshots found in request" }, status: :unprocessable_content
+    end
+    if decoded.size != screenshots.size
+      return render json: { message: "Some screenshots are invalid or duplicated. No exports were replaced." }, status: :unprocessable_content
     end
 
     conflict_error = nil
@@ -250,7 +259,8 @@ class ScreenshotProjectsController < ApplicationController
 
       # This endpoint is used for store uploads, so replace prior export batch to avoid stale-file buildup.
       current_project_export_bytes = @project.export_storage_bytes
-      required_delta = [ total_bytes - current_project_export_bytes, 0 ].max
+      current_project_export_bytes += @project.screenshot_exports.joins(image_attachment: :blob).sum("active_storage_blobs.byte_size")
+      required_delta = total_bytes - current_project_export_bytes
       unless @project.org_within_export_quota?(required_delta, use_cache: false)
         limit_label = human_storage_limit(@project.max_export_storage_bytes_per_organization)
         quota_error = "Organization export storage quota exceeded (max #{limit_label})"
@@ -258,25 +268,21 @@ class ScreenshotProjectsController < ApplicationController
       end
 
       @project.clear_exports_directory!
+      @project.screenshot_exports.destroy_all
 
-      # Phase 3: Write all validated files to disk and cloud storage
+      # One canonical batch: locale is part of each export's identity. Keeping
+      # another disk copy loses that identity and doubles the storage charge.
       decoded.each do |entry|
         resolution = "#{entry[:width]}x#{entry[:height]}"
-        resolution_dir = @project.ensure_resolution_directory!(width: entry[:width], height: entry[:height])
-
-        file_name = "screenshot_#{entry[:position].to_s.rjust(2, '0')}.png"
-        File.binwrite(resolution_dir.join(file_name), entry[:raw])
-
-        # Also store via ActiveStorage for cloud-compatible access
         ScreenshotExport.upsert_export!(
           project: @project,
           resolution: resolution,
           scene_position: entry[:position],
-          locale: nil,
+          locale: entry[:locale],
           image_data: entry[:raw]
         )
 
-        results << { resolution: resolution, scene_position: entry[:position], file_size: entry[:raw].bytesize }
+        results << { resolution: resolution, scene_position: entry[:position], locale: entry[:locale], file_size: entry[:raw].bytesize }
       end
     end
 

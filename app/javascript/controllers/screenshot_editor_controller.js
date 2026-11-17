@@ -61,7 +61,6 @@ export default class extends Controller {
     "perspectiveShadow", "perspectiveReflection", "perspectiveControls",
     "screenshotOffsetY", "screenshotOffsetYLabel",
     "editorTabBtn", "editorTabContent",
-    "saveDropdown", "saveDropdownToggle", "dirtyCountBadge",
     "googlePlayTextWarning", "googlePlayTextPercent",
     "darkModeToggle", "darkModeIcon"
   ]
@@ -405,7 +404,6 @@ export default class extends Controller {
     this.sceneDataTargets.forEach(sceneData => {
       this._updateSceneDirtyState(sceneData.dataset.sceneId)
     })
-    this._updateDirtyCountBadge()
   }
 
   _markSceneAsPersisted(sceneId) {
@@ -873,9 +871,9 @@ export default class extends Controller {
       this._invalidateStaticLayer()
     }
     const logicalWidthCss = `${logicalPreviewWidth}px`
-    const logicalHeightCss = `${logicalPreviewHeight}px`
     if (canvas.style.width !== logicalWidthCss) canvas.style.width = logicalWidthCss
-    if (canvas.style.height !== logicalHeightCss) canvas.style.height = logicalHeightCss
+    canvas.style.maxWidth = "100%"
+    canvas.style.height = "auto"
 
     const captionOpts = this._collectCaptionOptsFromSettings(sceneSettings)
     captionOpts.dragPositionX = this._liveDragPosition ? this._liveDragPosition.x : captionOpts.dragPositionX
@@ -3056,7 +3054,6 @@ export default class extends Controller {
 
     this._loadSceneOverrides(activeSceneData)
     this._updateSceneDirtyState(activeSceneData.dataset.sceneId)
-    this._updateDirtyCountBadge()
 
     // Close dropdown and render immediately for responsive switching.
     const dropdown = button.closest("details")
@@ -3156,24 +3153,8 @@ export default class extends Controller {
     this.updatePreview()
   }
 
-  // Save current scene only (default action)
-  async saveCurrentScene() {
-    this._closeSaveDropdown()
-    await this._performSave({ allScenes: false })
-  }
-
-  // Save all dirty scenes
+  // Save every dirty scene, including drafts edited before switching scenes.
   async saveAllScenes() {
-    this._closeSaveDropdown()
-    await this._performSave({ allScenes: true })
-  }
-
-  // Legacy alias — keep for backwards compat
-  async save() {
-    await this._performSave({ allScenes: true })
-  }
-
-  async _performSave({ allScenes = true } = {}) {
     const csrfToken = document.querySelector("meta[name=csrf-token]")?.content
 
     if (this.hasSaveButtonTarget) {
@@ -3190,14 +3171,7 @@ export default class extends Controller {
     this._updateAllSceneDirtyStates()
 
     // 1. Save scenes (caption + subtitle + overrides + locale_variants)
-    let sceneIdsToSave
-    if (allScenes) {
-      sceneIdsToSave = this._dirtySceneIds ? Array.from(this._dirtySceneIds) : []
-    } else {
-      // Only save the current scene if it's dirty
-      const currentId = String(this.currentSceneId)
-      sceneIdsToSave = this._dirtySceneIds?.has(currentId) ? [currentId] : []
-    }
+    const sceneIdsToSave = this._dirtySceneIds ? Array.from(this._dirtySceneIds) : []
 
     for (const sceneId of sceneIdsToSave) {
       const sceneData = this.findSceneData(sceneId)
@@ -3223,27 +3197,7 @@ export default class extends Controller {
 
     // 2. Save project settings
     if (this.projectUrlValue) {
-      // When dark mode preview is active, the UI reflects the dark variant.
-      // We must save the original (light) settings so the canonical project
-      // settings are not overwritten with the transient dark transform.
-      const settings = this._darkModePreToggleSettings
-        ? { ...this._darkModePreToggleSettings }
-        : this.getCurrentSettings()
-      const sceneSettingsKeys = new Set(this.constructor.SCENE_SETTING_OVERRIDE_KEYS)
-
-      // Do not leak current-scene override values into project-level settings.
-      const activeSceneData = this.currentSceneId ? this.findSceneData(this.currentSceneId) : null
-      if (activeSceneData) {
-        let activeSceneOverrides = {}
-        try { activeSceneOverrides = JSON.parse(activeSceneData.dataset.sceneOverrides || "{}") } catch {}
-        Object.keys(activeSceneOverrides).forEach((key) => {
-          if (!sceneSettingsKeys.has(key)) return
-          if (!Object.prototype.hasOwnProperty.call(settings, key)) return
-          if (this.settingsValue && this.settingsValue[key] !== undefined) {
-            settings[key] = this.settingsValue[key]
-          }
-        })
-      }
+      const settings = this.getProjectSettings()
 
       // Determine if the current template still applies
       let templateToSave = this.templateValue || ""
@@ -3296,21 +3250,7 @@ export default class extends Controller {
     }, 1500)
 
     this._updateAllSceneDirtyStates()
-    this._updateDirtyCountBadge()
     if (this.hasSaveButtonTarget) this.saveButtonTarget.disabled = false
-  }
-
-  _closeSaveDropdown() {
-    if (this.hasSaveDropdownTarget) {
-      this.saveDropdownTarget.removeAttribute("open")
-    }
-  }
-
-  _updateDirtyCountBadge() {
-    if (!this.hasDirtyCountBadgeTarget) return
-    const count = this._dirtySceneIds ? this._dirtySceneIds.size : 0
-    this.dirtyCountBadgeTarget.textContent = count
-    this.dirtyCountBadgeTarget.classList.toggle("hidden", count === 0)
   }
 
   confirmDeleteScene(event) {
@@ -3331,6 +3271,26 @@ export default class extends Controller {
   }
 
   // --- Public API (used by export controller) ---
+
+  getProjectSettings({ includePreviewVariant = false } = {}) {
+    // Save canonical colors; exports should keep the visible dark variant.
+    // In either case, exclude the selected scene's overrides from the base.
+    const settings = this._darkModePreToggleSettings && !includePreviewVariant
+      ? { ...this._darkModePreToggleSettings }
+      : this.getCurrentSettings()
+    const defaults = includePreviewVariant && this._darkModeActive
+      ? generateDarkVariant(this.settingsValue)
+      : this.settingsValue
+    const activeScene = this.currentSceneId ? this.findSceneData(this.currentSceneId) : null
+    const overrides = this._parseJSON(activeScene?.dataset.sceneOverrides || "{}", {})
+    for (const key of this.constructor.SCENE_SETTING_OVERRIDE_KEYS) {
+      if (Object.hasOwn(overrides, key)) {
+        if (defaults[key] !== undefined) settings[key] = defaults[key]
+        else delete settings[key]
+      }
+    }
+    return settings
+  }
 
   getCurrentSettings() {
     return {
@@ -3486,17 +3446,10 @@ export default class extends Controller {
     const isTextInput = tag === "INPUT" || tag === "TEXTAREA" || isEditable
     const mod = event.metaKey || event.ctrlKey
 
-    // Ctrl/Cmd+Shift+S — save all scenes (always)
-    if (mod && event.shiftKey && event.key.toLowerCase() === "s") {
+    // Ctrl/Cmd+S (or Shift+S) — save all edited scenes, including from text inputs.
+    if (mod && event.key.toLowerCase() === "s") {
       event.preventDefault()
       this.saveAllScenes()
-      return
-    }
-
-    // Ctrl/Cmd+S — save current scene (always)
-    if (mod && event.key === "s") {
-      event.preventDefault()
-      this.saveCurrentScene()
       return
     }
 

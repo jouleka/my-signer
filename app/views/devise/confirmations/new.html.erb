@@ -72,6 +72,8 @@
             <div class="validator-hint hint">If you signed up with Apple or Google with a verified email, no confirmation is needed.</div>
           </div>
 
+          <%= render "shared/turnstile", turnstile_action: "confirmation" %>
+
           <button type="submit" class="btn-primary-ms mt-2">
             <i class="fa-solid fa-paper-plane text-[11px]"></i>
             <%= t('.submit') %>

@@ -9,8 +9,11 @@ class StoreListing < ApplicationRecord
     broadcast_refresh_later_to(self)
   end
 
+  CONTENT_FIELDS = %w[app_name subtitle keywords short_description description
+    promotional_text whats_new support_url marketing_url privacy_policy_url].freeze
+
   SYNC_STATUSES = %w[draft synced modified conflict partially_synced].freeze
-  TRANSLATION_STATUSES = %w[pending needs_review approved].freeze
+  TRANSLATION_STATUSES = %w[pending needs_review approved failed].freeze
 
   # Character limits per platform
   # iOS limits are from App Store Connect; Android limits from Google Play Console
@@ -38,6 +41,7 @@ class StoreListing < ApplicationRecord
 
   before_validation :normalize_fields
   before_save :detect_modification
+  before_save :remember_cleared_fields
 
   validates :locale, presence: true,
     format: { with: /\A[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8}){0,3}\z/, message: "must be a valid locale code (e.g., en-US)" },
@@ -57,6 +61,71 @@ class StoreListing < ApplicationRecord
   scope :modified, -> { where(sync_status: "modified") }
   scope :drafts, -> { where(sync_status: "draft") }
   scope :needs_review, -> { where(translation_status: "needs_review") }
+
+  # A push that has not reported back within this window is treated as dead
+  # (worker crash, deploy mid-run) so it can never lock push/sync forever.
+  PUSH_STALE_AFTER = 15.minutes
+  PUSH_INTERRUPTED_MESSAGE = "Push did not finish. Push again to retry.".freeze
+
+  scope :push_in_progress, -> { where(push_status: "pushing").where(updated_at: PUSH_STALE_AFTER.ago..) }
+  scope :push_stale, -> { where(push_status: "pushing").where(updated_at: ...PUSH_STALE_AFTER.ago) }
+
+  # Marks listings as queued for push. update_all skips timestamps, so the
+  # staleness clock is set explicitly.
+  def self.mark_pushing!
+    update_all(push_status: "pushing", push_error: nil, push_fields_skipped: [], updated_at: Time.current)
+  end
+
+  def self.supported_locales(listable_type)
+    listable_type == "AppleApp" ? ScreenshotProject::APP_STORE_LOCALES : ScreenshotProject::GOOGLE_PLAY_LOCALES
+  end
+
+  def push_in_progress?
+    push_status == "pushing" && !push_stale?
+  end
+
+  def push_stale?
+    push_status == "pushing" && updated_at.present? && updated_at < PUSH_STALE_AFTER.ago
+  end
+
+  def translation_pending?
+    translation_status == "pending" && updated_at > 15.minutes.ago
+  end
+
+  def local_changes?
+    %w[modified conflict partially_synced].include?(sync_status) ||
+      (sync_status == "draft" && CONTENT_FIELDS.any? { |field| self[field].present? })
+  end
+
+  def apply_store_import!(attributes)
+    if persisted?
+      with_lock do
+        unless local_changes?
+          sync_status_will_change!
+          update!(attributes)
+        end
+      end
+    else
+      update!(attributes)
+    end
+  end
+
+  def push_snapshot
+    attributes.slice(*CONTENT_FIELDS).merge("cleared_fields" => Array(metadata["cleared_fields"]))
+  end
+
+  def finish_push!(attributes, snapshot:)
+    with_lock do
+      attributes[:sync_status] = "modified" if push_snapshot != snapshot
+      update!(attributes)
+    end
+  end
+
+  # Blank drafts omit fields; an explicitly cleared saved value must be sent
+  # as an empty string or the store silently retains its previous value.
+  def value_for_store(field)
+    self[field].presence || (Array(metadata["cleared_fields"]).include?(field.to_s) ? "" : nil)
+  end
 
   def platform
     case listable_type
@@ -80,7 +149,7 @@ class StoreListing < ApplicationRecord
   def char_usage_for(field)
     value = send(field)
     return 0 if value.blank?
-    value.length
+    field.to_sym == :keywords ? value.bytesize : value.length
   end
 
   def mark_synced!
@@ -114,6 +183,23 @@ class StoreListing < ApplicationRecord
 
   private
 
+  def remember_cleared_fields
+    return unless persisted?
+    return if sync_status == "synced" && will_save_change_to_sync_status?
+    changed = CONTENT_FIELDS.select { |field| will_save_change_to_attribute?(field) }
+    return if changed.empty?
+
+    cleared = Array(metadata["cleared_fields"])
+    changed.each do |field|
+      if self[field].blank? && attribute_in_database(field).present?
+        cleared |= [ field ]
+      elsif self[field].present?
+        cleared -= [ field ]
+      end
+    end
+    self.metadata = metadata.merge("cleared_fields" => cleared)
+  end
+
   def normalize_fields
     self.locale = locale.to_s.strip.presence
     self.app_name = app_name.to_s.strip.presence
@@ -129,13 +215,11 @@ class StoreListing < ApplicationRecord
   end
 
   def detect_modification
-    return unless persisted? && sync_status_was == "synced"
+    return unless persisted? && %w[synced partially_synced].include?(sync_status_was)
     # Don't auto-modify if sync_status is being explicitly changed (e.g., by importer)
     return if changes.key?("sync_status")
 
-    content_fields = %w[app_name subtitle keywords short_description description
-                        promotional_text whats_new support_url marketing_url privacy_policy_url]
-    if content_fields.any? { |f| changes.key?(f) }
+    if CONTENT_FIELDS.any? { |field| changes.key?(field) }
       self.sync_status = "modified"
     end
   end
@@ -147,8 +231,10 @@ class StoreListing < ApplicationRecord
     limits.each do |field, limit|
       value = send(field)
       next if value.blank?
-      if value.length > limit
-        errors.add(field, "is too long (maximum is #{limit} characters, got #{value.length})")
+      length = char_usage_for(field)
+      if length > limit
+        unit = field == :keywords ? "bytes" : "characters"
+        errors.add(field, "is too long (maximum is #{limit} #{unit}, got #{length})")
       end
     end
   end
@@ -174,7 +260,7 @@ class StoreListing < ApplicationRecord
       value = send(field)
       next if value.blank?
       uri = URI.parse(value)
-      unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
+      unless uri.is_a?(URI::HTTP) && uri.host.present?
         errors.add(field, "must be a valid HTTP or HTTPS URL")
       end
     rescue URI::InvalidURIError

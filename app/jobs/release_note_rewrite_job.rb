@@ -6,12 +6,18 @@ class ReleaseNoteRewriteJob < ApplicationJob
   # @param organization_id [Integer]
   # @param release_note_id [Integer] The release note to update
   # @param raw_input [String] Raw technical changelog text
-  def perform(organization_id:, release_note_id:, raw_input:)
+  def perform(organization_id:, release_note_id:, raw_input:, operation_id: nil)
     organization = Organization.find_by(id: organization_id)
     return unless organization
 
     release_note = organization.release_notes.find_by(id: release_note_id)
     return unless release_note
+    operation = ReleaseNotes::OperationStatus.new(release_note)
+    return unless operation.claim!(operation_id)
+    unless release_note.content_editable?
+      operation.finish!(operation_id, error: "This release note cannot be edited.")
+      return
+    end
 
     # Optimistic decrement: check quota and increment counter under lock,
     # then release lock before making the slow OpenAI API call.
@@ -27,7 +33,10 @@ class ReleaseNoteRewriteJob < ApplicationJob
       end
     end
 
-    return unless can_rewrite
+    unless can_rewrite
+      operation.finish!(operation_id, error: "Monthly AI rewrite limit reached.")
+      return
+    end
 
     # Rewrite outside the lock — no DB lock held during network I/O
     begin
@@ -43,9 +52,11 @@ class ReleaseNoteRewriteJob < ApplicationJob
       end
       raise
     end
+    operation.finish!(operation_id)
   rescue ActiveRecord::RecordNotFound => e
     Rails.logger.warn("ReleaseNoteRewriteJob: Record not found - #{e.message}")
   rescue StandardError => e
+    operation&.finish!(operation_id, error: e)
     Rails.logger.error("ReleaseNoteRewriteJob failed: #{e.class} - #{e.message}")
     Rails.logger.error(e.backtrace&.first(10)&.join("\n"))
     raise

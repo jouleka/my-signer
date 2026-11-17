@@ -1,14 +1,7 @@
-<%#
-  "Translate to all locales" button. Two states:
-  - idle    (default): button_to that POSTs to translate_release_note; shows
-                       remaining-translations counter; Turbo-confirm before submit.
-  - pending (post-submit, turbo_stream'd by ReleasesController#translate_release_note):
-            disabled pill with spinner + "Translating…" label.
-  Restored to idle by the refresh broadcast fired when the translation job saves
-  (ReleaseNote#broadcasts_refreshes → morph refresh).
-%>
-<% pending = local_assigns.fetch(:pending, false) %>
+<%# Pending state comes from the note's persisted AI operation. The completion
+    broadcast refreshes the page to show the result or a retryable failure. %>
 <% note = local_assigns[:release_note] || @release_note %>
+<% pending = local_assigns.fetch(:pending, note&.ai_pending? && note.metadata.dig("ai_operation", "kind") == "translation") %>
 <% if @entitlements&.max_ai_translations_per_month.to_i > 0 && note %>
   <div id="translate-button" class="inline-flex">
     <% if pending %>
@@ -21,7 +14,7 @@
       <%= button_to translate_release_note_organization_release_path(@organization, params[:id], note_id: note.id),
           method: :post, class: btn_accent_sm_classes,
           form: { class: "inline" },
-          disabled: remaining <= 0,
+          disabled: remaining <= 0 || note.ai_pending?,
           data: { turbo_confirm: "Translate this release note to all other locales?" } do %>
         <i class="fa-solid fa-language"></i>
         Translate to all locales

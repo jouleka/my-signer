@@ -188,7 +188,7 @@ RSpec.describe "Phase 5 Dashboard", type: :request do
       get authenticated_root_path
 
       expect(response.body).to include("Analytics")
-      expect(response.body).to include("30d")
+      expect(response.body).to include("7d")
     end
 
     context "with no analytics data" do
@@ -201,6 +201,7 @@ RSpec.describe "Phase 5 Dashboard", type: :request do
     end
 
     context "with analytics data" do
+      let(:user) { create(:user, plan_tier: :pro) }
       let!(:apple_app) { create(:apple_app, organization: organization, sku: "analytics-ios-1") }
 
       before do

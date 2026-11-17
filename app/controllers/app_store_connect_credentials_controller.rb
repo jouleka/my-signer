@@ -82,7 +82,7 @@ class AppStoreConnectCredentialsController < ApplicationController
   def test
     authorize @credential, :test?
     begin
-      client = AppStoreConnect::Client.new(credential: @credential)
+      client = AppStoreConnect::Client.new(credential: @credential, allow_inactive: true)
       client.get("/v1/certificates", params: { limit: 1 })
       redirect_to @org, notice: "Connection successful"
     rescue => e

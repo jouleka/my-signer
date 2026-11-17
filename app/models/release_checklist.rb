@@ -24,23 +24,27 @@ class ReleaseChecklist < ApplicationRecord
   scope :for_version, ->(version) { where(version_string: version) }
 
   def check_item!(key, user = nil)
-    item = find_item(key)
-    return false unless item
+    with_lock do
+      item = find_item(key)
+      return false unless item
 
-    item["checked"] = true
-    item["checked_by_id"] = user&.id
-    item["checked_at"] = Time.current.iso8601
-    save!
+      item["checked"] = true
+      item["checked_by_id"] = user&.id
+      item["checked_at"] = Time.current.iso8601
+      save!
+    end
   end
 
   def uncheck_item!(key)
-    item = find_item(key)
-    return false unless item
+    with_lock do
+      item = find_item(key)
+      return false unless item
 
-    item["checked"] = false
-    item["checked_by_id"] = nil
-    item["checked_at"] = nil
-    save!
+      item["checked"] = false
+      item["checked_by_id"] = nil
+      item["checked_at"] = nil
+      save!
+    end
   end
 
   # Add a custom item to the checklist
@@ -49,48 +53,52 @@ class ReleaseChecklist < ApplicationRecord
   # @param user [User, nil]
   # @return [Boolean] true if saved
   def add_custom_item!(label:, required: false, user: nil)
-    return false if label.to_s.strip.blank?
+    with_lock do
+      return false if label.to_s.strip.blank?
 
-    self.custom_items ||= []
+      self.custom_items ||= []
 
-    # Prevent duplicates by label (case insensitive)
-    return false if custom_items.any? { |i| i["label"].to_s.strip.downcase == label.to_s.strip.downcase }
+      # Prevent duplicates by label (case insensitive)
+      return false if custom_items.any? { |i| i["label"].to_s.strip.downcase == label.to_s.strip.downcase }
 
-    key = generate_custom_item_key(label)
+      key = generate_custom_item_key(label)
 
-    custom_items << {
-      "key" => key,
-      "label" => label.to_s.strip,
-      "checked" => false,
-      "required" => required,
-      "category" => "custom",
-      "created_by_id" => user&.id,
-      "created_at" => Time.current.iso8601
-    }
-    save!
+      custom_items << {
+        "key" => key,
+        "label" => label.to_s.strip,
+        "checked" => false,
+        "required" => required,
+        "category" => "custom",
+        "created_by_id" => user&.id,
+        "created_at" => Time.current.iso8601
+      }
+      save!
+    end
   end
 
   # Remove a custom item by key
   # @param key [String]
   # @return [Boolean] true if saved
   def remove_custom_item!(key)
-    return false if custom_items.blank?
-    before_size = custom_items.size
-    self.custom_items = custom_items.reject { |i| i["key"] == key.to_s }
-    return false if custom_items.size == before_size
-    save!
+    with_lock do
+      return false if custom_items.blank?
+      before_size = custom_items.size
+      self.custom_items = custom_items.reject { |i| i["key"] == key.to_s }
+      return false if custom_items.size == before_size
+      save!
+    end
   end
 
   def completion_percentage
     all = all_items_merged
     return 0 if all.empty?
 
-    checked = all.count { |i| i["checked"] }
+    checked = all.count { |i| i["checked"] == true }
     (checked.to_f / all.size * 100).round
   end
 
   def ready_for_submission?
-    all_required_complete
+    all_required_complete && auto_detected_items.none? { |item| item["required"] == true && item["severity"] == "error" }
   end
 
   # Returns auto-detected items from the AutoDetector service.
@@ -108,7 +116,15 @@ class ReleaseChecklist < ApplicationRecord
     ).detect
   rescue StandardError => e
     Rails.logger.warn("ReleaseChecklist#auto_detected_items failed: #{e.class} - #{e.message}")
-    []
+    [ { "key" => "auto_check_failed", "label" => "Could not verify release readiness. Please retry.",
+       "required" => true, "checked" => false, "severity" => "error", "source" => "local_check" } ]
+  end
+
+  def reset_items!
+    with_lock do
+      (items + custom_items).each { |item| item.merge!("checked" => false, "checked_by_id" => nil, "checked_at" => nil) }
+      save!
+    end
   end
 
   # Returns ALL items: defaults + custom + auto-detected.

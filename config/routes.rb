@@ -80,6 +80,7 @@ Rails.application.routes.draw do
   get "/terms-and-conditions", to: "legal#terms", as: :terms_of_service
   get "/privacy-policy", to: "legal#privacy", as: :privacy_policy
   get "/refund-policy", to: "legal#refund", as: :refund_policy
+  get "/security", to: "legal#security", as: :security
   resource :settings, only: :show
   resource :notification_preferences, only: [ :show, :update ], path: "/settings/notifications"
   namespace :billing do

@@ -22,7 +22,7 @@ class ReleaseNotePolicy < ApplicationPolicy
   end
 
   def update?
-    developer_or_higher?
+    developer_or_higher? && record.content_editable? && !record.ai_pending?
   end
 
   def edit?
@@ -34,15 +34,15 @@ class ReleaseNotePolicy < ApplicationPolicy
   end
 
   def apply?
-    developer_or_higher? && record.status != "pending_review"
+    developer_or_higher? && record.content_editable? && !record.review_required? && !record.ai_pending?
   end
 
   def translate?
-    developer_or_higher?
+    developer_or_higher? && record.content_editable?
   end
 
   def rewrite?
-    developer_or_higher?
+    translate?
   end
 
   def diff?
@@ -54,7 +54,7 @@ class ReleaseNotePolicy < ApplicationPolicy
   end
 
   def submit_for_review?
-    developer_or_higher? && record.status == "draft" && record.organization.supports_review_workflow?
+    developer_or_higher? && record.status == "draft" && !record.ai_pending? && record.organization.supports_review_workflow?
   end
 
   def approve_review?

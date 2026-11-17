@@ -6,7 +6,8 @@
                       a single translation textarea (autosaves via
                       update_release_translation action)
     Live refresh is pushed from AI jobs via ReleaseNote#trigger_live_refresh.
-    Autosave responses are `head :ok` so the page never navigates mid-keystroke. %>
+    Autosave returns JSON state so the page can update approval messaging
+    without navigating mid-keystroke. %>
 
 <% if @release_note %>
   <%= turbo_stream_from @release_note %>
@@ -39,13 +40,15 @@
           Start drafting the "What's New" text for v<%= @app_release.version_string %>.
           You can use the structured template (NEW / IMPROVED / FIXED) or write freeform.
         </p>
+        <% if policy(@organization).manage_resources? %>
         <%= form_with url: create_release_note_organization_release_path(@organization, params[:id]),
             method: :post, class: "inline" do |f| %>
-          <%= hidden_field_tag "release_note[version_string]", @app_release.version_string %>
+          <%= hidden_field_tag "release_note[version_string]", @app_release.version_string == "unversioned" ? nil : @app_release.version_string %>
           <%= hidden_field_tag "release_note[locale]", @primary_locale %>
           <button type="submit" class="<%= btn_primary_classes %>">
             <i class="fa-solid fa-plus"></i> Create Release Note
           </button>
+        <% end %>
         <% end %>
       </div>
     </div>
@@ -53,7 +56,7 @@
 <% else %>
   <%
     note = @release_note
-    can_edit = !(@organization.supports_review_workflow? && note.pending_review?)
+    can_edit = policy(note).update?
     is_freeform_initial = note.template_data.blank? ||
                           (note.template_data.is_a?(Hash) && note.template_data.values.flatten.compact_blank.empty?) && note.rendered_text.present?
 
@@ -71,7 +74,7 @@
     all_locales = ([base_locale] + other_locales + orphan_translation_locales).uniq
   %>
 
-  <section class="flex flex-col gap-6"
+  <section id="release-note-<%= note.id %>" class="flex flex-col gap-6"
            data-controller="release-note-editor locale-switcher"
            data-release-note-editor-char-limit-value="<%= note.char_limit %>"
            data-release-note-editor-platform-value="<%= note.platform %>"
@@ -82,7 +85,8 @@
     <% if @organization.supports_review_workflow? %>
       <% if note.pending_review? %>
         <div class="<%= sn_warning_classes %>">
-          <div class="flex items-start gap-3">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div class="flex items-start gap-3 flex-1 min-w-0">
             <div class="<%= sn_icon_warning_classes %> mt-0.5">
               <i class="fa-solid fa-clock text-[0.625rem]"></i>
             </div>
@@ -93,7 +97,9 @@
                 <% if note.created_by %>by <%= note.created_by.email %><% end %>
               </p>
             </div>
-            <% if ReleaseNotePolicy.new(current_user, note).approve_review? %>
+            </div>
+            <% if policy(note).approve_review? %>
+              <div class="flex gap-2 flex-wrap shrink-0">
               <%= button_to approve_review_organization_release_path(@organization, params[:id], note_id: note.id),
                   method: :post, class: btn_success_sm_classes,
                   form: { class: "inline" } do %>
@@ -105,6 +111,7 @@
                       data-modal-target-value="reject-review-modal">
                 <i class="fa-solid fa-xmark"></i> Request Changes
               </button>
+              </div>
             <% end %>
           </div>
         </div>
@@ -156,7 +163,7 @@
           </div>
         </div>
       <% elsif note.approved? %>
-        <div class="<%= sn_success_classes %>">
+        <div class="<%= sn_success_classes %>" data-locale-switcher-target="approvedBanner">
           <div class="flex items-center gap-3">
             <div class="<%= sn_icon_success_classes %>">
               <i class="fa-solid fa-check text-[0.625rem]"></i>
@@ -169,13 +176,18 @@
         </div>
       <% end %>
     <% end %>
+    <p class="<%= sn_warning_classes %> hidden" data-locale-switcher-target="reviewReminder" role="status">The release notes changed. Submit them for review again before applying.</p>
 
     <%# ── Top action row ──
         AI Rewrite and Translate only make sense from the base locale — the
         locale switcher hides them when another locale is active. Apply works
         from any locale (it's a per-note commit to all listings). %>
+    <% operation = note.metadata.fetch("ai_operation", {}) %>
+    <% if operation["status"] == "failed" || (%w[pending running].include?(operation["status"]) && !note.ai_pending?) %>
+      <p role="alert" class="<%= sn_error_classes %>"><%= operation["error"].presence || "The AI operation timed out. Please try again." %></p>
+    <% end %>
     <div class="flex items-center gap-2 flex-wrap">
-      <% if can_edit %>
+      <% if can_edit || (note.ai_pending? && policy(@organization).manage_resources?) %>
         <div data-locale-switcher-target="baseOnlyAction">
           <%= render "releases/ai_rewrite_button" %>
         </div>
@@ -184,7 +196,7 @@
         </div>
         <%= render "releases/apply_button", release_note: note %>
 
-        <% if @organization.supports_review_workflow? && note.status == "draft" && !note.rejected? %>
+        <% if policy(note).submit_for_review? %>
           <%= button_to submit_for_review_organization_release_path(@organization, params[:id], note_id: note.id),
               method: :post, class: btn_ghost_sm_classes,
               form: { class: "inline" },
@@ -203,7 +215,7 @@
         <% if note.version_string.present? %>
           <span class="<%= version_badge_classes %>">v<%= note.version_string %></span>
         <% end %>
-        <span class="<%= status_badge_classes(note.status) %>">
+        <span class="<%= status_badge_classes(note.status) %>" data-locale-switcher-target="noteStatus">
           <%= note.status.tr("_", " ").titleize %>
         </span>
       </div>
@@ -259,6 +271,7 @@
                   action: "input->locale-switcher#scheduleAutosave focusout->locale-switcher#flushOnBlur"
                 }) do |f| %>
 
+            <fieldset class="contents" <%= "disabled" unless can_edit %>>
             <%# Hidden fields the release-note-editor controller writes into. %>
             <%= hidden_field_tag "release_note[rendered_text]", note.rendered_text,
                 data: { release_note_editor_target: "renderedTextInput" } %>
@@ -317,6 +330,7 @@
                 </div>
               </div>
             <% end %>
+            </fieldset>
           <% end %>
         </div>
 
@@ -351,7 +365,9 @@
               <%# Structured editor — same colored NEW/IMPROVED/FIXED layout as
                   the base locale. translation-editor serializes the inputs
                   into the hidden <textarea name="translated_text"> it owns. %>
-              <%= render "releases/translation_editor", note: note, loc: loc %>
+              <fieldset class="contents" <%= "disabled" unless can_edit %>>
+                <%= render "releases/translation_editor", note: note, loc: loc %>
+              </fieldset>
 
               <div class="flex items-center justify-between text-[0.625rem]">
                 <span class="text-base-content/40">

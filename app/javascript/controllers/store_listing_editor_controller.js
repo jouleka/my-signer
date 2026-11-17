@@ -4,92 +4,94 @@ export default class extends Controller {
   static targets = ["preview", "savingIndicator", "form"]
 
   connect() {
-    this._autosaveTimer = null
-    this._pageHideHandler = () => this._flushSave()
-    window.addEventListener("pagehide", this._pageHideHandler)
+    this._revision = 0
+    this._savedRevision = 0
+    this._visitHandler = async event => {
+      if (!this._dirty) return
+      event.preventDefault()
+      if (await this.flushSave()) window.Turbo.visit(event.detail.url)
+    }
+    this._submitHandler = async event => {
+      if (event.target === this.formTarget) {
+        event.preventDefault()
+        this.flushSave()
+      } else if (this._dirty) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        const { target, submitter } = event
+        if (await this.flushSave()) target.requestSubmit(submitter)
+      }
+    }
+    this._unloadHandler = event => {
+      if (!this._dirty) return
+      event.preventDefault()
+      event.returnValue = ""
+    }
+    document.addEventListener("turbo:before-visit", this._visitHandler)
+    document.addEventListener("submit", this._submitHandler, true)
+    window.addEventListener("beforeunload", this._unloadHandler)
   }
 
   disconnect() {
-    if (this._autosaveTimer) clearTimeout(this._autosaveTimer)
-    window.removeEventListener("pagehide", this._pageHideHandler)
+    clearTimeout(this._autosaveTimer)
+    clearTimeout(this._previewTimeout)
+    document.removeEventListener("turbo:before-visit", this._visitHandler)
+    document.removeEventListener("submit", this._submitHandler, true)
+    window.removeEventListener("beforeunload", this._unloadHandler)
   }
+
+  get _dirty() { return this._revision !== this._savedRevision }
 
   updatePreview() {
     clearTimeout(this._previewTimeout)
-    this._previewTimeout = setTimeout(() => {
-      this._syncPreview()
-    }, 150)
+    this._previewTimeout = setTimeout(() => this._syncPreview(), 150)
   }
 
-  // ── Autosave (same pattern as locale_switcher on the What's New tab) ──
   scheduleAutosave() {
+    this._revision++
     this._setSaving("unsaved")
-    if (this._autosaveTimer) clearTimeout(this._autosaveTimer)
-    this._autosaveTimer = setTimeout(() => this._save(), 900)
-  }
-
-  flushOnBlur() {
-    this._flushSave()
-  }
-
-  // Flush any pending autosave synchronously before another action (e.g. AI
-  // Translate) submits its own request. Prevents in-progress edits from being
-  // lost to the Turbo refresh that follows a translation job.
-  flushBeforeAction() {
-    this._flushSave()
-  }
-
-  _flushSave() {
-    if (!this._autosaveTimer) return
     clearTimeout(this._autosaveTimer)
-    this._autosaveTimer = null
-    this._save()
+    this._autosaveTimer = setTimeout(() => this.flushSave(), 900)
   }
 
-  async _save() {
-    // Null the timer handle so a subsequent focusout doesn't trigger a
-    // redundant second save (the handle stays truthy after setTimeout fires,
-    // so without this flushOnBlur would re-invoke _save every blur).
-    this._autosaveTimer = null
-    if (!this.hasFormTarget) return
-    const form = this.formTarget
-    this._setSaving("saving")
+  flushOnBlur() { this.flushSave() }
 
-    try {
-      const formData = new FormData(form)
-      const method = (formData.get("_method") || form.method || "POST").toString().toUpperCase()
-      if (formData.has("_method")) formData.delete("_method")
+  // One request at a time, including edits made while that request is running.
+  // Navigation and store actions await the same promise; failed drafts stay put.
+  flushSave() {
+    clearTimeout(this._autosaveTimer)
+    if (this._saving) return this._saving
+    if (!this._dirty || !this.hasFormTarget) return Promise.resolve(true)
+    this._saving = this._saveChanges().finally(() => { this._saving = null })
+    return this._saving
+  }
 
-      const response = await fetch(form.action, {
-        method: method === "GET" ? "GET" : method,
-        body: method === "GET" ? undefined : formData,
-        headers: {
-          "Accept": "text/vnd.turbo-stream.html, text/html;q=0.9",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        credentials: "same-origin"
-      })
-
-      if (response.ok) {
-        this._setSaving("saved")
-        return
-      }
-
-      // 422 (validation failure) — read the JSON body to show the actual
-      // error so the user knows WHY the save didn't stick. Without this,
-      // one over-limit field on the page silently reverts every other edit.
-      let errorMsg = null
+  async _saveChanges() {
+    while (this._dirty) {
+      const revision = this._revision
+      this._setSaving("saving")
       try {
-        const data = await response.json()
-        if (data && Array.isArray(data.errors) && data.errors.length) {
-          errorMsg = data.errors[0]
+        const formData = new FormData(this.formTarget)
+        formData.delete("_method")
+        const response = await fetch(this.formTarget.action, {
+          method: "PATCH",
+          body: formData,
+          headers: { "Accept": "text/vnd.turbo-stream.html", "X-Requested-With": "XMLHttpRequest" },
+          credentials: "same-origin"
+        })
+        if (!response.ok || response.redirected) {
+          let detail = "Please try saving again."
+          try { detail = (await response.json()).errors?.[0] || detail } catch {}
+          throw new Error(detail)
         }
-      } catch (_e) { /* response wasn't JSON */ }
-
-      this._setSaving("error", errorMsg)
-    } catch (_e) {
-      this._setSaving("error")
+        this._savedRevision = revision
+      } catch (error) {
+        this._setSaving("error", error.message)
+        return false
+      }
     }
+    this._setSaving("saved")
+    return true
   }
 
   // DOM-only rendering of the saving state — static strings, no XSS surface.

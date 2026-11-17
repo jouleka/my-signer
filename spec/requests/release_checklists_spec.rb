@@ -24,7 +24,7 @@ RSpec.describe "ReleaseChecklists", type: :request do
       patch organization_release_release_checklist_path(organization, release_id, checklist), params: {
         release_checklist: { version_string: "2.0.0", platform: "ios" }
       }
-      expect(response).to redirect_to(organization_release_path(organization, release_id))
+      expect(response).to redirect_to(organization_release_path(organization, release_id, tab: "checklist", version_string: "2.0.0"))
       expect(checklist.reload.version_string).to eq("2.0.0")
     end
 
@@ -97,7 +97,7 @@ RSpec.describe "ReleaseChecklists", type: :request do
     it "resets all items and redirects" do
       post reset_organization_release_release_checklist_path(organization, release_id, checked_checklist)
 
-      expect(response).to redirect_to(organization_release_path(organization, release_id))
+      expect(response).to redirect_to(organization_release_path(organization, release_id, tab: "checklist", version_string: "2.0.0"))
       checked_checklist.reload
       checked_checklist.items.each do |item|
         expect(item["checked"]).to be false

@@ -158,9 +158,9 @@ RSpec.describe AppRelease, type: :model do
       expect(release.primary_release_note).to eq(de_note)
     end
 
-    it "falls back to a draft note for the app when no note for this version" do
-      draft = create(:release_note, organization: organization, listable: apple_app, version_string: "1.5.0", status: "draft")
-      expect(release.primary_release_note).to eq(draft)
+    it "does not reuse another version's notes" do
+      create(:release_note, organization: organization, listable: apple_app, version_string: "1.5.0", status: "draft")
+      expect(release.primary_release_note).to be_nil
     end
   end
 
@@ -240,7 +240,7 @@ RSpec.describe AppRelease, type: :model do
     end
 
     it "returns the Android status string directly" do
-      android_release = create(:app_release, organization: organization, listable: android_app, version_string: "1.0.0")
+      android_release = create(:app_release, organization: organization, listable: android_app, version_string: "100")
       PlayStoreRelease.create!(
         android_app: android_app,
         version_code: "100",

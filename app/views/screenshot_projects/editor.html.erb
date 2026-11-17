@@ -1,3 +1,6 @@
+<%# Reinitialize the canvas controller when an upload or deletion redirects
+    back here. Morphing preserves stale scene selection and image caches. %>
+<% content_for :turbo_refresh_method, "replace" %>
 <% content_for :head do %>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -336,9 +339,9 @@
           </div>
           <div class="flex items-center justify-center bg-base-200/30 rounded-2xl p-2 sm:p-4 min-h-[300px]" data-screenshot-editor-target="canvasContainer">
             <% if @scenes.any? %>
-              <div class="w-full max-w-[28rem] aspect-[9/16]">
+              <div class="w-full max-w-[28rem]">
                 <canvas data-screenshot-editor-target="canvas"
-                        class="w-full h-full rounded-2xl shadow-lg"
+                        class="block w-full rounded-2xl shadow-lg"
                         width="1080"
                         height="1920"
                         data-action="mousedown->screenshot-editor#onCanvasMouseDown touchstart->screenshot-editor#onCanvasTouchStart"></canvas>
@@ -1694,7 +1697,7 @@
       <div class="border-t border-base-200 p-3 flex gap-2">
         <button type="button"
                 class="btn btn-primary btn-sm flex-1 gap-1.5 px-3 text-xs"
-                data-action="click->screenshot-editor#saveCurrentScene"
+                data-action="click->screenshot-editor#saveAllScenes"
                     data-screenshot-editor-target="saveButton">
               <i class="fa-solid fa-floppy-disk text-[10px]" data-screenshot-editor-target="saveIcon"></i>
               <span data-screenshot-editor-target="saveLabel">Save</span>
@@ -1843,12 +1846,8 @@
       </div>
       <div class="space-y-2 text-sm">
         <div class="flex items-center justify-between py-1.5 border-b border-base-200">
-          <span>Save Scene</span>
-          <div class="flex gap-1"><kbd class="kbd kbd-sm">Ctrl</kbd><kbd class="kbd kbd-sm">S</kbd></div>
-        </div>
-        <div class="flex items-center justify-between py-1.5 border-b border-base-200">
           <span>Save All Scenes</span>
-          <div class="flex gap-1"><kbd class="kbd kbd-sm">Ctrl</kbd><kbd class="kbd kbd-sm">Shift</kbd><kbd class="kbd kbd-sm">S</kbd></div>
+          <div class="flex gap-1"><kbd class="kbd kbd-sm">Ctrl</kbd><kbd class="kbd kbd-sm">S</kbd></div>
         </div>
         <div class="flex items-center justify-between py-1.5 border-b border-base-200">
           <span>Undo</span>

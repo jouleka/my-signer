@@ -9,8 +9,10 @@ module HomeHelper
     msg = message.to_s.downcase
     return "The sync worker died mid-run. Click Retry — this usually fixes it." if msg.include?("worker exited") || msg.include?("did not complete")
     return "Throttled by the upstream API. Wait a few minutes, then Retry." if msg.match?(/rate.?limit|throttl|\b429\b/)
-    return "Your credentials look invalid or expired. Update them in Settings, then Retry." if msg.match?(/unauthorized|forbidden|invalid.*(?:key|token|credential)|expired|\b401\b|\b403\b/)
-    return "Network hiccup. Click Retry; if it keeps failing, check status.mysigner.dev." if msg.match?(/timeout|timed out|connection refused|network|dns|ssl|tls|certificate/)
+    return "Ask the Apple Account Holder to review and accept pending agreements in App Store Connect or the Apple Developer account, then Retry." if msg.match?(/agreement|contract/)
+    return "Access was denied. Check the connection's permissions and account requirements in the provider console, then Retry." if msg.match?(/forbidden|\b403\b/)
+    return "Your credentials look invalid or expired. Update them in Settings, then Retry." if msg.match?(/unauthorized|invalid.*(?:key|token|credential)|expired|\b401\b/)
+    return "Could not reach the provider. Check your connection and try again in a few minutes." if msg.match?(/timeout|timed out|connection refused|network|dns|ssl|tls|certificate/)
 
     nil
   end

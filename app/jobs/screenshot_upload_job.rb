@@ -87,20 +87,22 @@ class ScreenshotUploadJob < ApplicationJob
     # Fetch all localizations once (shared across locales)
     localizations = versions_service.localizations(version_id: version_id)
 
-    # Resolve uploadable files (shared across locales — same export files, different store localizations)
-    uploadable = resolve_asc_uploadable_files(project: project, config: config)
-    if uploadable.nil?
+    uploadable_by_locale = locales.index_with do |locale|
+      resolve_asc_uploadable_files(project: project, config: config, locale: locale)
+    end
+    if uploadable_by_locale.values.any?(&:blank?)
       upload.mark_failed!("No export files match App Store Connect display types")
       return
     end
 
-    files_per_locale = uploadable.values.flatten.count
-    total_files = files_per_locale * locales.size
+    total_files = uploadable_by_locale.values.sum { |files| files.values.flatten.count }
     completed = 0
     failures = []
     upload.update_progress!(completed: 0, total: total_files)
 
     locales.each do |locale|
+      uploadable = uploadable_by_locale.fetch(locale)
+      files_per_locale = uploadable.values.flatten.count
       localization = localizations.find { |loc| loc.dig("attributes", "locale") == locale }
 
       unless localization
@@ -153,26 +155,8 @@ class ScreenshotUploadJob < ApplicationJob
 
   # Resolves and deduplicates export files for App Store Connect upload.
   # Returns a Hash of { display_type => [file_paths] } or nil if none match.
-  # Falls back to ActiveStorage cloud exports when local files don't exist.
-  def resolve_asc_uploadable_files(project:, config:)
-    exports_dir = project.exports_directory
-    files_by_resolution = {}
-
-    if exports_dir.exist?
-      exports_dir.children.select(&:directory?).each do |resolution_dir|
-        resolution = resolution_dir.basename.to_s
-        pngs = resolution_dir.children.select { |f| f.extname == ".png" }.sort
-        files_by_resolution[resolution] = pngs if pngs.any?
-      end
-    end
-
-    # Fall back to cloud exports if no local files found
-    if files_by_resolution.empty?
-      files_by_resolution = resolve_cloud_export_files(project)
-    end
-
-    return nil if files_by_resolution.empty?
-
+  def resolve_asc_uploadable_files(project:, config:, locale: nil)
+    files_by_resolution = resolve_export_files(project: project, locale: locale)
     uploadable = files_by_resolution.select do |resolution, _files|
       AppStoreConnect::Screenshots::DISPLAY_TYPES.key?(resolution)
     end
@@ -198,8 +182,7 @@ class ScreenshotUploadJob < ApplicationJob
       end
     end
 
-    by_display_type.transform_values { |v| v[:files] }
-      .each_with_object({}) { |(display_type, files), h| h[display_type] = files }
+    by_display_type.transform_values { |v| v[:files] }.presence
   end
 
   def upload_to_google_play(upload)
@@ -214,8 +197,6 @@ class ScreenshotUploadJob < ApplicationJob
     end
 
     client = GooglePlay::Client.new(credential: credential)
-    screenshots_service = GooglePlay::Screenshots.new(client)
-
     package_name = config["package_name"]
     replace_existing = config["replace_existing"] == true
 
@@ -227,26 +208,30 @@ class ScreenshotUploadJob < ApplicationJob
       return
     end
 
-    # Resolve uploadable files (shared across languages)
-    uploadable = resolve_gp_uploadable_files(project: project, config: config)
-    if uploadable.nil?
+    uploadable_by_language = languages.index_with do |language|
+      resolve_gp_uploadable_files(project: project, config: config, locale: language)
+    end
+    if uploadable_by_language.values.any?(&:blank?)
       upload.mark_failed!("No export files match Google Play image types")
       return
     end
 
-    files_per_language = uploadable.values.flatten.count
-    total_files = files_per_language * languages.size
+    total_files = uploadable_by_language.values.sum { |files| files.values.flatten.count }
     completed = 0
     failures = []
     upload.update_progress!(completed: 0, total: total_files)
 
     languages.each do |language|
+      uploadable = uploadable_by_language.fetch(language)
+      language_end = completed + uploadable.values.flatten.count
+      edit_id = nil
       # Create ONE edit per language and upload all image types within it
       begin
         edit = client.create_edit(package_name)
         edit_id = edit.id
 
         uploadable.each do |resolution, files|
+          type_end = completed + files.size
           image_type = GooglePlay::Screenshots::IMAGE_TYPES[resolution]
 
           begin
@@ -273,7 +258,7 @@ class ScreenshotUploadJob < ApplicationJob
           rescue => e
             failures << "[#{language}] #{image_type}: #{e.message}"
             Rails.logger.error("Google Play upload failed for #{image_type} (#{language}): #{e.message}")
-            completed += files.size
+            completed = type_end
             upload.update_progress!(completed: completed, total: total_files, current_locale: language)
           end
         end
@@ -289,8 +274,7 @@ class ScreenshotUploadJob < ApplicationJob
           Rails.logger.warn("GooglePlay - Failed to cleanup edit #{edit_id}: #{cleanup_error.message}")
         end
         # Count remaining files for this language as completed (for progress tracking)
-        remaining = uploadable.values.flatten.count - (completed % files_per_language)
-        completed += remaining if remaining > 0
+        completed = language_end
         upload.update_progress!(completed: completed, total: total_files, current_locale: language)
       end
     end
@@ -325,7 +309,8 @@ class ScreenshotUploadJob < ApplicationJob
     end
 
     # Resolve uploadable files (reuse existing ASC method)
-    uploadable = resolve_asc_uploadable_files(project: project, config: config)
+    uploadable = resolve_asc_uploadable_files(project: project, config: config,
+      locale: cpp_upload_locale(config: config, organization: organization, project: project))
     if uploadable.nil?
       upload.mark_failed!("No export files match App Store Connect display types")
       return
@@ -380,26 +365,8 @@ class ScreenshotUploadJob < ApplicationJob
 
   # Resolves export files for Google Play upload.
   # Returns a Hash of { resolution => [file_paths] } or nil if none match.
-  # Falls back to ActiveStorage cloud exports when local files don't exist.
-  def resolve_gp_uploadable_files(project:, config:)
-    exports_dir = project.exports_directory
-    files_by_resolution = {}
-
-    if exports_dir.exist?
-      exports_dir.children.select(&:directory?).each do |resolution_dir|
-        resolution = resolution_dir.basename.to_s
-        pngs = resolution_dir.children.select { |f| f.extname == ".png" }.sort
-        files_by_resolution[resolution] = pngs if pngs.any?
-      end
-    end
-
-    # Fall back to cloud exports if no local files found
-    if files_by_resolution.empty?
-      files_by_resolution = resolve_cloud_export_files(project)
-    end
-
-    return nil if files_by_resolution.empty?
-
+  def resolve_gp_uploadable_files(project:, config:, locale: nil)
+    files_by_resolution = resolve_export_files(project: project, locale: locale)
     uploadable = files_by_resolution.select do |resolution, _files|
       GooglePlay::Screenshots::IMAGE_TYPES.key?(resolution)
     end
@@ -413,13 +380,42 @@ class ScreenshotUploadJob < ApplicationJob
       uploadable = uploadable.select { |resolution, _| preset_resolutions.include?(resolution) }
     end
 
-    uploadable
+    uploadable.presence
+  end
+
+  def resolve_export_files(project:, locale:)
+    # A translated batch must use its own language. Never substitute another
+    # locale or an older flat export when a requested translation is missing.
+    if project.localized_exports?
+      return resolve_cloud_export_files(project, locale: locale)
+    end
+
+    files_by_resolution = {}
+    if project.exports_directory.exist?
+      project.exports_directory.children.select(&:directory?).each do |resolution_dir|
+        pngs = resolution_dir.children.select { |file| file.extname == ".png" }.sort
+        files_by_resolution[resolution_dir.basename.to_s] = pngs if pngs.any?
+      end
+    end
+
+    # Unlocalized API exports can be reused across store languages.
+    files_by_resolution.presence || resolve_cloud_export_files(project)
+  end
+
+  # The CPP localization's own locale (stored by the controller). Uploads
+  # enqueued before that was stored look it up by remote id, then fall back to
+  # the project's primary locale instead of a hard-coded "en-US".
+  def cpp_upload_locale(config:, organization:, project:)
+    config["locale"].presence ||
+      organization.custom_product_page_localizations.find_by(remote_id: config["cpp_localization_id"])&.locale.presence ||
+      project.default_locale
   end
 
   # Downloads cloud exports (ActiveStorage) to local temp files, grouped by resolution.
   # Returns a Hash of { resolution => [Pathname] } mirroring the local filesystem structure.
-  def resolve_cloud_export_files(project)
-    cloud_exports = project.screenshot_exports.includes(image_attachment: :blob)
+  def resolve_cloud_export_files(project, locale: nil)
+    cloud_exports = project.screenshot_exports.for_locale(locale)
+      .order(:scene_position, :id).includes(image_attachment: :blob)
     return {} unless cloud_exports.any? { |e| e.image.attached? }
 
     files_by_resolution = {}
@@ -441,7 +437,6 @@ class ScreenshotUploadJob < ApplicationJob
       files_by_resolution[resolution] << Pathname.new(temp_file.path)
     end
 
-    # Sort files within each resolution for consistency
-    files_by_resolution.transform_values(&:sort)
+    files_by_resolution
   end
 end

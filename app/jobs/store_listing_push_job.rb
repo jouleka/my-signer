@@ -11,7 +11,7 @@ class StoreListingPushJob < ApplicationJob
     organization = Organization.find(organization_id)
     store_listing = organization.store_listings.find(store_listing_id)
 
-    store_listing.update_columns(push_status: "pushing", push_error: nil)
+    store_listing.update_columns(push_status: "pushing", push_error: nil, updated_at: Time.current)
 
     case store_listing.listable_type
     when "AppleApp"

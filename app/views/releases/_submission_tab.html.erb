@@ -5,7 +5,7 @@
              is not yet supported via API in MySigner). %>
 
 <% if @app.is_a?(AppleApp) %>
-  <% latest_version = @app.app_store_versions.order(created_at: :desc).first %>
+  <% latest_version = @app_release.platform_release %>
 
   <% if latest_version.nil? %>
     <%# ── Empty state: no version synced yet ── %>
@@ -35,7 +35,7 @@
     <% active_credential = @organization.app_store_connect_credentials.find_by(active: true) %>
     <% build_attached = latest_version.apple_build_id.present? %>
     <% has_blockers = blocking_items.any? %>
-    <% can_submit = latest_version.submittable? &&
+    <% can_submit = policy(@organization).manage_resources? && latest_version.submittable? &&
                     !latest_version.submitting? &&
                     active_credential.present? &&
                     build_attached &&
@@ -114,9 +114,7 @@
             <div class="flex items-start gap-2">
               <i class="fa-solid fa-cube text-base-content/40 mt-0.5"></i>
               <p class="<%= meta_text_classes %> leading-relaxed">
-                No build is attached to this version. Attach a build in the
-                <%= link_to "Build tab", organization_release_path(@organization, params[:id], tab: "build"), class: "text-primary hover:underline" %>
-                before submitting.
+                No build is attached to this version. Attach a build in App Store Connect, then sync from the store before submitting.
               </p>
             </div>
           <% elsif has_blockers %>
@@ -130,16 +128,14 @@
             </div>
           <% else %>
             <p class="<%= meta_text_classes %> leading-relaxed">
-              Ready to submit. MySigner will call Apple's reviewSubmissions API.
-              If an existing draft review submission is already open for this app,
-              it will be reused automatically.
+              Ready to submit this version for App Store review.
             </p>
           <% end %>
         </div>
       </div>
 
       <%# ── Section 2: Release type + Submit form ── %>
-      <% if latest_version.submittable? && !latest_version.submitting? %>
+      <% if policy(@organization).manage_resources? && latest_version.submittable? && !latest_version.submitting? %>
         <div class="<%= card_container_classes %>">
           <div class="<%= card_header_classes %>">
             <div class="<%= card_icon_classes %>">
@@ -148,10 +144,10 @@
             <span class="<%= card_title_classes %>">Release Settings</span>
           </div>
           <div class="<%= card_body_classes %>">
-            <%= form_with url: submit_to_store_organization_release_path(@organization, params[:id]),
+            <%= form_with url: submit_to_store_organization_release_path(@organization, params[:id], version_string: @app_release.version_string),
                           method: :post,
                           local: true,
-                          data: { turbo_confirm: "Submit v#{latest_version.version_string} for App Store review?" },
+                          data: { controller: "submission-form", action: "submit->submission-form#prepare", turbo_confirm: "Submit v#{latest_version.version_string} for App Store review?" },
                           class: "flex flex-col gap-5",
                           id: "submission-form" do |f| %>
 
@@ -166,7 +162,7 @@
                   ].each do |option| %>
                     <label class="flex items-start gap-3 p-3 rounded-lg border border-base-content/[0.08] hover:border-base-content/[0.15] cursor-pointer transition-colors has-[:checked]:border-primary/40 has-[:checked]:bg-primary/[0.03]">
                       <input type="radio"
-                             name="release_type"
+                             name="release_type" data-submission-form-target="type"
                              value="<%= option[:value] %>"
                              <%= "checked" if current_release_type == option[:value] %>
                              class="radio radio-primary radio-sm mt-0.5"
@@ -183,13 +179,14 @@
 
               <%# ── Scheduled date picker (shown only when SCHEDULED selected) ── %>
               <div class="flex flex-col gap-1"
-                   data-submission-scheduled-wrapper
+                   data-submission-form-target="scheduled"
                    style="<%= current_release_type == "SCHEDULED" ? "" : "display: none;" %>">
                 <label class="<%= label_form_classes %>">Scheduled release date</label>
                 <input type="datetime-local"
-                       name="earliest_release_date"
-                       class="<%= input_field_classes %>"
-                       min="<%= (1.hour.from_now + 5.minutes).strftime("%Y-%m-%dT%H:%M") %>">
+                       data-submission-form-target="date"
+                       data-action="input->submission-form#prepare"
+                       class="<%= input_field_classes %>">
+                <input type="hidden" name="earliest_release_date" data-submission-form-target="isoDate">
                 <p class="<%= hint_text_classes %> mt-0.5">Must be at least 1 hour from now. Times are your local timezone.</p>
               </div>
 
@@ -203,31 +200,6 @@
           </div>
         </div>
 
-        <%# Tiny inline script: toggle the Scheduled datetime picker visibility
-            based on the selected radio. Wrapped in turbo:load so it re-runs
-            after Turbo cache restore (back button) and full navigations.
-            Cheaper than a dedicated Stimulus controller for 12 lines. %>
-        <script>
-          (function() {
-            const wire = () => {
-              const form = document.getElementById("submission-form");
-              if (!form || form.dataset.schedulerWired === "true") return;
-              form.dataset.schedulerWired = "true";
-              const wrapper = form.querySelector("[data-submission-scheduled-wrapper]");
-              const radios = form.querySelectorAll("input[name='release_type']");
-              const update = () => {
-                const selected = Array.from(radios).find(r => r.checked);
-                if (!selected || !wrapper) return;
-                wrapper.style.display = (selected.value === "SCHEDULED") ? "" : "none";
-              };
-              radios.forEach(r => r.addEventListener("change", update));
-              update();
-            };
-            wire();
-            document.addEventListener("turbo:load", wire);
-            document.addEventListener("turbo:render", wire);
-          })();
-        </script>
       <% end %>
 
       <%# ── Section 3: Metadata preview ── %>
@@ -449,7 +421,7 @@
       <span class="<%= card_title_classes %>">Submission State</span>
     </div>
     <div class="<%= card_body_classes %>">
-      <% latest = @app.play_store_releases.order(Arel.sql("COALESCE(released_at, created_at) DESC")).first %>
+      <% latest = @app_release.platform_release %>
       <% if latest %>
         <p class="<%= meta_text_classes %> mb-2">Current Play Store release: <strong>v<%= latest.version_code %></strong></p>
         <p class="<%= meta_text_classes %>">Track: <strong><%= latest.track&.capitalize %></strong></p>

@@ -3,6 +3,27 @@
 require "rails_helper"
 
 RSpec.describe SeoHelper, type: :helper do
+  describe "#page_title / #meta_description" do
+    it "unescapes content_for SafeBuffers so ERB escapes them only once" do
+      captured = helper.capture { "Ship iOS & Android" }
+
+      expect(helper.page_title(captured)).to eq("Ship iOS & Android | MySigner")
+      expect(helper.meta_description(captured)).to eq("Ship iOS & Android")
+    end
+
+    it "falls back to defaults when blank" do
+      expect(helper.page_title(nil)).to include("MySigner")
+      expect(helper.meta_description("")).to eq(SeoHelper::DEFAULT_DESCRIPTION)
+    end
+  end
+
+  describe "#canonical_url" do
+    it "always uses the apex host and strips trailing slashes" do
+      expect(helper.canonical_url("/docs/")).to eq("https://mysigner.dev/docs")
+      expect(helper.canonical_url("/")).to eq("https://mysigner.dev/")
+    end
+  end
+
   describe "JSON-LD <script> escaping" do
     it "escapes a </script> breakout attempt in breadcrumb names" do
       html = helper.breadcrumb_json_ld([ { name: "</script><script>alert(1)</script>", url: "/x" } ])

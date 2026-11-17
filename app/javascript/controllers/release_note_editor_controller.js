@@ -15,7 +15,9 @@ export default class extends Controller {
   }
 
   connect() {
-    this.updatePreview()
+    const text = this.hasRenderedTextInputTarget ? this.renderedTextInputTarget.value : ""
+    this._updatePreviewContent(text)
+    this._updateCharCount(text)
   }
 
   // ── Add / Remove items ──
@@ -41,11 +43,10 @@ export default class extends Controller {
     }
   }
 
-  // ── Preview rendering (debounced) ──
+  // ── Preview and form serialization ──
 
   updatePreview() {
-    clearTimeout(this._previewTimeout)
-    this._previewTimeout = setTimeout(() => this._renderPreview(), 150)
+    this._renderPreview()
   }
 
   // ── Mode switching ──
@@ -75,6 +76,7 @@ export default class extends Controller {
     if (!this.hasFreeformInputTarget || !this.hasRenderedTextInputTarget) return
 
     this.renderedTextInputTarget.value = this.freeformInputTarget.value
+    if (this.hasTemplateDataInputTarget) this.templateDataInputTarget.value = "{}"
     this._updatePreviewContent(this.freeformInputTarget.value)
     this._updateCharCount(this.freeformInputTarget.value)
   }
@@ -118,6 +120,7 @@ export default class extends Controller {
 
     this._updatePreviewContent(rendered)
     this._updateCharCount(rendered)
+    this.renderedTextInputTarget.dispatchEvent(new Event("input", { bubbles: true }))
   }
 
   _updatePreviewContent(text) {
@@ -133,7 +136,7 @@ export default class extends Controller {
   }
 
   _updateCharCount(text) {
-    const length = text.length
+    const length = Array.from(text).length
     const limit = this.charLimitValue
 
     if (this.hasCharCountTarget) {

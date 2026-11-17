@@ -255,4 +255,57 @@ RSpec.describe ScreenshotUploadJob, type: :job do
       expect(upload.started_at).to be_nil
     end
   end
+
+  describe "custom product page uploads" do
+    let(:apple_app) { create(:apple_app, organization: organization) }
+    let(:cpp) { create(:custom_product_page, organization: organization, apple_app: apple_app) }
+    let(:version) { create(:custom_product_page_version, custom_product_page: cpp) }
+    let(:png) { file_fixture("studio_screen.png").binread }
+    let(:screenshots_service) { instance_double(AppStoreConnect::Screenshots) }
+
+    before do
+      AppStoreConnectCredential.create!(
+        organization: organization, name: "ASC", issuer_id: "12345678-1234-1234-1234-123456789012",
+        key_id: "ABCD1234EF", private_key: "-----BEGIN EC PRIVATE KEY-----\nfake\n-----END EC PRIVATE KEY-----", active: true
+      )
+      allow(AppStoreConnect::Client).to receive(:new).and_return(instance_double(AppStoreConnect::Client))
+      allow(AppStoreConnect::Screenshots).to receive(:new).and_return(screenshots_service)
+      allow(screenshots_service).to receive(:list_cpp_screenshot_sets).and_return([])
+      allow(screenshots_service).to receive(:create_screenshot_set).and_return({ "data" => { "id" => "set-1" } })
+      allow(screenshots_service).to receive(:upload_screenshot!)
+    end
+
+    def cpp_upload(config)
+      ScreenshotUpload.create!(screenshot_project: project, organization: organization, target: "custom_product_page", config: config)
+    end
+
+    it "uploads the localization's staged ActiveStorage exports instead of forcing en-US" do
+      ScreenshotExport.upsert_export!(project: project, resolution: "1320x2868", scene_position: 1, locale: "de-DE", image_data: png)
+      ScreenshotExport.upsert_export!(project: project, resolution: "1320x2868", scene_position: 1, locale: "en-US", image_data: png)
+      upload = cpp_upload("cpp_localization_id" => "cppl-de", "locale" => "de-DE", "presets" => [ "ios_required" ])
+
+      described_class.new.perform(upload.id)
+
+      expect(upload.reload.status).to eq("completed")
+      expect(screenshots_service).to have_received(:upload_screenshot!).once
+    end
+
+    it "resolves the localization's locale for uploads enqueued without one" do
+      ScreenshotExport.upsert_export!(project: project, resolution: "1320x2868", scene_position: 1, locale: "ja", image_data: png)
+      create(:custom_product_page_localization, custom_product_page_version: version, remote_id: "cppl-ja", locale: "ja")
+      upload = cpp_upload("cpp_localization_id" => "cppl-ja", "presets" => [ "ios_required" ])
+
+      described_class.new.perform(upload.id)
+      expect(upload.reload.status).to eq("completed")
+    end
+
+    it "does not substitute en-US exports for a different localization" do
+      ScreenshotExport.upsert_export!(project: project, resolution: "1320x2868", scene_position: 1, locale: "en-US", image_data: png)
+      upload = cpp_upload("cpp_localization_id" => "cppl-fr", "locale" => "fr-FR", "presets" => [ "ios_required" ])
+
+      described_class.new.perform(upload.id)
+      expect(upload.reload.status).to eq("failed")
+      expect(screenshots_service).not_to have_received(:upload_screenshot!)
+    end
+  end
 end
