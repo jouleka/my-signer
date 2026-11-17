@@ -5,9 +5,10 @@ module LegalHelper
   # Per-document last-updated dates so editing one policy doesn't bump the
   # date on the other two. When you change a legal page, update its key here.
   LAST_UPDATED = {
-    privacy: Date.new(2026, 5, 1),
-    terms:   Date.new(2026, 5, 1),
-    refund:  Date.new(2026, 5, 1)
+    privacy:  Date.new(2026, 5, 1),
+    terms:    Date.new(2026, 5, 1),
+    refund:   Date.new(2026, 5, 1),
+    security: Date.new(2026, 6, 16)
   }.freeze
 
   # Default values used when the corresponding env var is not set. Governing

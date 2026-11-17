@@ -28,6 +28,15 @@ RSpec.describe "Legal pages", type: :request do
     expect(response.body).to include("current billing period")
   end
 
+  it "allows guests to view the security page" do
+    get security_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Security")
+    expect(response.body).to include("never reaches our servers")
+    expect(response.body).to include("envelope encryption")
+  end
+
   it "links legal pages and pricing from the public footer" do
     get unauthenticated_root_path
 
@@ -36,6 +45,7 @@ RSpec.describe "Legal pages", type: :request do
     expect(response.body).to include(terms_of_service_path)
     expect(response.body).to include(privacy_policy_path)
     expect(response.body).to include(refund_policy_path)
+    expect(response.body).to include(security_path)
   end
 
   it "includes refund alongside the other public links in guest navigation" do
@@ -45,5 +55,6 @@ RSpec.describe "Legal pages", type: :request do
     expect(response.body).to include(terms_of_service_path)
     expect(response.body).to include(privacy_policy_path)
     expect(response.body).to include(refund_policy_path)
+    expect(response.body).to include(security_path)
   end
 end

@@ -7,4 +7,7 @@ class LegalController < ApplicationController
 
   def refund
   end
+
+  def security
+  end
 end

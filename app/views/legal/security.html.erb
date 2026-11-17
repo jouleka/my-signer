@@ -1,0 +1,143 @@
+<% content_for(:title) { "Security" } %>
+<% content_for(:description) { "How MySigner protects your code-signing keys, store credentials, and source code." } %>
+
+<section class="space-y-6">
+  <%= render "shared/page_header",
+             title: "Security at MySigner",
+             description: "MySigner exists to put your app in the store without scattering your signing keys across five tools. This page explains, concretely, how we protect the most sensitive thing you hand a shipping tool — and what stays on your machine and never reaches us.",
+             gradient: "from-sky-500/10 via-base-100 to-indigo-500/10",
+             badge_icon: "fa-solid fa-lock",
+             badge_text: "Security",
+             actions: (capture do %>
+    <span class="badge badge-outline">Last updated <%= legal_last_updated_label(:security) %></span>
+    <%= link_to privacy_policy_path, class: "btn btn-sm btn-outline gap-2" do %>
+      <i class="fa-solid fa-shield-halved"></i>
+      Privacy
+    <% end %>
+    <%= link_to terms_of_service_path, class: "btn btn-sm btn-outline gap-2" do %>
+      <i class="fa-solid fa-scale-balanced"></i>
+      Terms
+    <% end %>
+  <% end) %>
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="space-y-4">
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">1. Your source code never reaches our servers</h2>
+        <p class="text-sm text-base-content/75">
+          Builds and code-signing run entirely on your own machine. The CLI invokes <code>xcodebuild</code> (iOS) and Gradle (Android) locally, and the finished build is uploaded <strong>directly to App Store Connect or Google Play</strong> — not through MySigner. Our servers handle orchestration and metadata (app records, sync, release tracking, submit-for-review) and never receive your source code or your built binary.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">2. How stored credentials are encrypted</h2>
+        <p class="text-sm text-base-content/75">
+          When you store signing material with MySigner — App Store Connect API keys, Google Play service-account JSON, Android keystores and their passwords, Apple Search Ads keys, SAML IdP certificates — each value is encrypted at rest with <strong>AES-256-GCM</strong> under a unique per-value data key. That data key is generated and wrapped by <strong>AWS KMS</strong> (envelope encryption): KMS never sees your plaintext credential, and the unwrapped data key exists only transiently in memory during an operation you requested.
+        </p>
+        <p class="text-sm text-base-content/75">
+          Each encrypted value is cryptographically bound to the organization and record that owns it, via the KMS encryption context and the AES-GCM authentication tag. An attacker who somehow read raw database rows could neither decrypt them nor move a wrapped key from one record to another.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">3. Bring Your Own Key (BYOK)</h2>
+        <p class="text-sm text-base-content/75">
+          Teams that want to hold the root of trust themselves can register their own AWS KMS key. MySigner then wraps that organization's credentials under <strong>your</strong> key — so you can audit every decryption in your own AWS account and revoke MySigner's access at any time from your own console, without involving us.
+        </p>
+        <p class="text-sm text-base-content/60">
+          One honest caveat: for performance, an unwrapped data key may be cached briefly (up to about an hour), so a revocation takes full effect within that window rather than instantly.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">4. Local-only mode</h2>
+        <p class="text-sm text-base-content/75">
+          If you would rather not store credentials with us at all, local-only mode keeps your signing material — your Apple <code>.p8</code>, your Google service-account JSON, and your Android keystore — on your own machine, in the macOS Keychain or in AES-256-GCM-encrypted files with <code>0600</code> permissions. The CLI resolves them locally (from a path you pass, an environment variable, or your Keychain) and mints the short-lived API tokens it needs without contacting us. Turn it on per command (<code>--local-only</code>), per environment (<code>MYSIGNER_LOCAL_ONLY=1</code>), or persistently in your config.
+        </p>
+        <p class="text-sm text-base-content/60">
+          By default (vault mode), signing material is stored with MySigner — encrypted as described above — so it's available to your whole team from any machine. Local-only trades that convenience for keeping everything on a single machine.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">5. Passwords and API tokens</h2>
+        <p class="text-sm text-base-content/75">
+          Account passwords are stored only as one-way <strong>bcrypt</strong> hashes. CLI API tokens are stored only as <strong>SHA-256</strong> digests — the token itself is shown to you once and is never written to our database in a readable form. Tokens are scoped to a single organization with <code>read</code>, <code>write</code>, or <code>admin</code> rights, and your most sensitive secrets are gated hardest: retrieving an Android keystore, its passwords, or a Google Play access token requires an <code>admin</code>-scoped token, and your App Store Connect <code>.p8</code> private key is never downloadable through the API at all. On your machine, the CLI keeps its token in a <code>0600</code> file encrypted with a per-machine key held in your macOS Keychain (or a <code>0600</code> key file on other platforms), and on CI it reads the token from an environment variable that is never written to disk.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">6. Encryption in transit</h2>
+        <p class="text-sm text-base-content/75">
+          All application traffic is served over HTTPS, with HTTP Strict Transport Security (including subdomains and preload) and forced TLS in production. The CLI communicates with the API only over HTTPS.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">7. Audit logging</h2>
+        <p class="text-sm text-base-content/75">
+          Sensitive actions — adding, removing, or using a credential, membership and role changes, and BYOK events — are written to an <strong>immutable, append-only audit log</strong>. Records cannot be edited or deleted individually by anyone, including us, and are retained for 365 days. IP addresses in the log are truncated before storage.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">8. Deleting your credentials and data</h2>
+        <p class="text-sm text-base-content/75">
+          You can purge stored credentials from the CLI at any time (<code>mysigner logout --purge</code>), and deleting an organization cascades to all of its credentials. Deleting your account deactivates it immediately and, after a 90-day restoration window, permanently removes your data — including signing keys — from production systems. See the <%= link_to "Privacy Policy", privacy_policy_path, class: "link link-primary" %> for the full retention and deletion terms.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 sm:p-6 space-y-3">
+        <h2 class="text-lg font-semibold">9. Reporting a vulnerability</h2>
+        <p class="text-sm text-base-content/75">
+          If you believe you've found a security issue, please email
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>
+          with the details and steps to reproduce. We welcome responsible disclosure, will acknowledge your report, and ask that you give us a reasonable chance to address the issue before publishing it.
+        </p>
+        <p class="text-sm text-base-content/60">
+          No system is perfectly secure. If we become aware of a breach affecting your data, we will notify affected users without undue delay, in line with applicable law.
+        </p>
+      </div>
+    </div>
+
+    <aside class="space-y-4">
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-3">
+        <div class="text-xs uppercase tracking-[0.2em] text-base-content/50">At a glance</div>
+        <ul class="space-y-2 text-sm text-base-content/75">
+          <li class="flex gap-2"><i class="fa-solid fa-check text-success mt-1"></i> Your source never leaves your machine</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-success mt-1"></i> AES-256-GCM + AWS KMS envelope encryption</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-success mt-1"></i> Optional BYOK and local-only mode</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-success mt-1"></i> Bcrypt passwords, hashed API tokens</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-success mt-1"></i> HTTPS + HSTS everywhere</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-success mt-1"></i> Immutable 365-day audit log</li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-3">
+        <div class="text-xs uppercase tracking-[0.2em] text-base-content/50">Security contact</div>
+        <p class="text-sm text-base-content/75">
+          <a href="mailto:<%= legal_support_email %>" class="link link-primary"><%= legal_support_email %></a>
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-base-200 bg-base-100 p-5 space-y-3">
+        <div class="text-xs uppercase tracking-[0.2em] text-base-content/50">Related Pages</div>
+        <div class="flex flex-col gap-2">
+          <%= link_to privacy_policy_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-shield-halved"></i>
+            Privacy Policy
+          <% end %>
+          <%= link_to terms_of_service_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-scale-balanced"></i>
+            Terms of Service
+          <% end %>
+          <%= link_to pricing_path, class: "btn btn-sm btn-outline justify-start gap-2" do %>
+            <i class="fa-solid fa-tags"></i>
+            Pricing
+          <% end %>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>

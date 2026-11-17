@@ -101,7 +101,7 @@ For everyone else, here's what MySigner costs:
 
 - **Free**: full CLI, 1 app, unlimited TestFlight shipping.
 - **Pro $12/mo**: 10 apps, ASO + reviews + analytics + 100 AI translations per month. 14-day trial, no card required.
-- **Team $49/mo**: multi-org (up to 10 orgs, 10 apps each), SAML SSO, 365-day hash-chained audit log, RBAC.
+- **Team $49/mo**: multi-org (up to 10 orgs, 10 apps each), SAML SSO, 365-day immutable audit log, RBAC.
 
 The buyer math that makes MySigner cheaper than Fastlane-plus-tools:
 

@@ -79,7 +79,7 @@ MySigner pricing is published, no quote required:
 
 - **Free**: 1 app, unlimited TestFlight shipping via CLI, 1 Screenshot Studio project. No keyword tracking on Free.
 - **Pro $12/mo**: 10 apps, 100 keywords per app daily-refreshed, ASO editing per locale, reviews inbox, analytics with 90-day retention, 100 AI translations per month. 14-day trial, no card.
-- **Team $49/mo**: multi-org, 200 keywords per app with priority refresh, 365-day analytics, SAML SSO, hash-chained audit log, RBAC.
+- **Team $49/mo**: multi-org, 200 keywords per app with priority refresh, 365-day analytics, SAML SSO, immutable audit log, RBAC.
 
 If you're paying Sensor Tower mostly to track your own apps, MySigner Pro covers the same workflow at a fraction of the cost ($12/mo vs Sensor Tower's typical $500+/mo floor).
 
